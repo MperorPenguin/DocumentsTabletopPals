@@ -1,15 +1,19 @@
-# Tabletop Pals — DM Lite v2
+# Tabletop Pals — DM Lite v1
 
-**Adds back the Board** (2D grid + tokens + movement + scene upload), **Terrain intelligence** (adv/dis hints), and the **full Character Builder** with icon picker — while keeping the Netflix-style home.
+A clean, general-purpose DM management tool (no map/campaign required).
 
-## Highlights
-- **Board**: click token to select, click grid to move; upload a scene background.
-- **Terrain**: choose terrain and see advantage/disadvantage hints based on party/enemy tags.
-- **Characters**: structured builder (class/race/background/alignment/level), ability dropdowns, armor/movement/wants, icon picker.
-- **NPCs/Enemies**: quick lists, portraits (NPC) and icons (Enemy).
-- **Dice**: animated d20 and custom expressions + log.
-- **Dialogue**: choose speaker, quick prompts, log.
-- **Notes & Save**: autosave to localStorage, export/import JSON.
+## Features
+- **Initiative Tracker**: one-click build (1d20 all), next/prev turn, rounds.
+- **Party Manager**: class icon picker, HP ticks, AC/level display.
+- **NPCs**: quick list, portrait uploads.
+- **Encounters**: foes with HP trackers.
+- **Dice Roller**: visual d20 jig + custom expressions, roll log.
+- **Dialogue Log**: quick speaker buttons + reusable snippets.
+- **Notes**: big textarea, autosaves.
 
 ## Use
-Open `index.html` in a browser. To deploy with GitHub Pages, push these files to your repo root.
+Open `index.html` in a browser (or serve with a static server). State saves to `localStorage`.
+
+## GitHub Pages
+Push this folder to a GitHub repo and enable Pages (Deploy from branch, main, / root).
+

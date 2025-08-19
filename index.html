@@ -3,40 +3,29 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Tabletop Pals — DM Lite v2</title>
+<title>Tabletop Pals — DM Lite v1</title>
 <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 <div class="top">
   <div class="inner">
-    <div class="logo"><div class="mark"></div><strong>Tabletop Pals</strong></div>
+    <div class="logo"><div class="mark"></div><strong>Tabletop Pals — DM Lite</strong></div>
     <div class="nav">
       <button id="nav-home" onclick="nav('home')">Home</button>
-      <button id="nav-board" onclick="nav('board')">Board</button>
-      <button id="nav-chars" onclick="nav('chars')">Characters</button>
+      <button id="nav-initiative" onclick="nav('initiative')">Initiative</button>
+      <button id="nav-party" onclick="nav('party')">Party</button>
       <button id="nav-npcs" onclick="nav('npcs')">NPCs</button>
-      <button id="nav-enemies" onclick="nav('enemies')">Enemies</button>
+      <button id="nav-encounters" onclick="nav('encounters')">Encounters</button>
       <button id="nav-dice" onclick="nav('dice')">Dice</button>
-      <button id="nav-dialogue" onclick="nav('dialogue')">Dialogue</button>
       <button id="nav-notes" onclick="nav('notes')">Notes</button>
+      <button id="nav-dialogue" onclick="nav('dialogue')">Dialogue</button>
       <button id="nav-save" onclick="nav('save')">Save</button>
     </div>
   </div>
 </div>
 
-<!-- Icon Picker Modal -->
-<div id="iconModal" class="modal" onclick="if(event.target.id==='iconModal'){closeIconPicker()}">
-  <div class="box">
-    <div class="row">
-      <h3>Choose an Icon</h3>
-      <button class="btn alt" onclick="closeIconPicker()">Close</button>
-    </div>
-    <div id="iconGrid" class="icon-grid" style="margin-top:10px"></div>
-  </div>
-</div>
-
 <main id="app"></main>
-<footer>DM Lite v2 — Board + Terrain intel + Character Builder, Netflix-clean.</footer>
+<footer>DM Lite v1 — clean, general-purpose DM tools (no map/campaign required).</footer>
 <script src="app.js"></script>
 </body>
 </html>
