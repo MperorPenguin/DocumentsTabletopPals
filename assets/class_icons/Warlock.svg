@@ -1,0 +1,7 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
+<g fill='none' stroke='#6366f1' stroke-width='16' stroke-linecap='round' stroke-linejoin='round'>
+M64 24V104
+M24 64H104
+M64 64m-40 0a40 40 0 1 0 80 0a40 40 0 1 0 -80 0
+</g>
+</svg>
