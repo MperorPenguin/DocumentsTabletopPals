@@ -1,42 +1,44 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Tabletop Pals — DM Lite v2</title>
-<link rel="stylesheet" href="style.css"/>
+  <meta charset="UTF-8">
+  <title>Tabletop Pals - Prototype 7</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="top">
-  <div class="inner">
-    <div class="logo"><div class="mark"></div><strong>Tabletop Pals</strong></div>
-    <div class="nav">
-      <button id="nav-home" onclick="nav('home')">Home</button>
-      <button id="nav-board" onclick="nav('board')">Board</button>
-      <button id="nav-chars" onclick="nav('chars')">Characters</button>
-      <button id="nav-npcs" onclick="nav('npcs')">NPCs</button>
-      <button id="nav-enemies" onclick="nav('enemies')">Enemies</button>
-      <button id="nav-dice" onclick="nav('dice')">Dice</button>
-      <button id="nav-dialogue" onclick="nav('dialogue')">Dialogue</button>
-      <button id="nav-notes" onclick="nav('notes')">Notes</button>
-      <button id="nav-save" onclick="nav('save')">Save</button>
-    </div>
+  <div id="app">
+    <header>
+      <h1>Tabletop Pals</h1>
+    </header>
+    <main>
+      <section id="dashboard">
+        <button onclick="showSection('characters')">Characters</button>
+        <button onclick="showSection('enemies')">Enemies</button>
+        <button onclick="showSection('dialogue')">Dialogue</button>
+        <button onclick="showSection('scenes')">Scenes</button>
+        <button onclick="showSection('dice')">Dice Roller</button>
+      </section>
+      <section id="characters" class="hidden"></section>
+      <section id="enemies" class="hidden"></section>
+      <section id="dialogue" class="hidden">
+        <h2>Dialogue System</h2>
+        <div id="dialogue-log"></div>
+        <input type="text" id="dialogue-input" placeholder="Type a line...">
+        <button onclick="addDialogue()">Speak</button>
+      </section>
+      <section id="scenes" class="hidden">
+        <h2>Scene Upload</h2>
+        <input type="file" accept="image/*" onchange="uploadScene(event)">
+        <div id="scene-display"></div>
+      </section>
+      <section id="dice" class="hidden">
+        <h2>Dice Roller</h2>
+        <button onclick="rollDice(20)">d20</button>
+        <button onclick="rollDice(6)">d6</button>
+        <div id="dice-result"></div>
+      </section>
+    </main>
   </div>
-</div>
-
-<!-- Icon Picker Modal -->
-<div id="iconModal" class="modal" onclick="if(event.target.id==='iconModal'){closeIconPicker()}">
-  <div class="box">
-    <div class="row">
-      <h3>Choose an Icon</h3>
-      <button class="btn alt" onclick="closeIconPicker()">Close</button>
-    </div>
-    <div id="iconGrid" class="icon-grid" style="margin-top:10px"></div>
-  </div>
-</div>
-
-<main id="app"></main>
-<footer>DM Lite v2 — Board + Terrain intel + Character Builder, Netflix-clean.</footer>
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
