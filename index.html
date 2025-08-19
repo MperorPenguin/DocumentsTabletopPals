@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Tabletop Pals — Prototype 3 (Full UI)</title>
+<style>
+:root{
+  --bg:#0f1115; --panel:#141824; --muted:#aab3c5; --ink:#e9ecf1; --border:#23283a; --hover:#1a2030;
+  --yellow:#FFD166; --teal:#14B8A6; --red:#EF4444; --blue:#60A5FA; --purple:#A78BFA; --sage:#9CAF88;
+  --accent: var(--purple);
+}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+h1,h2,h3{margin:0 0 8px} .small{font-size:12px;color:var(--muted)}
+.top{position:sticky;top:0;z-index:50;backdrop-filter:blur(8px);background:#0f1115cc;border-bottom:1px solid var(--border)}
+.top .inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 16px}
+.logo{display:flex;gap:8px;align-items:center} .mark{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--purple),var(--yellow))}
+.nav button{background:none;border:1px solid transparent;color:#c8cfdd;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all .15s}
+.nav button:hover{background:var(--hover);color:#fff;border-color:var(--accent)}
+.nav button.active{background:color-mix(in srgb, var(--accent) 20%, transparent);border-color:var(--accent);color:#fff;box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset}
+main{max-width:1280px;margin:0 auto;padding:16px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:10px}
+.tile{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px;cursor:pointer;position:relative;transition:all .15s}
+.tile:hover{background:var(--hover);border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset}
+.chip{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;color:#0f1115;margin-left:6px}
+.row{display:flex;gap:12px;align-items:center;justify-content:space-between}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
+.panel h3{margin:0 0 8px 0;font-size:16px}
+.btn{background:var(--hover);border:1px solid var(--border);color:#e6e9f2;padding:8px 12px;border-radius:10px;cursor:pointer;transition:all .15s}
+.btn:hover{filter:brightness(1.08);border-color:var(--accent)}
+.btn.active,.tabs button.active{background:color-mix(in srgb, var(--accent) 18%, transparent);border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset;color:#fff}
+.btn.alt{background:none}
+.row-wrap{display:flex;flex-wrap:wrap;gap:8px}
+input,select,textarea{background:#111623;color:#dbe1ee;border:1px solid var(--border);border-radius:8px;padding:8px;transition:border-color .15s, box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent)}
+.cols{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.cols-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.tabs{display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.tabs button{flex:1;background:#0f1115;border:0;color:#d0d6e6;padding:8px;cursor:pointer;transition:all .15s;border-right:1px solid var(--border)}
+.tabs button:last-child{border-right:0}
+.tabs button:hover{color:#fff}
+.tabs button.active{background:#151a26;box-shadow:inset 0 -2px 0 0 var(--accent), inset 0 0 0 1px var(--accent)}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;align-items:center;justify-content:space-between;background:#0f1115;border:1px solid var(--border);border-radius:10px;padding:10px}
+footer{color:#9aa4ba;text-align:center;margin:30px 0 60px}
+/* Board */
+.board{position:relative;height:560px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#0f141f;background-size:cover;background-position:center}
+.board::after{content:"";position:absolute;inset:0;background-image:linear-gradient(to right,rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(to bottom,rgba(255,255,255,.05) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
+.token{position:absolute;width:44px;height:44px;border-radius:6px;border:2px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer;user-select:none;transition:transform .05s, box-shadow .15s}
+.token.pc{background:#0ea5e9aa}
+.token.npc{background:#22c55eaa}
+.token.enemy{background:#ef4444aa}
+.token.selected{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 65%, transparent) inset, 0 0 0 2px var(--accent)}
+/* Dice */
+.dice{width:80px;height:80px;border-radius:12px;border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;background:#101626;box-shadow:0 0 24px rgba(167,139,250,.15)}
+.dice.roll{animation:jig .8s ease-in-out}
+@keyframes jig{0%{transform:rotate(0) scale(1)}25%{transform:rotate(20deg) scale(1.05)}50%{transform:rotate(-15deg) scale(1.05)}75%{transform:rotate(8deg) scale(1.02)}100%{transform:rotate(0) scale(1)}}
+/* Library */
+.gridlib{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.thumb{position:relative;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#0f1115}
+.thumb img{width:100%;height:110px;object-fit:cover;display:block}
+.thumb .cap{position:absolute;bottom:0;left:0;right:0;background:#0f1115cc;padding:4px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="inner">
+    <div class="logo"><div class="mark"></div><strong>Tabletop Pals</strong></div>
+    <div class="nav">
+      <button id="nav-home" onclick="nav('home')">Home</button>
+      <button id="nav-cockpit" onclick="nav('cockpit')">DM Cockpit</button>
+      <button id="nav-chars" onclick="nav('chars')">Characters</button>
+      <button id="nav-lib" onclick="nav('library')">Image Library</button>
+      <button id="nav-save" onclick="nav('save')">Save/Export</button>
+      <button id="nav-help" onclick="nav('help')">Help</button>
+    </div>
+  </div>
+</div>
+<main id="app"></main>
+<footer>Prototype 3 — Full UI: uploads, board select→move, visual dice, class avatars, DM Assist, autosave.</footer>
+
+<script>
+// ---------- Data & State ----------
+const SRD = {
+  classes: ['Barbarian','Bard','Cleric','Druid','Fighter','Monk','Paladin','Ranger','Rogue','Sorcerer','Warlock','Wizard'],
+  classAvatars: Object.fromEntries([
+    ['Barbarian','class_avatars/Barbarian.svg'],
+    ['Bard','class_avatars/Bard.svg'],
+    ['Cleric','class_avatars/Cleric.svg'],
+    ['Druid','class_avatars/Druid.svg'],
+    ['Fighter','class_avatars/Fighter.svg'],
+    ['Monk','class_avatars/Monk.svg'],
+    ['Paladin','class_avatars/Paladin.svg'],
+    ['Ranger','class_avatars/Ranger.svg'],
+    ['Rogue','class_avatars/Rogue.svg'],
+    ['Sorcerer','class_avatars/Sorcerer.svg'],
+    ['Warlock','class_avatars/Warlock.svg'],
+    ['Wizard','class_avatars/Wizard.svg'],
+  ]),
+  monsters: [
+    { name:'Goblin', ac:15, hp:7, note:'Nimble Escape' },
+    { name:'Skeleton', ac:13, hp:13, note:'Vulnerable bludgeoning' },
+    { name:'Wolf', ac:13, hp:11, note:'Pack Tactics' },
+    { name:'Orc', ac:13, hp:15, note:'Aggressive' },
+  ],
+};
+let state = JSON.parse(localStorage.getItem('tp_p3_full')||'null') || {
+  route:'home', tab:'party',
+  players:[
+    {id:'p1',name:'Aria',cls:'Rogue',level:1,ac:15,hp:{cur:10,max:10},pp:13,token:{x:2,y:3},avatar:'class_avatars/Rogue.svg'},
+    {id:'p2',name:'Bronn',cls:'Fighter',level:1,ac:17,hp:{cur:13,max:13},pp:11,token:{x:4,y:4},avatar:'class_avatars/Fighter.svg'}
+  ],
+  npcs:[{id:'n1',name:'Elder Bran',role:'Quest Giver',token:{x:8,y:6},avatar:null}],
+  enemies:[{id:'e1',name:'Skeleton A',ac:13,hp:{cur:13,max:13},token:{x:10,y:6},avatar:null}],
+  map:{w:24,h:18,size:48,bg:'map.svg'},
+  dice:{expr:'d20',last:'—',log:[]},
+  library:[], // {id,name,type,dataUrl}
+  notes:'',
+  selectedToken:null
+};
+function save(){ localStorage.setItem('tp_p3_full', JSON.stringify(state)); }
+function nav(route){ state.route=route; save(); render(); setActive(); }
+function setActive(){ ['home','cockpit','chars','library','save','help'].forEach(id=>{ const b=document.getElementById('nav-'+id); if(b) b.classList.toggle('active', state.route===id); }); }
+function esc(s){ return (''+s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+
+// ---------- Dice ----------
+let diceTimer=null;
+function rollExpr(expr){ const m=(expr||'').match(/^(\\d+)?d(\\d+)([+\\-]\\d+)?$/i); if(!m) return {ok:false}; const n=+((m[1]||1)),s=+(m[2]),mod=+(m[3]||0); let parts=[],sum=0; for(let i=0;i<n;i++){const r=1+Math.floor(Math.random()*s); parts.push(r); sum+=r;} return {ok:true,total:sum+mod,parts,mod}; }
+function rollVisual(expr){ const box=document.getElementById('dice-box'), out=document.getElementById('dice-result'); if(!box) return; let t=0; clearInterval(diceTimer); box.classList.add('roll'); diceTimer=setInterval(()=>{ box.textContent=1+Math.floor(Math.random()*20); t++; if(t>12){ clearInterval(diceTimer); const r=rollExpr(expr); box.textContent=r.ok?r.total:'×'; if(r.ok){ out&&(out.textContent=r.total); state.dice.last=r.total; state.dice.log.unshift({expr,total:r.total,parts:r.parts,mod:r.mod||0,t:Date.now()}); if(state.dice.log.length>60) state.dice.log.pop(); save(); } box.classList.remove('roll'); } },60); }
+
+// ---------- Board (select→move) ----------
+function gridSize(){ return state.map.size; }
+function renderBoard(){
+  const board=document.querySelector('.board'); if(!board) return;
+  board.style.backgroundImage = state.map.bg ? `url('${state.map.bg}')` : 'linear-gradient(180deg,#1b2436,#0f1524)';
+  board.querySelectorAll('.token').forEach(n=>n.remove());
+  const size=gridSize();
+  const all=[...state.players.map(p=>({...p,kind:'pc'})), ...state.npcs.map(n=>({...n,kind:'npc'})), ...state.enemies.map(e=>({...e,kind:'enemy'}))];
+  all.forEach(obj=>{
+    const d=document.createElement('div'); d.className='token '+obj.kind; d.dataset.id=obj.id; d.dataset.kind=obj.kind;
+    if(state.selectedToken && state.selectedToken.id===obj.id && state.selectedToken.kind===obj.kind) d.classList.add('selected');
+    d.style.left=(obj.token.x*size+2)+'px'; d.style.top=(obj.token.y*size+2)+'px';
+    if(obj.avatar){ const img=document.createElement('img'); img.src=obj.avatar; img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:4px;'; d.appendChild(img); } else { d.textContent=(obj.name||'?')[0].toUpperCase(); }
+    d.title = obj.name;
+    d.onclick = (ev)=>{ ev.stopPropagation(); state.selectedToken={id:obj.id,kind:obj.kind}; save(); renderBoard(); };
+    board.appendChild(d);
+  });
+}
+function boardClick(e){
+  const board=e.currentTarget, rect=board.getBoundingClientRect(), size=gridSize();
+  if(!state.selectedToken) return;
+  const gx=Math.max(0,Math.min(state.map.w-1,Math.floor((e.clientX-rect.left)/size)));
+  const gy=Math.max(0,Math.min(state.map.h-1,Math.floor((e.clientY-rect.top)/size)));
+  const list = state.selectedToken.kind==='pc'?state.players:state.selectedToken.kind==='npc'?state.npcs:state.enemies;
+  const obj = list.find(o=>o.id===state.selectedToken.id); if(!obj) return;
+  obj.token.x=gx; obj.token.y=gy; save(); renderBoard();
+}
+
+// ---------- Image Library uploads ----------
+function handleUpload(files, type){
+  [...files].forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = ()=>{
+        const maxW=1280, scale=Math.min(1, maxW/img.width);
+        const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+        const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+        const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,w,h);
+        canvas.toBlob(blob=>{
+          const fr=new FileReader(); fr.onload=e2=>{
+            state.library.push({id:'img'+Math.random().toString(36).slice(2,7),type,name:file.name,dataUrl:e2.target.result});
+            save(); render();
+          }; fr.readAsDataURL(blob);
+        }, 'image/webp', 0.9);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function useAsScene(id){ const it=state.library.find(x=>x.id===id); if(!it) return; state.map.bg=it.dataUrl; save(); nav('cockpit'); }
+function assignAvatarTo(kind, entityId, imgId){
+  const it=state.library.find(x=>x.id===imgId); if(!it) return;
+  const list = kind==='pc'?state.players:kind==='enemy'?state.enemies:state.npcs;
+  const obj = list.find(o=>o.id===entityId); if(!obj) return; obj.avatar=it.dataUrl; save(); render();
+}
+
+// ---------- DM Assist ----------
+const HOOKS=["A courier begs you to deliver a sealed letter to the old lighthouse—by dusk.","A shrine’s bell rings on its own each midnight; the villagers won’t go near it.","A map fragment points to a forgotten cistern beneath the market."];
+const TWISTS=["The helpful NPC is cursed and can’t speak the truth directly.","The enemy faction wants to recruit the party, not kill them—yet.","The relic is sentient and bargains for freedom."];
+const QUIRKS=["Speaks only in culinary metaphors.","Terrified of birds; keeps a parasol indoors.","Always forgets names but remembers birthdays."];
+function addNote(line){ state.notes=(state.notes?state.notes+'\n':'')+line; save(); render(); }
+
+// ---------- Views ----------
+function Home(){
+  const tiles=[
+    {t:'DM Cockpit', c:'var(--yellow)', d:'Board + dice + panels', a:"nav('cockpit')"},
+    {t:'Characters', c:'var(--blue)', d:'Builder + class avatars + uploads', a:"nav('chars')"},
+    {t:'Image Library', c:'var(--teal)', d:'Upload scenes & portraits', a:"nav('library')"},
+    {t:'Save / Export', c:'var(--sage)', d:'Backup JSON', a:"nav('save')"},
+  ];
+  return `<h1 style="margin:16px 0 6px 0">Welcome back, DM!</h1>
+    <div class="small" style="margin-bottom:10px">No AI image generation — upload your own art. Everything autosaves.</div>
+    <div class="tiles">${tiles.map(t=>`<div class="tile" onclick="${t.a}"><div class="row"><div><div style="font-weight:600">${t.t} <span class="chip" style="background:${t.c}">One-click</span></div><div class="small" style="margin-top:6px">${t.d}</div></div></div></div>`).join('')}</div>`;
+}
+function Cockpit(){
+  return `<div class="cols" style="grid-template-columns:2fr 1fr; gap:12px; margin-top:16px">
+    <div class="panel">
+      <div class="row">
+        <h3 style="margin:0">Scene Board</h3>
+        <div class="row">
+          <label class="btn alt"><input type="file" accept="image/*" style="display:none" onchange="handleUpload(this.files,'scene')">Upload Scene</label>
+          <button class="btn" onclick="state.selectedToken=null; save(); render();">Deselect</button>
+        </div>
+      </div>
+      <div class="board" style="margin-top:10px" onclick="boardClick(event)"></div>
+      <div class="small" style="margin-top:8px">Click a token to select it (accent outline), then click a grid cell to move.</div>
+    </div>
+    <div class="panel">
+      <h3>Panels</h3>
+      <div class="tabs">
+        ${['party','npcs','enemies','assist'].map(k=>`<button class="${state.tab===k?'active':''}" onclick="state.tab='${k}'; save(); render();">${k.toUpperCase()}</button>`).join('')}
+      </div>
+      <div style="margin-top:10px">${PanelContent()}</div>
+    </div>
+  </div>
+  <div class="cols-3" style="margin-top:12px">
+    ${DicePanel()} ${NotesPanel()} ${ConditionsPanel()}
+  </div>`;
+}
+function PanelContent(){
+  if(state.tab==='party'){
+    return '<div class="list">'+state.players.map(p=>`
+      <div class="item">
+        <div style="display:flex;align-items:center;gap:8px">
+          <img src="${esc(p.avatar||SRD.classAvatars[p.cls]||'')}" style="width:34px;height:34px;border-radius:6px;object-fit:cover;border:1px solid var(--border)"/>
+          <div><div style="font-weight:600">${esc(p.name)}</div><div class="small">${esc(p.cls)} ${p.level}</div></div>
+        </div>
+        <div class="row">
+          <div class="small">AC ${p.ac} • HP ${p.hp.cur}/${p.hp.max}</div>
+          <button class="btn alt small" onclick="state.selectedToken={id:'${p.id}',kind:'pc'}; save(); nav('cockpit')">Select on Board</button>
+        </div>
+      </div>`).join('') + '</div>';
+  }
+  if(state.tab==='npcs'){
+    return '<div class="list">'+state.npcs.map(n=>`
+      <div class="item">
+        <div style="display:flex;align-items:center;gap:8px">
+          ${n.avatar? `<img src="${esc(n.avatar)}" style="width:34px;height:34px;border-radius:6px;object-fit:cover;border:1px solid var(--border)"/>` : ''}
+          <div><div style="font-weight:600">${esc(n.name)}</div><div class="small">${esc(n.role||'NPC')}</div></div>
+        </div>
+        <label class="btn alt small"><input type="file" accept="image/*" style="display:none" onchange="handleUpload(this.files,'npc')">Upload Avatar</label>
+      </div>`).join('') + '<button class="btn alt" style="width:100%;margin-top:6px" onclick="state.npcs.push({id:\'n\'+Math.random().toString(36).slice(2,7),name:\'New NPC\',role:\'Villager\',token:{x:1,y:1},avatar:null}); save(); render();">+ Add NPC</button></div>';
+  }
+  if(state.tab==='enemies'){
+    return '<div class="list">'+state.enemies.map(e=>`
+      <div class="item">
+        <div style="display:flex;align-items:center;gap:8px">
+          ${e.avatar? `<img src="${esc(e.avatar)}" style="width:34px;height:34px;border-radius:6px;object-fit:cover;border:1px solid var(--border)"/>` : ''}
+          <div><div style="font-weight:600">${esc(e.name)}</div><div class="small">AC ${e.ac} • HP ${e.hp.cur}/${e.hp.max}</div></div>
+        </div>
+        <label class="btn alt small"><input type="file" accept="image/*" style="display:none" onchange="handleUpload(this.files,'enemy')">Upload Avatar</label>
+      </div>`).join('') + '<button class="btn alt" style="width:100%;margin-top:6px" onclick="const m=SRD.monsters[Math.floor(Math.random()*SRD.monsters.length)]; state.enemies.push({id:\'e\'+Math.random().toString(36).slice(2,7),name:m.name,ac:m.ac,hp:{cur:m.hp,max:m.hp},token:{x:2,y:2}}); save(); render();">+ Add Enemy</button></div>';
+  }
+  return `<div class="panel" style="background:#0f1115">
+    <div class="small"><b>DM Assist</b></div>
+    <div class="row-wrap" style="margin-top:6px">
+      <button class="btn" onclick="addNote('Hook: ${HOOKS[Math.floor(Math.random()*HOOKS.length)]}')">Random Hook</button>
+      <button class="btn" onclick="addNote('Twist: ${TWISTS[Math.floor(Math.random()*TWISTS.length)]}')">Random Twist</button>
+      <button class="btn" onclick="addNote('NPC Quirk: ${QUIRKS[Math.floor(Math.random()*QUIRKS.length)]}')">NPC Quirk</button>
+    </div>
+    <div class="small" style="margin-top:8px">Click to insert into Session Notes.</div>
+  </div>`;
+}
+function DicePanel(){
+  return `<div class="panel"><h3>Dice Roller</h3>
+    <div class="row-wrap" style="align-items:center">
+      <div id="dice-box" class="dice">—</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="row-wrap">
+          ${['d20','d12','d10','d8','d6','d4'].map(d=>`<button class="btn" onclick="document.getElementById('dice-expr').value='${d}'; this.classList.add('active'); setTimeout(()=>this.classList.remove('active'),200)">${d}</button>`).join('')}
+        </div>
+        <div class="row-wrap">
+          <input id="dice-expr" value="${esc(state.dice.expr)}" placeholder="2d6+3" style="width:120px"/>
+          <button class="btn active" onclick="rollVisual(document.getElementById('dice-expr').value)">Roll</button>
+          <div class="small">Result: <b id="dice-result">${state.dice.last}</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:8px;background:#0f1115">
+      <div class="small">Roll Log</div>
+      <div class="small">${state.dice.log.map(l=>`[${new Date(l.t).toLocaleTimeString()}] ${esc(l.expr)} → <b>${l.total}</b> [${l.parts.join(', ')}${l.mod? (l.mod>0? ' + '+l.mod : ' - '+Math.abs(l.mod)) : ''}]`).join('<br/>')||'No rolls yet.'}</div>
+    </div>
+  </div>`;
+}
+function NotesPanel(){
+  return `<div class="panel"><h3>Session Notes</h3>
+    <textarea style="width:100%;height:140px" oninput="state.notes=this.value; save();">${esc(state.notes)}</textarea>
+    <div class="small" style="margin-top:6px">Autosaves as you type. DM Assist inserts ideas here.</div>
+  </div>`;
+}
+function ConditionsPanel(){
+  const tags=[['Blessed','var(--yellow)'],['Poisoned','var(--red)'],['Concentrating','var(--purple)']];
+  return '<div class="panel"><h3>Conditions</h3><div class="row-wrap">'+tags.map(t=>`<span class="chip" style="background:${t[1]}33;color:${t[1]}">${t[0]}</span>`).join('')+'</div></div>';
+}
+function Characters(){
+  const e = state.editing || {name:'', cls:'Rogue', level:1, ac:15, hp:10, avatar: SRD.classAvatars['Rogue']};
+  return `<div class="cols" style="margin-top:16px">
+    <div class="panel">
+      <h3>Character Builder</h3>
+      <div class="row-wrap">
+        <div><div class="small">Name</div><input id="c-name" placeholder="Aria" value="${esc(e.name||'')}" oninput="state.editing=Object.assign({}, state.editing||{}, {name:this.value}); save();"></div>
+        <div><div class="small">Class</div>
+          <select id="c-class" onchange="state.editing=Object.assign({}, state.editing||{}, {cls:this.value, avatar: SRD.classAvatars[this.value]}); save(); render();">
+            ${SRD.classes.map(c=>`<option ${(e.cls||'Rogue')===c?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div><div class="small">AC</div><input id="c-ac" type="number" value="${e.ac}" oninput="state.editing=Object.assign({}, state.editing||{}, {ac:Number(this.value||15)}); save();" style="width:90px"/></div>
+        <div><div class="small">HP</div><input id="c-hp" type="number" value="${e.hp}" oninput="state.editing=Object.assign({}, state.editing||{}, {hp:Number(this.value||10)}); save();" style="width:90px"/></div>
+      </div>
+      <div class="row-wrap" style="align-items:center;margin-top:8px">
+        <img id="c-avatar" src="${esc(e.avatar||'')}" style="width:72px;height:72px;border-radius:10px;border:1px solid var(--border);object-fit:cover"/>
+        <label class="btn alt"><input type="file" accept="image/*" style="display:none" onchange="handleUpload(this.files,'char')">Upload Custom Avatar</label>
+        <div class="small">Default avatar uses class. You can override with an uploaded image via Library.</div>
+      </div>
+      <div class="row" style="margin-top:10px;justify-content:flex-end">
+        <button class="btn alt" onclick="state.editing=null; save(); nav('cockpit')">Cancel</button>
+        <button class="btn active" onclick="saveChar()">Save Character</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Party Roster</h3>
+      <div class="list">
+        ${state.players.map(p=>`<div class="item">
+          <div style="display:flex;align-items:center;gap:8px">
+            <img src="${esc(p.avatar||SRD.classAvatars[p.cls]||'')}" style="width:34px;height:34px;border-radius:6px;object-fit:cover;border:1px solid var(--border)"/>
+            <div><div style="font-weight:600">${esc(p.name)}</div><div class="small">${esc(p.cls)} ${p.level||1}</div></div>
+          </div>
+          <div class="row">
+            <div class="small">AC ${p.ac} • HP ${p.hp.cur}/${p.hp.max}</div>
+            <button class="btn alt" onclick="state.selectedToken={id:'${p.id}',kind:'pc'}; save(); nav('cockpit')">Select on Board</button>
+          </div>
+        </div>`).join('')}
+        <button class="btn alt" style="width:100%;margin-top:6px" onclick="state.editing={name:'New Hero', cls:'Rogue', level:1, ac:15, hp:10, avatar: SRD.classAvatars['Rogue']}; save(); render();">+ Add Player</button>
+      </div>
+    </div>
+  </div>`;
+}
+function saveChar(){
+  const e = state.editing || { name: document.getElementById('c-name').value||'Hero', cls: (document.getElementById('c-class')||{value:'Rogue'}).value, ac: Number(document.getElementById('c-ac').value||15), hp: Number(document.getElementById('c-hp').value||10), avatar: (document.getElementById('c-avatar')||{src: SRD.classAvatars['Rogue']}).src };
+  if(!e.name){ alert('Enter a name'); return; }
+  state.players.push({ id:'p'+Math.random().toString(36).slice(2,7), name:e.name, cls:e.cls, level:1, ac:e.ac, hp:{cur:e.hp,max:e.hp}, pp:10, token:{x:1+Math.floor(Math.random()*5),y:1+Math.floor(Math.random()*5)}, avatar:e.avatar });
+  state.editing=null; save(); render();
+}
+function Library(){
+  return `<div class="panel" style="margin-top:16px">
+    <h3>Image Library</h3>
+    <div class="row-wrap" style="margin-bottom:8px">
+      <label class="btn"><input type="file" accept="image/*" multiple style="display:none" onchange="handleUpload(this.files,'scene')">Upload Images</label>
+      <div class="small">PNG/JPG/WebP; stored compressed locally. Use on Scene or assign as avatars.</div>
+    </div>
+    <div class="gridlib">
+      ${state.library.map(img=>`
+        <div class="thumb">
+          <img src="${img.dataUrl}"/>
+          <div class="cap">${esc(img.name)}</div>
+          <div class="row" style="padding:6px">
+            <button class="btn alt small" onclick="useAsScene('${img.id}')">Use as Scene</button>
+          </div>
+        </div>
+      `).join('') || '<div class="small muted">No images yet. Upload to build your session pack.</div>'}
+    </div>
+  </div>`;
+}
+function SaveExport(){
+  return `<div class="panel" style="margin-top:16px">
+    <h3>Autosave & Export</h3>
+    <div class="row-wrap" style="margin-top:8px">
+      <button class="btn" onclick="const data=JSON.stringify(state,null,2); const blob=new Blob([data],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='tabletop-pals-session.json'; a.click();">Export Session (.json)</button>
+      <label class="btn alt"><input type="file" accept="application/json" style="display:none" onchange="const r=new FileReader(); r.onload=e=>{ try{ state=JSON.parse(e.target.result); save(); render(); }catch(err){ alert('Invalid JSON'); } }; r.readAsText(this.files[0]);">Import Session</label>
+      <button class="btn alt" onclick="if(confirm('Reset all data?')){ localStorage.removeItem('tp_p3_full'); location.reload(); }">Reset</button>
+    </div>
+  </div>`;
+}
+function Help(){
+  return `<div class="panel" style="margin-top:16px"><h3>Quick Help</h3>
+    <div class="small">
+      • Upload scene/portrait images in <b>Image Library</b>.<br/>
+      • In <b>DM Cockpit</b>, click a token to select → click grid to move.<br/>
+      • Visual dice: use buttons or type <span class="kbd">2d6+3</span> and click Roll.<br/>
+      • Characters use per-class default avatars; override with uploads.<br/>
+      • Everything autosaves locally. Use Export/Import for backup.
+    </div>
+  </div>`;
+}
+
+// ---------- Router ----------
+function routeView(){
+  switch(state.route){
+    case 'home': return Home();
+    case 'cockpit': return Cockpit();
+    case 'chars': return Characters();
+    case 'library': return Library();
+    case 'save': return SaveExport();
+    case 'help': return Help();
+    default: return Home();
+  }
+}
+function render(){
+  document.getElementById('app').innerHTML = routeView();
+  if(state.route==='cockpit'){
+    const b=document.querySelector('.board'); if(b){ renderBoard(); }
+  }
+}
+render(); setActive();
+</script>
+</body>
+</html>
