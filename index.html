@@ -1,42 +1,49 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Tabletop Pals — DM Lite v2</title>
-<link rel="stylesheet" href="style.css"/>
-</head>
-<body>
-<div class="top">
-  <div class="inner">
-    <div class="logo"><div class="mark"></div><strong>Tabletop Pals</strong></div>
-    <div class="nav">
-      <button id="nav-home" onclick="nav('home')">Home</button>
-      <button id="nav-board" onclick="nav('board')">Board</button>
-      <button id="nav-chars" onclick="nav('chars')">Characters</button>
-      <button id="nav-npcs" onclick="nav('npcs')">NPCs</button>
-      <button id="nav-enemies" onclick="nav('enemies')">Enemies</button>
-      <button id="nav-dice" onclick="nav('dice')">Dice</button>
-      <button id="nav-dialogue" onclick="nav('dialogue')">Dialogue</button>
-      <button id="nav-notes" onclick="nav('notes')">Notes</button>
-      <button id="nav-save" onclick="nav('save')">Save</button>
+<!-- Floating DM Panel -->
+<div id="dm-panel" class="dm-panel">
+  <h3>DM Panel</h3>
+  <div class="section">
+    <div class="small">Terrain</div>
+    <select onchange="state.terrain=this.value; save(); render();">
+      <option selected>Forest</option>
+      <option>Swamp</option>
+      <option>Desert</option>
+      <option>Mountain</option>
+      <option>Urban</option>
+      <option>Dungeon</option>
+      <option>Arctic</option>
+      <option>Coastal</option>
+    </select>
+    <div class="small" id="terrain-hints">Undergrowth • Cover</div>
+    <div class="row-wrap" id="adv-disadv">
+      <span class="chip" style="background:var(--sage)33;color:var(--sage)">Undergrowth</span>
+      <span class="chip" style="background:var(--sage)33;color:var(--sage)">Cover available</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="small">Party</div>
+    <div class="list">
+      <div class="item">
+        <div class="token"><img src="assets/class_icons/Rogue.svg" onerror="this.src='assets/class_icons/default_rogue.svg'"></div>
+        <div><strong>Aria</strong><div class="small">Rogue L1</div></div>
+        <button class="btn alt small" onclick="state.selectedToken={id:'p1',kind:'pc'}; save(); render();">Select</button>
+      </div>
+      <div class="item">
+        <div class="token"><img src="assets/class_icons/Fighter.svg" onerror="this.src='assets/class_icons/default_fighter.svg'"></div>
+        <div><strong>Bronn</strong><div class="small">Fighter L1</div></div>
+        <button class="btn alt small" onclick="state.selectedToken={id:'p2',kind:'pc'}; save(); render();">Select</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="small">Enemies</div>
+    <div class="list">
+      <div class="item">
+        <div class="token"><img src="assets/class_icons/Wizard.svg" onerror="this.src='assets/class_icons/default_enemy.svg'"></div>
+        <div><strong>Skeleton A</strong><div class="small">AC 13 • HP 13/13</div></div>
+        <button class="btn alt small" onclick="state.selectedToken={id:'e1',kind:'enemy'}; save(); render();">Select</button>
+      </div>
     </div>
   </div>
 </div>
-
-<!-- Icon Picker Modal -->
-<div id="iconModal" class="modal" onclick="if(event.target.id==='iconModal'){closeIconPicker()}">
-  <div class="box">
-    <div class="row">
-      <h3>Choose an Icon</h3>
-      <button class="btn alt" onclick="closeIconPicker()">Close</button>
-    </div>
-    <div id="iconGrid" class="icon-grid" style="margin-top:10px"></div>
-  </div>
-</div>
-
-<main id="app"></main>
-<footer>DM Lite v2 — Board + Terrain intel + Character Builder, Netflix-clean.</footer>
-<script src="app.js"></script>
-</body>
-</html>
