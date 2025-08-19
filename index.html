@@ -2,43 +2,91 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Tabletop Pals - Prototype 7</title>
+  <title>Tabletop Pals — DM Lite v2.1</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="app">
-    <header>
-      <h1>Tabletop Pals</h1>
-    </header>
-    <main>
-      <section id="dashboard">
-        <button onclick="showSection('characters')">Characters</button>
-        <button onclick="showSection('enemies')">Enemies</button>
-        <button onclick="showSection('dialogue')">Dialogue</button>
-        <button onclick="showSection('scenes')">Scenes</button>
-        <button onclick="showSection('dice')">Dice Roller</button>
-      </section>
-      <section id="characters" class="hidden"></section>
-      <section id="enemies" class="hidden"></section>
-      <section id="dialogue" class="hidden">
-        <h2>Dialogue System</h2>
-        <div id="dialogue-log"></div>
-        <input type="text" id="dialogue-input" placeholder="Type a line...">
-        <button onclick="addDialogue()">Speak</button>
-      </section>
-      <section id="scenes" class="hidden">
-        <h2>Scene Upload</h2>
-        <input type="file" accept="image/*" onchange="uploadScene(event)">
-        <div id="scene-display"></div>
-      </section>
-      <section id="dice" class="hidden">
-        <h2>Dice Roller</h2>
-        <button onclick="rollDice(20)">d20</button>
-        <button onclick="rollDice(6)">d6</button>
-        <div id="dice-result"></div>
-      </section>
-    </main>
+  <header>
+    <h1>Tabletop Pals — DM Lite</h1>
+    <nav>
+      <button onclick="showPage('home')">Home</button>
+      <button onclick="showPage('board')">Board</button>
+      <button onclick="showPage('characters')">Characters</button>
+      <button onclick="showPage('npcs')">NPCs</button>
+      <button onclick="showPage('enemies')">Enemies</button>
+      <button onclick="showPage('dice')">Dice</button>
+      <button onclick="showPage('notes')">Notes</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Home -->
+    <section id="home" class="page active">
+      <h2>Welcome, Dungeon Master</h2>
+      <p>Select a section above to begin managing your campaign.</p>
+    </section>
+
+    <!-- Board -->
+    <section id="board" class="page">
+      <h2>Battle Board</h2>
+      <input type="file" accept="image/*" onchange="uploadScene(event)">
+      <div id="board-grid"></div>
+    </section>
+
+    <!-- Characters -->
+    <section id="characters" class="page">
+      <h2>Characters</h2>
+      <div id="character-list"></div>
+    </section>
+
+    <!-- NPCs -->
+    <section id="npcs" class="page">
+      <h2>NPCs</h2>
+      <div id="npc-list"></div>
+    </section>
+
+    <!-- Enemies -->
+    <section id="enemies" class="page">
+      <h2>Enemies</h2>
+      <div id="enemy-list"></div>
+    </section>
+
+    <!-- Dice -->
+    <section id="dice" class="page">
+      <h2>Dice Roller</h2>
+      <button onclick="rollDice(20)">Roll d20</button>
+      <button onclick="rollDice(6)">Roll d6</button>
+      <div id="dice-result"></div>
+    </section>
+
+    <!-- Notes -->
+    <section id="notes" class="page">
+      <h2>Notes</h2>
+      <textarea id="notes-area" placeholder="Session notes..."></textarea>
+      <button onclick="saveNotes()">Save Notes</button>
+    </section>
+  </main>
+
+  <!-- Floating DM Panel -->
+  <div id="dm-panel" class="dm-panel">
+    <h3>DM HUD</h3>
+    <div>
+      <label>Terrain</label>
+      <select id="terrain-select" onchange="updateTerrain()">
+        <option>Forest</option>
+        <option>Swamp</option>
+        <option>Desert</option>
+        <option>Mountain</option>
+        <option>Urban</option>
+        <option>Dungeon</option>
+        <option>Arctic</option>
+        <option>Coastal</option>
+      </select>
+      <div id="terrain-info"></div>
+    </div>
+    <div id="adv-disadv"></div>
   </div>
+
   <script src="app.js"></script>
 </body>
 </html>
