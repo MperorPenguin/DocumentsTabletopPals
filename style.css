@@ -41,7 +41,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .token.enemy{background:#ef4444aa}
 .token.selected{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 65%, transparent) inset, 0 0 0 2px var(--accent)}
 
-/* Dice */
+/* Dice (visual) */
 .dice{width:80px;height:80px;border-radius:12px;border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;background:#101626;box-shadow:0 0 24px rgba(167,139,250,.15)}
 .dice.roll{animation:jig .8s ease-in-out}
 @keyframes jig{0%{transform:rotate(0) scale(1)}25%{transform:rotate(20deg) scale(1.05)}50%{transform:rotate(-15deg) scale(1.05)}75%{transform:rotate(8deg) scale(1.02)}100%{transform:rotate(0) scale(1)}}
@@ -83,24 +83,3 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   border-radius:6px; padding:0 6px; cursor:pointer; height:20px; line-height:18px;
 }
 .pill-btn:hover{ border-color:var(--accent); }
-
-/* Dice calculator layout */
-.calc .calc-main { display:flex; gap:16px; align-items:flex-start; }
-.calc .dice { min-width:80px; }
-.calc .calc-panel { flex:1; }
-.calc .calc-row { display:flex; gap:8px; align-items:center; margin:6px 0; }
-
-/* Pills showing built terms */
-.pill {
-  display:inline-flex; align-items:center; gap:6px;
-  background:#1a2030; border:1px solid var(--border); color:#e6e9f2;
-  padding:4px 8px; border-radius:999px; font-size:12px;
-}
-.pill.pos{ background: color-mix(in srgb, var(--teal) 20%, transparent); }
-.pill.neg{ background: color-mix(in srgb, var(--red) 20%, transparent); }
-.pill-btn{
-  background:transparent;border:1px solid var(--border); color:#e6e9f2; 
-  border-radius:6px; padding:0 6px; cursor:pointer; height:20px; line-height:18px;
-}
-.pill-btn:hover{ border-color:var(--accent); }
-

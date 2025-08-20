@@ -36,7 +36,7 @@ let state = JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null') || {
   npcs:[{id:'n1',name:'Elder Bran',role:'Quest Giver',token:{x:8,y:6},avatar:null,tags:{armor:'none',modes:['walk']}}],
   enemies:[{id:'e1',name:'Skeleton A',ac:13,hp:{cur:13,max:13},token:{x:10,y:6},avatar:ICONS.Wizard, type:'undead', tags:{armor:'medium',modes:['walk']}}],
   map:{w:24,h:18,size:48,bg:null},
-  dice:{expr:'d20',last:'—',log:[]},
+  dice:{expr:'d20',last:'—',log:[], builder:{terms:{}, mod:0}},
   library:[],
   notes:'',
   selectedToken:null,
@@ -45,18 +45,69 @@ let state = JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null') || {
   dialog:{activeKind:'npc',activeId:null,log:[],snippets:['We mean no harm.','Any rumors?','We seek the old ruins.','Stand down.','Let’s make a deal.']},
   ui:{ terrainFocus:null }
 };
-let __saveTimer=null; function save(){ clearTimeout(__saveTimer); __saveTimer=setTimeout(()=>{ try{ localStorage.setItem('tp_dm_lite_v2_1', JSON.stringify(state)); }catch(e){} }, 400); }
+let __saveTimer=null; function save(){ clearTimeout(__saveTimer); __saveTimer=setTimeout(()=>{ try{ localStorage.setItem('tp_dm_lite_v2_1', JSON.stringify(state)); }catch(e){} }, 300); }
 function nav(route){ state.route=route; save(); render(); setActive(); }
 function setActive(){ ['home','board','chars','npcs','enemies','dice','dialogue','notes','save'].forEach(id=>{ const b=document.getElementById('nav-'+id); if(b) b.classList.toggle('active', state.route===id); }); }
 function esc(s){ return (''+s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 
-// ---------- Dice ----------
+// ---------- Dice (core) ----------
 let diceTimer=null;
-function rollExpr(expr){ const m=(expr||'').match(/^(\d+)?d(\d+)([+\-]\d+)?$/i); if(!m) return {ok:false}; const n=+((m[1]||1)),s=+(m[2]),mod=+(m[3]||0); let parts=[],sum=0; for(let i=0;i<n;i++){const r=1+Math.floor(Math.random()*s); parts.push(r); sum+=r;} return {ok:true,total:sum+mod,parts,mod}; }
-function rollVisual(expr){ const box=document.getElementById('dice-box'), out=document.getElementById('dice-result'); if(!box) return; let t=0; clearInterval(diceTimer); box.classList.add('roll'); diceTimer=setInterval(()=>{ box.textContent=1+Math.floor(Math.random()*20); t++; if(t>12){ clearInterval(diceTimer); const r=rollExpr(expr); box.textContent=r.ok?r.total:'×'; if(r.ok){ out&&(out.textContent=r.total); dice:{expr:'d20',last:'—',log:[], builder:{terms:{}, mod:0}}, // terms = { "6":2, "4":1 } => 2d6 + 1d4
-state.dice.last=r.total; state.dice.log.unshift({expr,total:r.total,parts:r.parts,mod:r.mod||0,t:Date.now()}); state.dice.log = state.dice.log.slice(0,50); save(); render(); } box.classList.remove('roll'); } }, 50); }
+function rollExpr(expr){
+  const m=(expr||'').match(/^(\d+)?d(\d+)([+\-]\d+)?$/i);
+  if(!m) return {ok:false};
+  const n=+((m[1]||1)), s=+(m[2]), mod=+(m[3]||0);
+  let parts=[],sum=0;
+  for(let i=0;i<n;i++){ const r=1+Math.floor(Math.random()*s); parts.push(r); sum+=r; }
+  return {ok:true,total:sum+mod,parts,mod};
+}
+function parseAny(expr){
+  // supports "2d6+1d4+3-1"
+  const tokens = (expr||'').replace(/\s+/g,'').match(/(\d*d\d+|\+|-|\d+)/gi);
+  if(!tokens) return null;
+  let total=0, parts=[], mod=0;
+  let sign=+1;
+  for(let i=0;i<tokens.length;i++){
+    const t=tokens[i];
+    if(t==='+'){ sign=+1; continue; }
+    if(t==='-'){ sign=-1; continue; }
+    const m=t.match(/^(\d*)d(\d+)$/i);
+    if(m){
+      const cnt = +(m[1]||1), sides=+m[2];
+      for(let j=0;j<cnt;j++){ const r=1+Math.floor(Math.random()*sides); parts.push(r); total+=sign*r; }
+    }else{
+      const val = +t; mod += sign*val; total += sign*val;
+    }
+    sign=+1;
+  }
+  return {total, parts, mod};
+}
+function rollVisual(expr){
+  const box=document.getElementById('dice-box'), out=document.getElementById('dice-result');
+  if(!box) return;
+  let t=0; clearInterval(diceTimer);
+  box.classList.add('roll');
+  diceTimer=setInterval(()=>{
+    box.textContent=1+Math.floor(Math.random()*20); t++;
+    if(t>12){
+      clearInterval(diceTimer);
+      const r = parseAny(document.getElementById('dice-expr')?.value || expr || state.dice.expr);
+      if(r){
+        box.textContent=r.total;
+        out && (out.textContent=r.total);
+        state.dice.last=r.total;
+        const exprNow = document.getElementById('dice-expr')?.value || state.dice.expr;
+        state.dice.log.unshift({expr:exprNow,total:r.total,parts:r.parts,mod:r.mod,t:Date.now()});
+        state.dice.log = state.dice.log.slice(0,50);
+        save(); render();
+      } else {
+        box.textContent='×';
+      }
+      box.classList.remove('roll');
+    }
+  }, 50);
+}
 
-// ---- Dice calculator helpers ----
+// ---------- Dice Calculator helpers ----------
 function ensureBuilder(){
   if(!state.dice) state.dice = {expr:'d20',last:'—',log:[], builder:{terms:{},mod:0}};
   if(!state.dice.builder) state.dice.builder = {terms:{}, mod:0};
@@ -67,105 +118,41 @@ function rebuildExprFromBuilder(){
   Object.entries(state.dice.builder.terms).forEach(([sides,count])=>{
     if(count>0) parts.push(`${count}d${sides}`);
   });
-  if(state.dice.builder.mod){ 
+  if(state.dice.builder.mod){
     parts.push((state.dice.builder.mod>0?'+':'')+state.dice.builder.mod);
   }
-  state.dice.expr = parts.join(parts.length?'+':'d20') || 'd20';
+  state.dice.expr = parts.join('+') || 'd20';
   save();
 }
 function addDie(sides){
   ensureBuilder();
-  const key = String(sides);
-  state.dice.builder.terms[key] = (state.dice.builder.terms[key]||0) + 1;
+  const k=String(sides);
+  state.dice.builder.terms[k]=(state.dice.builder.terms[k]||0)+1;
   rebuildExprFromBuilder();
   renderDice();
 }
 function decDie(sides){
   ensureBuilder();
-  const key = String(sides);
-  state.dice.builder.terms[key] = Math.max(0, (state.dice.builder.terms[key]||0) - 1);
+  const k=String(sides);
+  state.dice.builder.terms[k]=Math.max(0,(state.dice.builder.terms[k]||0)-1);
   rebuildExprFromBuilder();
   renderDice();
 }
 function addMod(v){
   ensureBuilder();
-  state.dice.builder.mod = (state.dice.builder.mod||0) + v;
+  state.dice.builder.mod=(state.dice.builder.mod||0)+v;
   rebuildExprFromBuilder();
   renderDice();
 }
 function clearBuilder(){
-  state.dice.builder = {terms:{}, mod:0};
+  state.dice.builder={terms:{},mod:0};
   rebuildExprFromBuilder();
-function renderDice(){
-  ensureBuilder();
-  const view = document.querySelector('#view-dice');
-  if(!view) return;
-  const wrap = document.querySelector('#dice-roller');
-  if(!wrap) return;
-
-  // Build chips for current terms
-  const termChips = Object.entries(state.dice.builder.terms)
-    .filter(([,count])=>count>0)
-    .map(([sides,count])=>`
-      <span class="pill">
-        ${count}&times; d${sides}
-        <button class="pill-btn" title="remove one" onclick="decDie(${sides})">−</button>
-      </span>
-    `).join('') || '<span class="small" style="opacity:.75">No dice added yet</span>';
-
-  const modChip = state.dice.builder.mod ? `
-      <span class="pill ${state.dice.builder.mod>0?'pos':'neg'}">
-        ${state.dice.builder.mod>0?'+':''}${state.dice.builder.mod}
-        <button class="pill-btn" title="decrease 1" onclick="addMod(${state.dice.builder.mod>0?-1:+1})">±</button>
-      </span>` : '';
-
-  wrap.innerHTML = `
-    <div class="calc">
-      <div class="calc-main">
-        <div class="dice" id="dice-box">—</div>
-        <div class="calc-panel">
-          <div class="small">Build roll</div>
-          <div class="row-wrap" style="margin:6px 0">${termChips} ${modChip}</div>
-          <div class="calc-row">
-            ${[20,12,10,8,6,4].map(s=>`<button class="btn alt" onclick="addDie(${s})">+ d${s}</button>`).join(' ')}
-          </div>
-          <div class="calc-row">
-            <button class="btn alt" onclick="addMod(+1)">+1</button>
-            <button class="btn alt" onclick="addMod(-1)">−1</button>
-            <button class="btn alt" onclick="addMod(+2)">+2</button>
-            <button class="btn alt" onclick="addMod(+5)">+5</button>
-            <button class="btn" style="margin-left:auto" onclick="clearBuilder()">Clear</button>
-          </div>
-          <div class="calc-row">
-            <input id="dice-expr" value="${esc(state.dice.expr)}" style="width:180px" 
-                   oninput="state.dice.expr=this.value; save();" />
-            <button class="btn active" onclick="rollVisual(document.getElementById('dice-expr').value)">Roll</button>
-            <span class="small">= <b id="dice-result">${state.dice.last}</b></span>
-          </div>
-        </div>
-      </div>
-      <div class="panel" style="margin-top:10px;background:#0f1115">
-        <div class="small"><b>Breakdown</b></div>
-        <div class="small" id="dice-break">${renderDiceBreakdownPreview()}</div>
-      </div>
-      <div class="panel" style="margin-top:10px;background:#0f1115">
-        <div class="small"><b>Log</b></div>
-        <div class="small">${state.dice.log.map(l=>`[${new Date(l.t).toLocaleTimeString()}] ${esc(l.expr)} → <b>${l.total}</b> [${l.parts.join(', ')}${l.mod? (l.mod>0? ' + '+l.mod : ' - '+Math.abs(l.mod)) : ''}]`).join('<br/>')||'No rolls yet.'}</div>
-      </div>
-    </div>
-  `;
+  renderDice();
 }
-
 function renderDiceBreakdownPreview(){
-  // human-friendly view of current expr
-  const e = state.dice.expr || '';
-  if(!e) return '';
+  const e=state.dice.expr||'';
   return esc(e.replace(/\+/g,' + '));
-
 }
-
-}
-
 
 // ---------- Board ----------
 function gridSize(){ return state.map.size; }
@@ -319,7 +306,7 @@ function Home(){
     {t:'Characters', c:'var(--blue)', d:'Roster (basic) + icons', a:"nav('chars')"},
     {t:'NPCs', c:'var(--teal)', d:'List + portraits', a:"nav('npcs')"},
     {t:'Enemies', c:'var(--red)', d:'Quick foes', a:"nav('enemies')"},
-    {t:'Dice', c:'var(--purple)', d:'Visual d20 + log', a:"nav('dice')"},
+    {t:'Dice', c:'var(--purple)', d:'Visual calculator + log', a:"nav('dice')"},
     {t:'Dialogue', c:'var(--sage)', d:'Roleplay log', a:"nav('dialogue')"},
     {t:'Notes', c:'var(--blue)', d:'Autosave notes', a:"nav('notes')"},
     {t:'Save', c:'var(--yellow)', d:'Import/Export JSON', a:"nav('save')"},
@@ -382,22 +369,9 @@ function Enemies(){
   </div>`;
 }
 function Dice(){
+  // Calculator UI
   return `<div class="panel"><h2>Dice Roller</h2>
-    <div style="display:flex;gap:12px;align-items:center">
-      <div id="dice-box" class="dice">—</div>
-      <div>
-        <div class="small">Common dice:</div>
-        ${['d20','d12','d10','d8','d6','d4'].map(d=>`<button class="btn" onclick="document.getElementById('dice-expr').value='${d}'; this.classList.add('active'); setTimeout(()=>this.classList.remove('active'),200)">${d}</button>`).join(' ')}
-        <div style="margin-top:8px">
-          <input id="dice-expr" value="${esc(state.dice.expr)}" placeholder="2d6+3" style="width:120px"/>
-          <button class="btn active" onclick="rollVisual(document.getElementById('dice-expr').value)">Roll</button>
-          <span class="small">Result: <b id="dice-result">${state.dice.last}</b></span>
-        </div>
-      </div>
-    </div>
-    <div class="panel" style="margin-top:10px;background:#0f1115"><div class="small"><b>Log</b></div>
-      <div class="small">${state.dice.log.map(l=>`[${new Date(l.t).toLocaleTimeString()}] ${esc(l.expr)} → <b>${l.total}</b> [${l.parts.join(', ')}${l.mod? (l.mod>0? ' + '+l.mod : ' - '+Math.abs(l.mod)) : ''}]`).join('<br/>')||'No rolls yet.'}</div>
-    </div>
+    <div id="dice-roller"></div>
   </div>`;
 }
 function Dialogue(){ return `<div class="panel"><h3>Dialogue</h3><div class="small">Roleplay log coming next pass.</div></div>`; }
@@ -408,6 +382,64 @@ function SavePanel(){
     <label class="btn"><input type="file" accept="application/json" style="display:none" onchange="const r=new FileReader(); r.onload=e=>{ try{ state=JSON.parse(e.target.result); save(); render(); }catch(err){ alert('Invalid JSON'); } }; r.readAsText(this.files[0]);">Import</label>
     <button class="btn" onclick="if(confirm('Reset all data?')){ localStorage.removeItem('tp_dm_lite_v2_1'); location.reload(); }">Reset</button>
   </div>`;
+}
+
+// ---------- Dice calculator render ----------
+function renderDice(){
+  ensureBuilder();
+  const wrap = document.getElementById('dice-roller');
+  if(!wrap) return;
+
+  const termChips = Object.entries(state.dice.builder.terms)
+    .filter(([,count])=>count>0)
+    .map(([sides,count])=>`
+      <span class="pill">
+        ${count}&times; d${sides}
+        <button class="pill-btn" title="remove one" onclick="decDie(${sides})">−</button>
+      </span>
+    `).join('') || '<span class="small" style="opacity:.75">No dice added yet</span>';
+
+  const modChip = state.dice.builder.mod ? `
+      <span class="pill ${state.dice.builder.mod>0?'pos':'neg'}">
+        ${state.dice.builder.mod>0?'+':''}${state.dice.builder.mod}
+        <button class="pill-btn" title="±1" onclick="addMod(${state.dice.builder.mod>0?-1:+1})">±</button>
+      </span>` : '';
+
+  wrap.innerHTML = `
+    <div class="calc">
+      <div class="calc-main">
+        <div class="dice" id="dice-box">—</div>
+        <div class="calc-panel">
+          <div class="small">Build roll</div>
+          <div class="row-wrap" style="margin:6px 0">${termChips} ${modChip}</div>
+          <div class="calc-row">
+            ${[20,12,10,8,6,4].map(s=>`<button class="btn alt" onclick="addDie(${s})">+ d${s}</button>`).join(' ')}
+          </div>
+          <div class="calc-row">
+            <button class="btn alt" onclick="addMod(+1)">+1</button>
+            <button class="btn alt" onclick="addMod(-1)">−1</button>
+            <button class="btn alt" onclick="addMod(+2)">+2</button>
+            <button class="btn alt" onclick="addMod(+5)">+5</button>
+            <button class="btn" style="margin-left:auto" onclick="clearBuilder()">Clear</button>
+          </div>
+          <div class="calc-row">
+            <input id="dice-expr" value="${esc(state.dice.expr)}" style="width:180px" 
+                   oninput="state.dice.expr=this.value; save();" />
+            <button class="btn active" onclick="rollVisual(document.getElementById('dice-expr').value)">Roll</button>
+            <span class="small">= <b id="dice-result">${state.dice.last}</b></span>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:10px;background:#0f1115">
+        <div class="small"><b>Breakdown</b></div>
+        <div class="small" id="dice-break">${renderDiceBreakdownPreview()}</div>
+      </div>
+      <div class="panel" style="margin-top:10px;background:#0f1115">
+        <div class="small"><b>Log</b></div>
+        <div class="small">${state.dice.log.map(l=>`[${new Date(l.t).toLocaleTimeString()}] ${esc(l.expr)} → <b>${l.total}</b> [${l.parts.join(', ')}${l.mod? (l.mod>0? ' + '+l.mod : ' - '+Math.abs(l.mod)) : ''}]`).join('<br/>')||'No rolls yet.'}</div>
+      </div>
+    </div>
+  `;
 }
 
 // ---------- Router / render ----------
@@ -430,6 +462,7 @@ function render(){
   if(state.route==='board'){
     const b=document.querySelector('.board'); if(b){ renderBoard(); b.addEventListener('click', boardClick); }
   }
+  if(state.route==='dice'){ renderDice(); }
   renderDmPanel();
   setActive();
 }
