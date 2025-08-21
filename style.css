@@ -83,3 +83,60 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   border-radius:6px; padding:0 6px; cursor:pointer; height:20px; line-height:18px;
 }
 .pill-btn:hover{ border-color:var(--accent); }
+
+/* ===== Home tiles: hover, focus, active ===== */
+.panel.tile{
+  cursor:pointer;
+  transition: transform .15s, box-shadow .15s, border-color .15s, background-color .15s;
+  outline: none;
+}
+.panel.tile:hover,
+.panel.tile:focus-visible{
+  border-color: var(--accent);
+  box-shadow: 0 8px 28px rgba(0,0,0,.45),
+              0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset;
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+}
+.panel.tile:active{
+  transform: translateY(0);
+  box-shadow: 0 4px 16px rgba(0,0,0,.35),
+              0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent) inset;
+}
+
+/* ===== Fluid type & spacing (gentle) ===== */
+html { font-size: clamp(14px, 1.1vw, 16px); }
+
+/* ===== Responsive grids ===== */
+@media (max-width: 1024px){
+  .grid-3{ grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 768px){
+  main{ padding: 12px; }
+  .grid-3, .grid-2{ grid-template-columns: 1fr; }
+}
+
+/* ===== Board responsive height + token size ===== */
+.board{
+  height: min(60vh, 560px);
+}
+@media (max-width: 768px){
+  .board{ height: 50vh; }
+  .board::after{ background-size: 40px 40px; }
+  .token{ width:36px; height:36px; }
+}
+
+/* ===== Top nav scroll on small screens ===== */
+.nav{
+  display:flex; gap:8px; overflow:auto; -ms-overflow-style:none; scrollbar-width:none;
+}
+.nav::-webkit-scrollbar{ display:none; }
+
+/* ===== Floating DM HUD: mobile width ===== */
+@media (max-width: 768px){
+  .dm-panel{
+    width: calc(100vw - 24px);
+    left: 12px; right: 12px; bottom: 12px;
+  }
+}
+
