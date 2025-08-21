@@ -140,3 +140,38 @@ html { font-size: clamp(14px, 1.1vw, 16px); }
   }
 }
 
+/* DM panel header with minimize button */
+.dm-head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:6px; border-bottom:1px solid var(--border); padding-bottom:6px;
+}
+.dm-min-btn{
+  background: var(--hover); color: var(--ink);
+  border:1px solid var(--border); border-radius:8px;
+  width:28px; height:28px; line-height:26px; text-align:center;
+  cursor:pointer; font-weight:700;
+  transition:.15s;
+}
+.dm-min-btn:hover{ border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent) inset; }
+
+/* Floating FAB shown when minimized */
+.dm-fab{
+  position: fixed; right:16px; bottom:16px; z-index:1001;
+  display:inline-flex; align-items:center; gap:8px;
+  background: var(--panel); color: var(--ink);
+  border:1px solid var(--border); border-radius:999px;
+  padding:8px 12px; box-shadow:0 10px 24px rgba(0,0,0,.45);
+  cursor:pointer; transition:.15s;
+}
+.dm-fab.hidden{ display:none; }
+.dm-fab:hover{ border-color: var(--accent); box-shadow:0 12px 28px rgba(0,0,0,.5), 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent) inset; }
+.dm-fab-dot{ width:8px; height:8px; border-radius:50%; background: var(--accent); display:inline-block; }
+.dm-fab-label{ font-weight:600; }
+.dm-fab-count{ font-size:12px; color:#cbd5e1; background:#0f1115; border:1px solid var(--border); padding:2px 6px; border-radius:999px; }
+
+/* Mobile width for FAB when panel is minimized */
+@media (max-width: 768px){
+  .dm-fab{
+    left:12px; right:12px; bottom:12px; justify-content:center; width:calc(100vw - 24px);
+  }
+}
