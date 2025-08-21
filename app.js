@@ -313,7 +313,25 @@ function Home(){
   ];
   return `<h1 style="margin:16px 0 6px 0">Welcome back, DM!</h1>
     <div class="small" style="margin-bottom:10px">Board + floating DM HUD • Terrain intel • Icons.</div>
-    <div class="grid-3">${tiles.map(t=>`<div class="panel tile" onclick="${t.a}"><div class="row"><div><div style="font-weight:600">${t.t} <span class="chip" style="background:${t.c}">Open</span></div><div class="small" style="margin-top:6px">${t.d}</div></div></div></div>`).join('')}</div>`;
+    <div class="grid-3">
+      ${tiles.map(t=>`
+        <div class="panel tile"
+             role="button"
+             tabindex="0"
+             aria-label="Open ${t.t}"
+             onclick="${t.a}"
+             onkeydown="if(event.key==='Enter'||event.key===' '){ ${t.a}; }">
+          <div class="row">
+            <div>
+              <div style="font-weight:600">
+                ${t.t} <span class="chip" style="background:${t.c}">Open</span>
+              </div>
+              <div class="small" style="margin-top:6px">${t.d}</div>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
 }
 function Board(){
   return `<div class="grid-2">
@@ -369,7 +387,6 @@ function Enemies(){
   </div>`;
 }
 function Dice(){
-  // Calculator UI
   return `<div class="panel"><h2>Dice Roller</h2>
     <div id="dice-roller"></div>
   </div>`;
