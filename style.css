@@ -188,3 +188,135 @@ html { font-size: clamp(14px, 1.1vw, 16px) }
     height: var(--dm-icon-sm) !important;
   }
 }
+/* ===== Compact Floating DM Panel (mockup style) ===== */
+.dm-panel{
+  position:fixed;
+  right:16px;
+  bottom:16px;
+  width:300px;                 /* more compact */
+  max-height:72vh;             /* slightly taller but still safe */
+  overflow:auto;
+  z-index:1000;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:10px;
+  box-shadow:0 14px 30px rgba(0,0,0,.5);
+  backdrop-filter: blur(6px);
+}
+.dm-panel h3{
+  margin:0 0 8px;
+  font-size:14px;
+  letter-spacing:.2px;
+  border-bottom:1px solid var(--border);
+  padding-bottom:6px;
+}
+
+/* section shell */
+.dm-section{
+  margin-top:10px;
+  background:#0f1115;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px;
+}
+
+/* colored section headers (PC / NPC / Enemy) */
+.dm-sec-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 8px;
+  border-radius:8px;
+  font-weight:700;
+  font-size:12px;
+  border:1px solid var(--border);
+  margin-bottom:8px;
+}
+.dm-sec-head .count{ font-weight:600; opacity:.9; }
+.dm-sec-head.pc   { background:color-mix(in srgb, var(--blue) 12%, transparent);  border-color: color-mix(in srgb, var(--blue) 45%, #000) }
+.dm-sec-head.npc  { background:color-mix(in srgb, var(--teal) 12%, transparent);  border-color: color-mix(in srgb, var(--teal) 45%, #000) }
+.dm-sec-head.enemy{ background:color-mix(in srgb, var(--red)  12%, transparent);  border-color: color-mix(in srgb, var(--red)  45%, #000) }
+
+/* 3-column icon grid */
+.dm-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));  /* 3 across */
+  gap:8px;
+}
+.dm-card{
+  background:#0f1422;
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:8px 6px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  transition:transform .12s, box-shadow .15s, border-color .15s;
+  cursor:pointer;
+}
+.dm-card:hover{
+  transform:translateY(-1px);
+  border-color:var(--accent);
+  box-shadow:0 6px 18px rgba(0,0,0,.45), 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset;
+}
+.dm-card.selected{
+  border-color:var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, #0f1422);
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset;
+}
+
+/* avatar sizing (permanent) */
+:root{ --dm-icon: 32px; --dm-icon-sm: 24px; }
+.dm-card .avatar{
+  width: calc(var(--dm-icon) + 8px);
+  height: calc(var(--dm-icon) + 8px);
+  border-radius:8px;
+  border:1px solid var(--border);
+  background:#0b1020;
+  display:flex; align-items:center; justify-content:center;
+  margin-bottom:6px;
+  overflow:hidden;
+}
+.dm-card .avatar img{
+  width:var(--dm-icon); height:var(--dm-icon);
+  object-fit:contain; display:block;
+}
+.dm-card .name{ font-weight:700; font-size:12.5px; line-height:1.2 }
+.dm-card .meta{ font-size:11px; color:#b7c0d4; margin-top:2px }
+
+@media (max-width: 768px){
+  .dm-panel{ left:12px; right:12px; bottom:12px; width:auto; }
+  .dm-grid{ grid-template-columns: repeat(3, 1fr); }
+  .dm-card .avatar{ width: calc(var(--dm-icon-sm) + 8px); height: calc(var(--dm-icon-sm) + 8px) }
+  .dm-card .avatar img{ width: var(--dm-icon-sm); height: var(--dm-icon-sm) }
+}
+
+/* Terrain grouping (tidy) */
+.terr-wrap{ display:flex; flex-direction:column; gap:8px; margin-top:8px }
+.terr-head{ font-size:12px; font-weight:700; padding:4px 8px; border-radius:8px; display:inline-block; border:1px solid var(--border); background:#0f1115; color:#cbd5e1 }
+.terr-head.tip{ border-color: color-mix(in srgb, var(--sage) 50%, #000) }
+.terr-grid{ display:grid; grid-template-columns:1fr; gap:6px; margin-top:6px }
+.terr-card{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:10px; border:1px solid var(--border); background:#12182a; color:#e6e9f2; cursor:pointer; transition:.15s }
+.terr-card .dot{ width:8px; height:8px; border-radius:50%; display:inline-block }
+.terr-card.adv{ border-color: color-mix(in srgb, var(--teal) 60%, #000) }
+.terr-card.adv .dot{ background: var(--teal) }
+.terr-card.dis{ border-color: color-mix(in srgb, var(--red) 60%, #000) }
+.terr-card.dis .dot{ background: var(--red) }
+.terr-card:hover{ border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
+.dm-detail{ margin-top:8px;border:1px solid var(--border);background:#111623;color:#dbe1ee;border-radius:8px;padding:10px;font-size:13px }
+
+/* header row with minimize pill button */
+.dm-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:6px}
+.dm-fab.mini{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--panel);color:var(--ink);box-shadow:0 6px 16px rgba(0,0,0,.35)}
+.dm-fab.mini .dm-fab-dot{ width:6px; height:6px; border-radius:50%; background:var(--accent) }
+.dm-fab.mini .dm-fab-label{ font-size:12px; font-weight:600 }
+.dm-fab.mini:hover{ border-color:var(--accent); box-shadow:0 8px 20px rgba(0,0,0,.45), 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
+
+/* restore FAB */
+.dm-fab{ position: fixed; right:16px; bottom:16px; z-index:1001; display:inline-flex; align-items:center; gap:8px; background: var(--panel); color: var(--ink); border:1px solid var(--border); border-radius:999px; padding:8px 12px; box-shadow:0 10px 24px rgba(0,0,0,.45); cursor:pointer; transition:.15s }
+.dm-fab.hidden{ display:none }
+.dm-fab:hover{ border-color: var(--accent); box-shadow:0 12px 28px rgba(0,0,0,.5),0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent) inset }
+.dm-fab-dot{ width:8px; height:8px; border-radius:50%; background: var(--accent) }
+.dm-fab-label{ font-weight:600 }
+.dm-fab-count{ font-size:12px; color:#cbd5e1; background:#0f1115; border:1px solid var(--border); padding:2px 6px; border-radius:999px }
+@media (max-width: 768px){ .dm-fab{ left:12px; right:12px; bottom:12px; justify-content:center; width:calc(100vw - 24px) } }
