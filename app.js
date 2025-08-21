@@ -257,18 +257,26 @@ function renderDmPanel(){
   all.forEach((c,i)=>{ if(c.kind==='tip') tips.push({...c,_idx:i}); else if(c.kind==='adv') adv.push({...c,_idx:i}); else dis.push({...c,_idx:i}); });
   const focus = (state.ui.terrainFocus!=null) ? all[state.ui.terrainFocus] : null;
 
+  // Party grid cards
   const partyHtml = state.players.map(p=>`
-    <div class="dm-card pc">
-      <div class="dm-avatar sm"><img src="${iconSrc(p)}" onerror="this.onerror=null; this.src='${classFallback(p.cls)}'"></div>
-      <div class="dm-info"><div class="dm-name">${p.name}</div><div class="mini">L${p.level} • ${p.cls} • AC ${p.ac}${p.hp?` • ${p.hp.cur}/${p.hp.max} HP`:''}</div></div>
-      <div class="dm-actions"><button class="btn alt tiny" onclick="state.selectedToken={id:'${p.id}',kind:'pc'}; save(); render();">Select</button></div>
+    <div class="dm-box pc">
+      <div class="avatar"><img src="${iconSrc(p)}" onerror="this.onerror=null; this.src='${classFallback(p.cls)}'"></div>
+      <div class="name">${p.name}</div>
+      <div class="meta">L${p.level} • ${p.cls} • AC ${p.ac}${p.hp?` • ${p.hp.cur}/${p.hp.max} HP`:''}</div>
+      <div class="actions">
+        <button class="btn alt tiny" onclick="state.selectedToken={id:'${p.id}',kind:'pc'}; save(); render();">Select</button>
+      </div>
     </div>`).join('');
 
+  // Enemy grid cards
   const enemiesHtml = state.enemies.map(e=>`
-    <div class="dm-card enemy">
-      <div class="dm-avatar sm"><img src="${iconSrc(e)}" onerror="this.onerror=null; this.src='${classFallback(e.cls)}'"></div>
-      <div class="dm-info"><div class="dm-name">${e.name}</div><div class="mini">AC ${e.ac} • ${e.hp.cur}/${e.hp.max} HP${e.type?` • ${e.type}`:''}</div></div>
-      <div class="dm-actions"><button class="btn alt tiny" onclick="state.selectedToken={id:'${e.id}',kind:'enemy'}; save(); render();">Select</button></div>
+    <div class="dm-box enemy">
+      <div class="avatar"><img src="${iconSrc(e)}" onerror="this.onerror=null; this.src='${classFallback(e.cls)}'"></div>
+      <div class="name">${e.name}</div>
+      <div class="meta">AC ${e.ac} • ${e.hp.cur}/${e.hp.max} HP${e.type?` • ${e.type}`:''}</div>
+      <div class="actions">
+        <button class="btn alt tiny" onclick="state.selectedToken={id:'${e.id}',kind:'enemy'}; save(); render();">Select</button>
+      </div>
     </div>`).join('');
 
   const terrGroup = (title, kindClass, arr) => `
@@ -286,33 +294,45 @@ function renderDmPanel(){
       </div>
     </div>`;
 
-  hud.innerHTML = `
+   hud.innerHTML = `
     <div class="dm-head">
       <h3>DM Panel</h3>
       <button class="btn dm-fab mini" type="button" title="Minimize" onclick="minimizeDmPanel()">
-        <span class="dm-fab-dot"></span><span class="dm-fab-label">Minimize</span>
+        <span class="dm-fab-dot"></span>
+        <span class="dm-fab-label">Minimize</span>
       </button>
     </div>
 
     <div class="dm-section">
       <div class="small">Terrain</div>
-      <select style="width:100%;margin-top:6px" onchange="state.terrain=this.value; state.ui.terrainFocus=null; save(); render();">
+      <select style="width:100%;margin-top:6px"
+              onchange="state.terrain=this.value; state.ui.terrainFocus=null; save(); render();">
         ${Object.keys(TERRAIN).map(t=>`<option ${state.terrain===t?'selected':''}>${t}</option>`).join('')}
       </select>
 
       <div class="terr-wrap">
-        ${tips.length ? terrGroup('Environment Notes','tip',tips) : ''}
-        ${adv.length ? terrGroup('Advantages','adv',adv) : ''}
-        ${dis.length ? terrGroup('Disadvantages','dis',dis) : ''}
+        ${tips.length ? terrGroup('Environment Notes', 'tip', tips) : ''}
+        ${adv.length ? terrGroup('Advantages', 'adv', adv) : ''}
+        ${dis.length ? terrGroup('Disadvantages', 'dis', dis) : ''}
       </div>
 
       ${focus ? `<div class="dm-detail">${explainTerrainDetail(focus)}</div>` : ''}
     </div>
 
-    <div class="dm-section"><div class="small">Party</div><div class="dm-list grid compact">${partyHtml || '<div class="small">No party yet.</div>'}</div></div>
-    <div class="dm-section"><div class="small">Enemies</div><div class="dm-list grid compact">${enemiesHtml || '<div class="small">No enemies yet.</div>'}</div></div>
+    <div class="dm-section">
+      <div class="small">Party</div>
+      <div class="dm-grid">
+        ${partyHtml || '<div class="small">No party yet.</div>'}
+      </div>
+    </div>
+
+    <div class="dm-section">
+      <div class="small">Enemies</div>
+      <div class="dm-grid">
+        ${enemiesHtml || '<div class="small">No enemies yet.</div>'}
+      </div>
+    </div>
   `;
-}
 
 // ---------- Views ----------
 function Home(){
