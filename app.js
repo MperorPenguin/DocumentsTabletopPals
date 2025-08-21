@@ -1,10 +1,25 @@
-// ---------- Icons ----------
+// ---------- Icons (paths) ----------
 const ICONS = {
   Barbarian:'assets/class_icons/Barbarian.svg', Bard:'assets/class_icons/Bard.svg', Cleric:'assets/class_icons/Cleric.svg',
   Druid:'assets/class_icons/Druid.svg', Fighter:'assets/class_icons/Fighter.svg', Monk:'assets/class_icons/Monk.svg',
   Paladin:'assets/class_icons/Paladin.svg', Ranger:'assets/class_icons/Ranger.svg', Rogue:'assets/class_icons/Rogue.svg',
   Sorcerer:'assets/class_icons/Sorcerer.svg', Warlock:'assets/class_icons/Warlock.svg', Wizard:'assets/class_icons/Wizard.svg',
 };
+// Inline fallback icons (if files are missing)
+const CLASS_COLORS = {
+  Barbarian:'#f97316', Bard:'#22c55e', Cleric:'#eab308', Druid:'#84cc16', Fighter:'#60a5fa', Monk:'#14b8a6',
+  Paladin:'#f59e0b', Ranger:'#10b981', Rogue:'#a1a1aa', Sorcerer:'#e879f9', Warlock:'#8b5cf6', Wizard:'#a78bfa'
+};
+function dataIcon(label, color){
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+    <rect rx='8' width='64' height='64' fill='#111623'/>
+    <circle cx='32' cy='32' r='22' fill='${color}'/>
+    <text x='32' y='40' font-family='Segoe UI,Roboto,Arial' font-size='28' text-anchor='middle' fill='#0f1115' font-weight='700'>${label}</text>
+  </svg>`;
+  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+}
+function classFallback(cls){ return dataIcon((cls?.[0]||'?').toUpperCase(), CLASS_COLORS[cls]||'#94a3b8'); }
+function iconSrc(obj){ return obj.avatar || (obj.cls && ICONS[obj.cls]) || classFallback(obj.cls); }
 
 // ---------- SRD-ish ----------
 const SRD = {
@@ -45,36 +60,29 @@ let state = JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null') || {
   dialog:{activeKind:'npc',activeId:null,log:[],snippets:['We mean no harm.','Any rumors?','We seek the old ruins.','Stand down.','Let’s make a deal.']},
   ui:{ terrainFocus:null, dmMin:false }
 };
-// Migration guard for older saves
+// Migration guard
 if (!state.ui) state.ui = { terrainFocus:null, dmMin:false };
 if (typeof state.ui.dmMin === 'undefined') state.ui.dmMin = false;
 
-let __saveTimer=null;
-function save(){ clearTimeout(__saveTimer); __saveTimer=setTimeout(()=>{ try{ localStorage.setItem('tp_dm_lite_v2_1', JSON.stringify(state)); }catch(e){} }, 300); }
+let __saveTimer=null; function save(){ clearTimeout(__saveTimer); __saveTimer=setTimeout(()=>{ try{ localStorage.setItem('tp_dm_lite_v2_1', JSON.stringify(state)); }catch(e){} }, 300); }
 function nav(route){ state.route=route; save(); render(); setActive(); }
 function setActive(){ ['home','board','chars','npcs','enemies','dice','dialogue','notes','save'].forEach(id=>{ const b=document.getElementById('nav-'+id); if(b) b.classList.toggle('active', state.route===id); }); }
 function esc(s){ return (''+s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 
-// ---------- Dice (core + calculator) ----------
+// ---------- Dice ----------
 let diceTimer=null;
 function parseAny(expr){
-  // supports "2d6+1d4+3-1"
   const tokens = (expr||'').replace(/\s+/g,'').match(/(\d*d\d+|\+|-|\d+)/gi);
   if(!tokens) return null;
-  let total=0, parts=[], mod=0;
-  let sign=+1;
-  for(let i=0;i<tokens.length;i++){
-    const t=tokens[i];
+  let total=0, parts=[], mod=0, sign=+1;
+  for(const t of tokens){
     if(t==='+'){ sign=+1; continue; }
     if(t==='-'){ sign=-1; continue; }
     const m=t.match(/^(\d*)d(\d+)$/i);
     if(m){
-      const cnt = +(m[1]||1), sides=+m[2];
+      const cnt=+(m[1]||1), sides=+m[2];
       for(let j=0;j<cnt;j++){ const r=1+Math.floor(Math.random()*sides); parts.push(r); total+=sign*r; }
-    }else{
-      const val = +t; mod += sign*val; total += sign*val;
-    }
-    sign=+1;
+    }else{ const val=+t; mod+=sign*val; total+=sign*val; }
   }
   return {total, parts, mod};
 }
@@ -89,71 +97,36 @@ function rollVisual(expr){
       clearInterval(diceTimer);
       const r = parseAny(document.getElementById('dice-expr')?.value || expr || state.dice.expr);
       if(r){
-        box.textContent=r.total;
-        out && (out.textContent=r.total);
+        box.textContent=r.total; if(out) out.textContent=r.total;
         state.dice.last=r.total;
         const exprNow = document.getElementById('dice-expr')?.value || state.dice.expr;
         state.dice.log.unshift({expr:exprNow,total:r.total,parts:r.parts,mod:r.mod,t:Date.now()});
         state.dice.log = state.dice.log.slice(0,50);
         save(); render();
-      } else {
-        box.textContent='×';
-      }
+      } else box.textContent='×';
       box.classList.remove('roll');
     }
   }, 50);
 }
-function ensureBuilder(){
-  if(!state.dice) state.dice = {expr:'d20',last:'—',log:[], builder:{terms:{},mod:0}};
-  if(!state.dice.builder) state.dice.builder = {terms:{}, mod:0};
-}
+function ensureBuilder(){ if(!state.dice) state.dice = {expr:'d20',last:'—',log:[], builder:{terms:{},mod:0}}; if(!state.dice.builder) state.dice.builder={terms:{},mod:0}; }
 function rebuildExprFromBuilder(){
   ensureBuilder();
-  const parts = [];
-  Object.entries(state.dice.builder.terms).forEach(([sides,count])=>{
-    if(count>0) parts.push(`${count}d${sides}`);
-  });
-  if(state.dice.builder.mod){
-    parts.push((state.dice.builder.mod>0?'+':'')+state.dice.builder.mod);
-  }
-  state.dice.expr = parts.join('+') || 'd20';
-  save();
+  const parts=[];
+  Object.entries(state.dice.builder.terms).forEach(([sides,count])=>{ if(count>0) parts.push(`${count}d${sides}`); });
+  if(state.dice.builder.mod){ parts.push((state.dice.builder.mod>0?'+':'')+state.dice.builder.mod); }
+  state.dice.expr = parts.join('+') || 'd20'; save();
 }
-function addDie(sides){
-  ensureBuilder();
-  const k=String(sides);
-  state.dice.builder.terms[k]=(state.dice.builder.terms[k]||0)+1;
-  rebuildExprFromBuilder();
-  renderDice();
-}
-function decDie(sides){
-  ensureBuilder();
-  const k=String(sides);
-  state.dice.builder.terms[k]=Math.max(0,(state.dice.builder.terms[k]||0)-1);
-  rebuildExprFromBuilder();
-  renderDice();
-}
-function addMod(v){
-  ensureBuilder();
-  state.dice.builder.mod=(state.dice.builder.mod||0)+v;
-  rebuildExprFromBuilder();
-  renderDice();
-}
-function clearBuilder(){
-  state.dice.builder={terms:{},mod:0};
-  rebuildExprFromBuilder();
-  renderDice();
-}
-function renderDiceBreakdownPreview(){
-  const e=state.dice.expr||'';
-  return esc(e.replace(/\+/g,' + '));
-}
+function addDie(s){ ensureBuilder(); const k=String(s); state.dice.builder.terms[k]=(state.dice.builder.terms[k]||0)+1; rebuildExprFromBuilder(); renderDice(); }
+function decDie(s){ ensureBuilder(); const k=String(s); state.dice.builder.terms[k]=Math.max(0,(state.dice.builder.terms[k]||0)-1); rebuildExprFromBuilder(); renderDice(); }
+function addMod(v){ ensureBuilder(); state.dice.builder.mod=(state.dice.builder.mod||0)+v; rebuildExprFromBuilder(); renderDice(); }
+function clearBuilder(){ state.dice.builder={terms:{},mod:0}; rebuildExprFromBuilder(); renderDice(); }
+function renderDiceBreakdownPreview(){ const e=state.dice.expr||''; return esc(e.replace(/\+/g,' + ')); }
 
 // ---------- Board ----------
 function gridSize(){ return state.map.size; }
-function tokenEl(kind,id){ return document.querySelector('.board .token[data-kind="'+kind+'"][data-id="'+id+'"]'); }
-function selectTokenDom(kind,id){ document.querySelectorAll('.board .token.selected').forEach(n=>n.classList.remove('selected')); const el = tokenEl(kind,id); if(el){ el.classList.add('selected'); } }
-function moveTokenDom(kind,id,x,y){ const el = tokenEl(kind,id); if(el){ const size = gridSize(); el.style.left=(x*size+2)+'px'; el.style.top=(y*size+2)+'px'; } }
+function tokenEl(kind,id){ return document.querySelector(`.board .token[data-kind="${kind}"][data-id="${id}"]`); }
+function selectTokenDom(kind,id){ document.querySelectorAll('.board .token.selected').forEach(n=>n.classList.remove('selected')); const el=tokenEl(kind,id); if(el) el.classList.add('selected'); }
+function moveTokenDom(kind,id,x,y){ const el=tokenEl(kind,id); if(el){ const size=gridSize(); el.style.left=(x*size+2)+'px'; el.style.top=(y*size+2)+'px'; } }
 function renderBoard(){
   const board=document.querySelector('.board'); if(!board) return;
   board.style.backgroundImage = state.map.bg ? `url('${state.map.bg}')` : 'linear-gradient(180deg,#1b2436,#0f1524)';
@@ -164,7 +137,9 @@ function renderBoard(){
     const d=document.createElement('div'); d.className='token '+obj.kind; d.dataset.id=obj.id; d.dataset.kind=obj.kind;
     if(state.selectedToken && state.selectedToken.id===obj.id && state.selectedToken.kind===obj.kind) d.classList.add('selected');
     d.style.left=(obj.token.x*size+2)+'px'; d.style.top=(obj.token.y*size+2)+'px';
-    const img=document.createElement('img'); img.loading="lazy"; img.src = (obj.avatar || (obj.cls && ICONS[obj.cls]) || ICONS.Rogue); img.onerror = ()=>{ img.onerror=null; img.src=(obj.cls && ICONS[obj.cls]) || ICONS.Rogue; };
+    const img=document.createElement('img'); img.loading="lazy";
+    img.src = iconSrc(obj);
+    img.onerror = ()=>{ img.onerror=null; img.src=classFallback(obj.cls); };
     d.appendChild(img);
     d.title = obj.name;
     d.onclick = (ev)=>{ ev.stopPropagation(); state.selectedToken={id:obj.id,kind:obj.kind}; save(); selectTokenDom(obj.kind,obj.id); };
@@ -209,7 +184,7 @@ function handleUpload(files, type, after){
 function uploadSceneAndSetBg(files){ handleUpload(files,'scene',(id)=>useAsScene(id)); }
 function useAsScene(id){ const it=state.library.find(x=>x.id===id); if(!it) return; state.map.bg=it.dataUrl; save(); nav('board'); }
 
-// ---------- Terrain (chips + detail) ----------
+// ---------- Terrain ----------
 function explainTerrainDetail(entry){
   if(entry.kind === 'tip'){ return `Environment note: <b>${entry.name}</b>.`; }
   if(entry.kind === 'adv'){
@@ -244,15 +219,9 @@ function terrainChips(){
   return entries;
 }
 
-// ---------- DM Panel minimize / restore + renderers ----------
-function minimizeDmPanel(){
-  state.ui.dmMin = true; save();
-  renderDmPanel(); renderDmFab();
-}
-function restoreDmPanel(){
-  state.ui.dmMin = false; save();
-  renderDmPanel(); renderDmFab();
-}
+// ---------- DM Panel minimize / restore ----------
+function minimizeDmPanel(){ state.ui.dmMin = true; save(); renderDmPanel(); renderDmFab(); }
+function restoreDmPanel(){ state.ui.dmMin = false; save(); renderDmPanel(); renderDmFab(); }
 window.minimizeDmPanel = minimizeDmPanel;
 window.restoreDmPanel  = restoreDmPanel;
 
@@ -261,84 +230,45 @@ function renderDmFab(){
   if(!fab){
     fab = document.createElement('button');
     fab.id = 'dm-fab';
-    fab.className = 'dm-fab btn hidden'; // keep app button style
+    fab.className = 'dm-fab btn hidden';
     fab.type = 'button';
     document.body.appendChild(fab);
   }
-  // Show only on Board and when minimized
   if(state.route !== 'board' || !state.ui.dmMin){
-    fab.classList.add('hidden');
-    return;
+    fab.classList.add('hidden'); return;
   }
   const hints = (terrainChips()?.length || 0);
-  fab.innerHTML = `
-    <span class="dm-fab-dot"></span>
-    <span class="dm-fab-label">DM Panel</span>
-    <span class="dm-fab-count">${hints}</span>
-  `;
+  fab.innerHTML = `<span class="dm-fab-dot"></span><span class="dm-fab-label">DM Panel</span><span class="dm-fab-count">${hints}</span>`;
   fab.onclick = window.restoreDmPanel;
   fab.classList.remove('hidden');
 }
 window.renderDmFab = renderDmFab;
 
 function renderDmPanel(){
-  const hud = document.getElementById('dm-panel');
-  if(!hud) return;
+  const hud = document.getElementById('dm-panel'); if(!hud) return;
 
-  // Only on Board
-  if(state.route !== 'board'){
-    hud.classList.add('hidden');
-    hud.innerHTML = '';
-    renderDmFab();
-    return;
-  }
+  if(state.route !== 'board'){ hud.classList.add('hidden'); hud.innerHTML=''; renderDmFab(); return; }
+  if(state.ui.dmMin){ hud.classList.add('hidden'); hud.innerHTML=''; renderDmFab(); return; }
 
-  // Minimized — hide panel, show FAB
-  if(state.ui.dmMin){
-    hud.classList.add('hidden');
-    hud.innerHTML = '';
-    renderDmFab();
-    return;
-  }
+  renderDmFab(); hud.classList.remove('hidden');
 
-  // Not minimized — show full panel and hide FAB
-  renderDmFab(); // ensures FAB hides if visible
-  hud.classList.remove('hidden');
-
-  // Build terrain groups (tips / adv / dis)
-  const all = terrainChips(); // [{kind:'tip'|'adv'|'dis', name, why}]
-  const tips = [], adv = [], dis = [];
-  all.forEach((c, i) => {
-    if (c.kind === 'tip') tips.push({...c, _idx:i});
-    else if (c.kind === 'adv') adv.push({...c, _idx:i});
-    else dis.push({...c, _idx:i});
-  });
+  const all = terrainChips();
+  const tips=[], adv=[], dis=[];
+  all.forEach((c,i)=>{ if(c.kind==='tip') tips.push({...c,_idx:i}); else if(c.kind==='adv') adv.push({...c,_idx:i}); else dis.push({...c,_idx:i}); });
   const focus = (state.ui.terrainFocus!=null) ? all[state.ui.terrainFocus] : null;
 
-  // Party cards (compact)
   const partyHtml = state.players.map(p=>`
     <div class="dm-card pc">
-      <div class="dm-avatar sm"><img src="${p.avatar || (p.cls && ICONS[p.cls]) || ''}" onerror="this.style.display='none'"></div>
-      <div class="dm-info">
-        <div class="dm-name">${p.name}</div>
-        <div class="mini">L${p.level} • ${p.cls} • AC ${p.ac}${p.hp?` • ${p.hp.cur}/${p.hp.max} HP`:''}</div>
-      </div>
-      <div class="dm-actions">
-        <button class="btn alt tiny" onclick="state.selectedToken={id:'${p.id}',kind:'pc'}; save(); render();">Select</button>
-      </div>
+      <div class="dm-avatar sm"><img src="${iconSrc(p)}" onerror="this.onerror=null; this.src='${classFallback(p.cls)}'"></div>
+      <div class="dm-info"><div class="dm-name">${p.name}</div><div class="mini">L${p.level} • ${p.cls} • AC ${p.ac}${p.hp?` • ${p.hp.cur}/${p.hp.max} HP`:''}</div></div>
+      <div class="dm-actions"><button class="btn alt tiny" onclick="state.selectedToken={id:'${p.id}',kind:'pc'}; save(); render();">Select</button></div>
     </div>`).join('');
 
-  // Enemy cards (compact)
   const enemiesHtml = state.enemies.map(e=>`
     <div class="dm-card enemy">
-      <div class="dm-avatar sm"><img src="${e.avatar || ICONS.Barbarian}" onerror="this.style.display='none'"></div>
-      <div class="dm-info">
-        <div class="dm-name">${e.name}</div>
-        <div class="mini">AC ${e.ac} • ${e.hp.cur}/${e.hp.max} HP${e.type?` • ${e.type}`:''}</div>
-      </div>
-      <div class="dm-actions">
-        <button class="btn alt tiny" onclick="state.selectedToken={id:'${e.id}',kind:'enemy'}; save(); render();">Select</button>
-      </div>
+      <div class="dm-avatar sm"><img src="${iconSrc(e)}" onerror="this.onerror=null; this.src='${classFallback(e.cls)}'"></div>
+      <div class="dm-info"><div class="dm-name">${e.name}</div><div class="mini">AC ${e.ac} • ${e.hp.cur}/${e.hp.max} HP${e.type?` • ${e.type}`:''}</div></div>
+      <div class="dm-actions"><button class="btn alt tiny" onclick="state.selectedToken={id:'${e.id}',kind:'enemy'}; save(); render();">Select</button></div>
     </div>`).join('');
 
   const terrGroup = (title, kindClass, arr) => `
@@ -360,40 +290,27 @@ function renderDmPanel(){
     <div class="dm-head">
       <h3>DM Panel</h3>
       <button class="btn dm-fab mini" type="button" title="Minimize" onclick="minimizeDmPanel()">
-        <span class="dm-fab-dot"></span>
-        <span class="dm-fab-label">Minimize</span>
+        <span class="dm-fab-dot"></span><span class="dm-fab-label">Minimize</span>
       </button>
     </div>
 
     <div class="dm-section">
       <div class="small">Terrain</div>
-      <select style="width:100%;margin-top:6px"
-              onchange="state.terrain=this.value; state.ui.terrainFocus=null; save(); render();">
+      <select style="width:100%;margin-top:6px" onchange="state.terrain=this.value; state.ui.terrainFocus=null; save(); render();">
         ${Object.keys(TERRAIN).map(t=>`<option ${state.terrain===t?'selected':''}>${t}</option>`).join('')}
       </select>
 
       <div class="terr-wrap">
-        ${tips.length ? terrGroup('Environment Notes', 'tip', tips) : ''}
-        ${adv.length ? terrGroup('Advantages', 'adv', adv) : ''}
-        ${dis.length ? terrGroup('Disadvantages', 'dis', dis) : ''}
+        ${tips.length ? terrGroup('Environment Notes','tip',tips) : ''}
+        ${adv.length ? terrGroup('Advantages','adv',adv) : ''}
+        ${dis.length ? terrGroup('Disadvantages','dis',dis) : ''}
       </div>
 
       ${focus ? `<div class="dm-detail">${explainTerrainDetail(focus)}</div>` : ''}
     </div>
 
-    <div class="dm-section">
-      <div class="small">Party</div>
-      <div class="dm-list grid compact">
-        ${partyHtml || '<div class="small">No party yet.</div>'}
-      </div>
-    </div>
-
-    <div class="dm-section">
-      <div class="small">Enemies</div>
-      <div class="dm-list grid compact">
-        ${enemiesHtml || '<div class="small">No enemies yet.</div>'}
-      </div>
-    </div>
+    <div class="dm-section"><div class="small">Party</div><div class="dm-list grid compact">${partyHtml || '<div class="small">No party yet.</div>'}</div></div>
+    <div class="dm-section"><div class="small">Enemies</div><div class="dm-list grid compact">${enemiesHtml || '<div class="small">No enemies yet.</div>'}</div></div>
   `;
 }
 
@@ -413,29 +330,135 @@ function Home(){
     <div class="small" style="margin-bottom:10px">Board + floating DM HUD • Terrain intel • Icons.</div>
     <div class="grid-3">
       ${tiles.map(t=>`
-        <div class="panel tile"
-             role="button"
-             tabindex="0"
-             aria-label="Open ${t.t}"
-             onclick="${t.a}"
-             onkeydown="if(event.key==='Enter'||event.key===' '){ ${t.a}; }">
-          <div class="row">
-            <div>
-              <div style="font-weight:600">
-                ${t.t} <span class="chip" style="background:${t.c}">Open</span>
-              </div>
-              <div class="small" style="margin-top:6px">${t.d}</div>
-            </div>
-          </div>
-        </div>
-      `).join('')}
+        <div class="panel tile" role="button" tabindex="0" aria-label="Open ${t.t}"
+             onclick="${t.a}" onkeydown="if(event.key==='Enter'||event.key===' '){ ${t.a}; }">
+          <div class="row"><div>
+            <div style="font-weight:600">${t.t} <span class="chip" style="background:${t.c}">Open</span></div>
+            <div class="small" style="margin-top:6px">${t.d}</div>
+          </div></div>
+        </div>`).join('')}
     </div>`;
 }
 function Board(){
   return `<div class="grid-2">
     <div class="panel">
-      <div class="row">
+      <div class="row" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
         <h3>Scene Board</h3>
-        <div class="row">
+        <div class="row" style="display:flex;gap:8px">
           <label class="btn alt"><input type="file" accept="image/*" style="display:none" onchange="uploadSceneAndSetBg(this.files)">Upload Scene</label>
-         
+          <button class="btn" onclick="state.selectedToken=null; save(); render();">Deselect</button>
+        </div>
+      </div>
+      <div class="board" style="margin-top:10px" onclick="boardClick(event)"></div>
+      <div class="small" style="margin-top:8px">Click a token to select it, then click a grid cell to move.</div>
+    </div>
+    <div class="panel"><h3>Tips</h3><div class="small">Use the floating DM panel (bottom‑right) for terrain & quick selects.</div></div>
+  </div>`;
+}
+function Characters(){
+  return `<div class="panel"><h3>Characters</h3>
+    <div class="list">
+      ${state.players.map(p=>`<div class="item">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="token" style="position:static;width:28px;height:28px;border-radius:6px"><img src="${iconSrc(p)}" onerror="this.onerror=null; this.src='${classFallback(p.cls)}'"/></div>
+          <div><div style="font-weight:600">${esc(p.name)}</div><div class="small">${esc(p.cls)} L${p.level}</div></div>
+        </div>
+        <button class="btn alt" onclick="state.selectedToken={id:'${p.id}',kind:'pc'}; save(); nav('board')">Select on Board</button>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+function NPCs(){
+  return `<div class="panel"><h3>NPCs</h3>
+    <div class="list">
+      ${state.npcs.map(n=>`<div class="item">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="token" style="position:static;width:28px;height:28px;border-radius:6px">${n.avatar? `<img src="${esc(n.avatar)}"/>` : ''}</div>
+          <div><div style="font-weight:600">${esc(n.name)}</div><div class="small">${esc(n.role||'NPC')}</div></div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+function Enemies(){
+  return `<div class="panel"><h3>Enemies</h3>
+    <div class="list">
+      ${state.enemies.map(e=>`<div class="item">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="token" style="position:static;width:28px;height:28px;border-radius:6px"><img src="${iconSrc(e)}" onerror="this.onerror=null; this.src='${classFallback(e.cls)}'"/></div>
+          <div><div style="font-weight:600">${esc(e.name)}</div><div class="small">AC ${e.ac} • HP ${e.hp.cur}/${e.hp.max}</div></div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+function Dice(){ return `<div class="panel"><h2>Dice Roller</h2><div id="dice-roller"></div></div>`; }
+function Dialogue(){ return `<div class="panel"><h3>Dialogue</h3><div class="small">Roleplay log coming next pass.</div></div>`; }
+function Notes(){ return `<div class="panel"><h2>Notes</h2><textarea style="width:100%;height:300px" oninput="state.notes=this.value; save();">${esc(state.notes)}</textarea></div>`; }
+function SavePanel(){
+  return `<div class="panel"><h2>Save / Export</h2>
+    <button class="btn" onclick="const data=JSON.stringify(state,null,2); const blob=new Blob([data],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='tp-dm-lite-v2_1-session.json'; a.click();">Export (.json)</button>
+    <label class="btn"><input type="file" accept="application/json" style="display:none" onchange="const r=new FileReader(); r.onload=e=>{ try{ state=JSON.parse(e.target.result); save(); render(); }catch(err){ alert('Invalid JSON'); } }; r.readAsText(this.files[0]);">Import</label>
+    <button class="btn" onclick="if(confirm('Reset all data?')){ localStorage.removeItem('tp-dm_lite_v2_1'); location.reload(); }">Reset</button>
+  </div>`;
+}
+
+// Dice calculator view render
+function renderDice(){
+  ensureBuilder();
+  const wrap = document.getElementById('dice-roller'); if(!wrap) return;
+  const termChips = Object.entries(state.dice.builder.terms).filter(([,c])=>c>0)
+    .map(([sides,count])=>`<span class="pill">${count}&times; d${sides}<button class="pill-btn" title="remove one" onclick="decDie(${sides})">−</button></span>`).join('')
+    || '<span class="small" style="opacity:.75">No dice added yet</span>';
+  const modChip = state.dice.builder.mod ? `<span class="pill ${state.dice.builder.mod>0?'pos':'neg'}">${state.dice.builder.mod>0?'+':''}${state.dice.builder.mod}<button class="pill-btn" title="±1" onclick="addMod(${state.dice.builder.mod>0?-1:+1})">±</button></span>` : '';
+  wrap.innerHTML = `
+    <div class="calc">
+      <div class="calc-main">
+        <div class="dice" id="dice-box">—</div>
+        <div class="calc-panel">
+          <div class="small">Build roll</div>
+          <div class="row-wrap" style="margin:6px 0">${termChips} ${modChip}</div>
+          <div class="calc-row">${[20,12,10,8,6,4].map(s=>`<button class="btn alt" onclick="addDie(${s})">+ d${s}</button>`).join(' ')}</div>
+          <div class="calc-row">
+            <button class="btn alt" onclick="addMod(+1)">+1</button><button class="btn alt" onclick="addMod(-1)">−1</button>
+            <button class="btn alt" onclick="addMod(+2)">+2</button><button class="btn alt" onclick="addMod(+5)">+5</button>
+            <button class="btn" style="margin-left:auto" onclick="clearBuilder()">Clear</button>
+          </div>
+          <div class="calc-row">
+            <input id="dice-expr" value="${esc(state.dice.expr)}" style="width:180px" oninput="state.dice.expr=this.value; save();" />
+            <button class="btn active" onclick="rollVisual(document.getElementById('dice-expr').value)">Roll</button>
+            <span class="small">= <b id="dice-result">${state.dice.last}</b></span>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:10px;background:#0f1115"><div class="small"><b>Breakdown</b></div><div class="small" id="dice-break">${renderDiceBreakdownPreview()}</div></div>
+      <div class="panel" style="margin-top:10px;background:#0f1115"><div class="small"><b>Log</b></div><div class="small">${state.dice.log.map(l=>`[${new Date(l.t).toLocaleTimeString()}] ${esc(l.expr)} → <b>${l.total}</b> [${l.parts.join(', ')}${l.mod? (l.mod>0? ' + '+l.mod : ' - '+Math.abs(l.mod)) : ''}]`).join('<br/>')||'No rolls yet.'}</div></div>
+    </div>`;
+}
+
+// ---------- Router / render ----------
+function routeView(){
+  switch(state.route){
+    case 'home': return Home();
+    case 'board': return Board();
+    case 'chars': return Characters();
+    case 'npcs': return NPCs();
+    case 'enemies': return Enemies();
+    case 'dice': return Dice();
+    case 'dialogue': return Dialogue();
+    case 'notes': return Notes();
+    case 'save': return SavePanel();
+    default: return Home();
+  }
+}
+function render(){
+  document.getElementById('app').innerHTML = routeView();
+  if(state.route==='board'){
+    const b=document.querySelector('.board'); if(b){ renderBoard(); b.addEventListener('click', boardClick); }
+  }
+  if(state.route==='dice'){ renderDice(); }
+  renderDmPanel();
+  renderDmFab();
+  setActive();
+}
+render();
