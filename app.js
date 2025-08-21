@@ -257,10 +257,14 @@ function renderDmPanel(){
   all.forEach((c,i)=>{ if(c.kind==='tip') tips.push({...c,_idx:i}); else if(c.kind==='adv') adv.push({...c,_idx:i}); else dis.push({...c,_idx:i}); });
   const focus = (state.ui.terrainFocus!=null) ? all[state.ui.terrainFocus] : null;
 
-  // GRID CARDS
+  // GRID CARDS with permanent icon sizing (via width/height attrs too)
   const partyHtml = state.players.map(p=>`
     <div class="dm-box pc">
-      <div class="avatar"><img src="${iconSrc(p)}" onerror="this.onerror=null; this.src='${classFallback(p.cls)}'"></div>
+      <div class="avatar">
+        <img width="32" height="32"
+             src="${iconSrc(p)}"
+             onerror="this.onerror=null; this.src='${classFallback(p.cls)}'">
+      </div>
       <div class="name">${p.name}</div>
       <div class="meta">L${p.level} • ${p.cls} • AC ${p.ac}${p.hp?` • ${p.hp.cur}/${p.hp.max} HP`:''}</div>
       <div class="actions">
@@ -270,7 +274,11 @@ function renderDmPanel(){
 
   const enemiesHtml = state.enemies.map(e=>`
     <div class="dm-box enemy">
-      <div class="avatar"><img src="${iconSrc(e)}" onerror="this.onerror=null; this.src='${classFallback(e.cls)}'"></div>
+      <div class="avatar">
+        <img width="32" height="32"
+             src="${iconSrc(e)}"
+             onerror="this.onerror=null; this.src='${classFallback(e.cls)}'">
+      </div>
       <div class="name">${e.name}</div>
       <div class="meta">AC ${e.ac} • ${e.hp.cur}/${e.hp.max} HP${e.type?` • ${e.type}`:''}</div>
       <div class="actions">

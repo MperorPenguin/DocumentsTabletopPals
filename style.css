@@ -154,32 +154,11 @@ html { font-size: clamp(14px, 1.1vw, 16px) }
   .token{ width:36px; height:36px }
 }
 
-/* For DM Panel character/enemy icons */
-.dm-panel .token img {
-  width: 32px;       /* same size as board tokens */
-  height: 32px;
-  object-fit: contain;
-  border-radius: 4px;
-  background: var(--gray-900);
-  padding: 2px;
-  box-sizing: border-box;
-}
-
-/* Make them scale down automatically on small devices */
-@media (max-width: 768px) {
-  .dm-panel .token img {
-    width: 24px;
-    height: 24px;
-  }
-}
-
 /* === Permanent DM Panel icon sizing === */
 :root{
   --dm-icon: 32px;       /* desktop/tablet default */
   --dm-icon-sm: 24px;    /* phones */
 }
-
-/* Scope to DM panel only (doesn't affect board tokens) */
 .dm-panel .avatar,
 .dm-panel .token{
   width: calc(var(--dm-icon) + 8px) !important;
@@ -190,8 +169,6 @@ html { font-size: clamp(14px, 1.1vw, 16px) }
   border-radius: 8px !important;
   overflow: hidden !important;
 }
-
-/* The image itself */
 .dm-panel .avatar img,
 .dm-panel .token img{
   width: var(--dm-icon) !important;
@@ -199,8 +176,6 @@ html { font-size: clamp(14px, 1.1vw, 16px) }
   object-fit: contain !important;
   display: block !important;
 }
-
-/* Phone scaling */
 @media (max-width: 768px){
   .dm-panel .avatar,
   .dm-panel .token{
