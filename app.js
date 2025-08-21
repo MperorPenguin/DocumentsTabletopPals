@@ -43,14 +43,18 @@ let state = JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null') || {
   editing:null,
   iconPicker:{ open:false, target:{kind:null,id:null,field:'avatar'} },
   dialog:{activeKind:'npc',activeId:null,log:[],snippets:['We mean no harm.','Any rumors?','We seek the old ruins.','Stand down.','Let’s make a deal.']},
-  ui:{ terrainFocus:null }
+  ui:{ terrainFocus:null, dmMin:false }
 };
+// Migration guard for older saves
+if (!state.ui) state.ui = { terrainFocus:null, dmMin:false };
+if (typeof state.ui.dmMin === 'undefined') state.ui.dmMin = false;
+
 let __saveTimer=null; function save(){ clearTimeout(__saveTimer); __saveTimer=setTimeout(()=>{ try{ localStorage.setItem('tp_dm_lite_v2_1', JSON.stringify(state)); }catch(e){} }, 300); }
 function nav(route){ state.route=route; save(); render(); setActive(); }
 function setActive(){ ['home','board','chars','npcs','enemies','dice','dialogue','notes','save'].forEach(id=>{ const b=document.getElementById('nav-'+id); if(b) b.classList.toggle('active', state.route===id); }); }
 function esc(s){ return (''+s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 
-// ---------- Dice (core) ----------
+// ---------- Dice (core + calculator) ----------
 let diceTimer=null;
 function rollExpr(expr){
   const m=(expr||'').match(/^(\d+)?d(\d+)([+\-]\d+)?$/i);
@@ -106,8 +110,6 @@ function rollVisual(expr){
     }
   }, 50);
 }
-
-// ---------- Dice Calculator helpers ----------
 function ensureBuilder(){
   if(!state.dice) state.dice = {expr:'d20',last:'—',log:[], builder:{terms:{},mod:0}};
   if(!state.dice.builder) state.dice.builder = {terms:{}, mod:0};
@@ -249,54 +251,159 @@ function terrainChips(){
   return entries;
 }
 
-// ---------- Floating DM HUD ----------
+// ---------- DM Panel minimize / restore ----------
+function minimizeDmPanel(){
+  state.ui.dmMin = true; save();
+  renderDmPanel(); renderDmFab();
+}
+function restoreDmPanel(){
+  state.ui.dmMin = false; save();
+  renderDmPanel(); renderDmFab();
+}
+window.minimizeDmPanel = minimizeDmPanel;
+window.restoreDmPanel  = restoreDmPanel;
+
+function renderDmFab(){
+  let fab = document.getElementById('dm-fab');
+  if(!fab){
+    fab = document.createElement('button');
+    fab.id = 'dm-fab';
+    fab.className = 'dm-fab hidden';
+    fab.type = 'button';
+    document.body.appendChild(fab);
+  }
+  // Show only on Board and when minimized
+  if(state.route !== 'board' || !state.ui.dmMin){
+    fab.classList.add('hidden');
+    return;
+  }
+  const hints = (terrainChips()?.length || 0);
+  fab.innerHTML = `
+    <span class="dm-fab-dot"></span>
+    <span class="dm-fab-label">DM Panel</span>
+    <span class="dm-fab-count">${hints}</span>
+  `;
+  fab.onclick = window.restoreDmPanel;
+  fab.classList.remove('hidden');
+}
+window.renderDmFab = renderDmFab;
+
 function renderDmPanel(){
   const hud = document.getElementById('dm-panel');
   if(!hud) return;
-  if(state.route !== 'board'){ hud.classList.add('hidden'); hud.innerHTML=''; return; }
+
+  // Only on Board
+  if(state.route !== 'board'){
+    hud.classList.add('hidden');
+    hud.innerHTML = '';
+    renderDmFab();
+    return;
+  }
+
+  // Minimized — hide panel, show FAB
+  if(state.ui.dmMin){
+    hud.classList.add('hidden');
+    hud.innerHTML = '';
+    renderDmFab();
+    return;
+  }
+
+  // Not minimized — show full panel and hide FAB
+  renderDmFab(); // ensures FAB hides if visible
   hud.classList.remove('hidden');
 
   const chips = terrainChips();
   const focus = state.ui.terrainFocus;
   const focusEntry = (focus!=null && chips[focus]) ? chips[focus] : null;
 
+  // Party cards
   const partyHtml = state.players.map(p=>`
-    <div class="dm-item">
-      <div class="who">
-        <div class="token"><img src="${p.avatar || (p.cls && ICONS[p.cls]) || ''}" onerror="this.style.display='none'"></div>
-        <div><div style="font-weight:600">${p.name}</div><div class="small">${p.cls} L${p.level}</div></div>
+    <div class="dm-card">
+      <div class="dm-avatar"><img src="${p.avatar || (p.cls && ICONS[p.cls]) || ''}" onerror="this.style.display='none'"></div>
+      <div class="dm-info">
+        <div class="dm-name">${p.name}</div>
+        <div class="small">${p.cls} • L${p.level} • AC ${p.ac}${p.hp?` • HP ${p.hp.cur}/${p.hp.max}`:''}</div>
       </div>
-      <button class="btn alt small" onclick="state.selectedToken={id:'${p.id}',kind:'pc'}; save(); render();">Select</button>
+      <div class="dm-actions">
+        <button class="btn alt small" onclick="state.selectedToken={id:'${p.id}',kind:'pc'}; save(); render();">Select</button>
+      </div>
     </div>`).join('');
 
+  // Enemy cards
   const enemiesHtml = state.enemies.map(e=>`
-    <div class="dm-item">
-      <div class="who">
-        <div class="token"><img src="${e.avatar || ''}" onerror="this.style.display='none'"></div>
-        <div><div style="font-weight:600">${e.name}</div><div class="small">AC ${e.ac} • HP ${e.hp.cur}/${e.hp.max}</div></div>
+    <div class="dm-card">
+      <div class="dm-avatar"><img src="${e.avatar || ICONS.Barbarian}" onerror="this.style.display='none'"></div>
+      <div class="dm-info">
+        <div class="dm-name">${e.name}</div>
+        <div class="small">AC ${e.ac} • HP ${e.hp.cur}/${e.hp.max}${e.type?` • ${e.type}`:''}</div>
       </div>
-      <button class="btn alt small" onclick="state.selectedToken={id:'${e.id}',kind:'enemy'}; save(); render();">Select</button>
+      <div class="dm-actions">
+        <button class="btn alt small" onclick="state.selectedToken={id:'${e.id}',kind:'enemy'}; save(); render();">Select</button>
+      </div>
     </div>`).join('');
 
+  // Build DM panel
   hud.innerHTML = `
-    <h3>DM Panel</h3>
+    <div class="dm-head">
+      <h3>DM Panel</h3>
+      <button class="dm-min-btn" title="Minimize" onclick="minimizeDmPanel()">–</button>
+    </div>
+
     <div class="dm-section">
       <div class="small">Terrain</div>
-      <select style="width:100%;margin-top:4px" onchange="state.terrain=this.value; state.ui.terrainFocus=null; save(); render();">
+      <select style="width:100%;margin-top:6px" onchange="state.terrain=this.value; state.ui.terrainFocus=null; save(); render();">
         ${Object.keys(TERRAIN).map(t=>`<option ${state.terrain===t?'selected':''}>${t}</option>`).join('')}
       </select>
-      <div class="dm-chips">
+
+      <div class="dm-chips neat">
         ${chips.map((c,idx)=>{
-          const cls = c.kind==='tip'?'tip':(c.kind==='adv'?'adv':'dis');
+          const kind = c.kind==='tip'?'tip':(c.kind==='adv'?'adv':'dis');
           const label = c.kind==='tip' ? c.name : `${c.kind==='adv'?'Advantage:':'Disadvantage:'} ${c.name}`;
-          return `<span class="dm-chip ${cls}" onclick="state.ui.terrainFocus=${idx}; save(); render();">${label}</span>`;
+          return `<span class="dm-chip ${kind}" onclick="state.ui.terrainFocus=${idx}; save(); render();"><span class="dot"></span>${label}</span>`;
         }).join('')}
       </div>
+
       ${focusEntry ? `<div class="dm-detail">${explainTerrainDetail(focusEntry)}</div>` : ''}
     </div>
-    <div class="dm-section"><div class="small">Party</div><div class="dm-list">${partyHtml || '<div class="small">No party yet.</div>'}</div></div>
-    <div class="dm-section"><div class="small">Enemies</div><div class="dm-list">${enemiesHtml || '<div class="small">No enemies yet.</div>'}</div></div>
+
+    <div class="dm-section">
+      <div class="small">Party</div>
+      <div class="dm-list grid">
+        ${partyHtml || '<div class="small">No party yet.</div>'}
+      </div>
+    </div>
+
+    <div class="dm-section">
+      <div class="small">Enemies</div>
+      <div class="dm-list grid">
+        ${enemiesHtml || '<div class="small">No enemies yet.</div>'}
+      </div>
+    </div>
   `;
+}
+
+// Ensure the minimized FAB uses the same button feel
+function renderDmFab(){
+  let fab = document.getElementById('dm-fab');
+  if(!fab){
+    fab = document.createElement('button');
+    fab.id = 'dm-fab';
+    fab.className = 'dm-fab btn hidden'; // add btn class for consistent style
+    fab.type = 'button';
+    document.body.appendChild(fab);
+  }
+  if(state.route !== 'board' || !state.ui.dmMin){
+    fab.classList.add('hidden');
+    return;
+  }
+  const hints = (terrainChips()?.length || 0);
+  fab.innerHTML = `
+    <span class="dm-fab-dot"></span>
+    <span class="dm-fab-label">DM Panel</span>
+    <span class="dm-fab-count">${hints}</span>
+  `;
+  fab.onclick = window.restoreDmPanel;
+  fab.classList.remove('hidden');
 }
 
 // ---------- Views ----------
@@ -481,6 +588,7 @@ function render(){
   }
   if(state.route==='dice'){ renderDice(); }
   renderDmPanel();
+  renderDmFab();
   setActive();
 }
 render();
