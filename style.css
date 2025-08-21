@@ -205,3 +205,62 @@ html { font-size: clamp(14px, 1.1vw, 16px); }
 .dm-fab.btn{
   border-radius: 999px; padding: 8px 12px;
 }
+/* --- DM header: pill-style minimize button like FAB --- */
+.dm-fab.mini{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:6px 10px; border-radius:999px; border:1px solid var(--border);
+  background:var(--panel); color:var(--ink); box-shadow:0 6px 16px rgba(0,0,0,.35);
+}
+.dm-fab.mini .dm-fab-dot{ width:6px; height:6px; border-radius:50%; background:var(--accent); display:inline-block; }
+.dm-fab.mini .dm-fab-label{ font-size:12px; font-weight:600; }
+.dm-fab.mini:hover{ border-color:var(--accent); box-shadow:0 8px 20px rgba(0,0,0,.45), 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset; }
+
+/* --- Compact cards for Party/Enemies --- */
+.dm-list.grid.compact{ display:grid; gap:6px; grid-template-columns:1fr; }
+.dm-card{
+  display:grid; grid-template-columns: 28px 1fr auto;
+  align-items:center; gap:8px; padding:6px 8px;
+  background:#0f1115; border:1px solid var(--border); border-radius:10px;
+}
+.dm-card.pc{ border-color: color-mix(in srgb, var(--blue) 45%, #000); }
+.dm-card.enemy{ border-color: color-mix(in srgb, var(--red) 45%, #000); }
+.dm-avatar.sm{ width:28px; height:28px; border-radius:6px; overflow:hidden; background:#0b0f19; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; }
+.dm-avatar.sm img{ width:100%; height:100%; object-fit:contain; display:block; }
+.dm-info .dm-name{ font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dm-info .mini{ font-size:11px; color:#b6bfd3; }
+.dm-actions .btn.tiny{ padding:4px 8px; font-size:11px; }
+
+/* --- Terrain groups (clean sections with cards) --- */
+.terr-wrap{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.terr-head{
+  font-size:12px; font-weight:700; padding:4px 8px; border-radius:8px; display:inline-block;
+  border:1px solid var(--border); background:#0f1115; color:#cbd5e1;
+}
+.terr-head.tip{ border-color: color-mix(in srgb, var(--sage) 50%, #000); }
+.terr-head.adv{ border-color: color-mix(in srgb, var(--teal) 50%, #000); }
+.terr-head.dis{ border-color: color-mix(in srgb, var(--red) 50%, #000); }
+
+.terr-grid{ display:grid; grid-template-columns:1fr; gap:6px; margin-top:6px; }
+.terr-card{
+  display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:10px;
+  border:1px solid var(--border); background:#12182a; color:#e6e9f2; cursor:pointer; transition:.15s;
+}
+.terr-card .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+.terr-card.tip{ border-color: color-mix(in srgb, var(--sage) 60%, #000); }
+.terr-card.tip .dot{ background: var(--sage); }
+.terr-card.adv{ border-color: color-mix(in srgb, var(--teal) 60%, #000); }
+.terr-card.adv .dot{ background: var(--teal); }
+.terr-card.dis{ border-color: color-mix(in srgb, var(--red) 60%, #000); }
+.terr-card.dis .dot{ background: var(--red); }
+
+.terr-card:hover{
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset;
+}
+.terr-card.active{
+  background: color-mix(in srgb, var(--accent) 14%, #12182a);
+  border-color: var(--accent);
+}
+
+/* Ensure DM panel contents never blow up in size */
+.dm-panel img{ max-width:100%; height:auto; }
