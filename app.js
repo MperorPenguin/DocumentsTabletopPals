@@ -49,21 +49,14 @@ let state = JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null') || {
 if (!state.ui) state.ui = { terrainFocus:null, dmMin:false };
 if (typeof state.ui.dmMin === 'undefined') state.ui.dmMin = false;
 
-let __saveTimer=null; function save(){ clearTimeout(__saveTimer); __saveTimer=setTimeout(()=>{ try{ localStorage.setItem('tp_dm_lite_v2_1', JSON.stringify(state)); }catch(e){} }, 300); }
+let __saveTimer=null;
+function save(){ clearTimeout(__saveTimer); __saveTimer=setTimeout(()=>{ try{ localStorage.setItem('tp_dm_lite_v2_1', JSON.stringify(state)); }catch(e){} }, 300); }
 function nav(route){ state.route=route; save(); render(); setActive(); }
 function setActive(){ ['home','board','chars','npcs','enemies','dice','dialogue','notes','save'].forEach(id=>{ const b=document.getElementById('nav-'+id); if(b) b.classList.toggle('active', state.route===id); }); }
 function esc(s){ return (''+s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 
 // ---------- Dice (core + calculator) ----------
 let diceTimer=null;
-function rollExpr(expr){
-  const m=(expr||'').match(/^(\d+)?d(\d+)([+\-]\d+)?$/i);
-  if(!m) return {ok:false};
-  const n=+((m[1]||1)), s=+(m[2]), mod=+(m[3]||0);
-  let parts=[],sum=0;
-  for(let i=0;i<n;i++){ const r=1+Math.floor(Math.random()*s); parts.push(r); sum+=r; }
-  return {ok:true,total:sum+mod,parts,mod};
-}
 function parseAny(expr){
   // supports "2d6+1d4+3-1"
   const tokens = (expr||'').replace(/\s+/g,'').match(/(\d*d\d+|\+|-|\d+)/gi);
@@ -251,7 +244,43 @@ function terrainChips(){
   return entries;
 }
 
-// ---------- DM Panel minimize / restore ----------
+// ---------- DM Panel minimize / restore + renderers ----------
+function minimizeDmPanel(){
+  state.ui.dmMin = true; save();
+  renderDmPanel(); renderDmFab();
+}
+function restoreDmPanel(){
+  state.ui.dmMin = false; save();
+  renderDmPanel(); renderDmFab();
+}
+window.minimizeDmPanel = minimizeDmPanel;
+window.restoreDmPanel  = restoreDmPanel;
+
+function renderDmFab(){
+  let fab = document.getElementById('dm-fab');
+  if(!fab){
+    fab = document.createElement('button');
+    fab.id = 'dm-fab';
+    fab.className = 'dm-fab btn hidden'; // keep app button style
+    fab.type = 'button';
+    document.body.appendChild(fab);
+  }
+  // Show only on Board and when minimized
+  if(state.route !== 'board' || !state.ui.dmMin){
+    fab.classList.add('hidden');
+    return;
+  }
+  const hints = (terrainChips()?.length || 0);
+  fab.innerHTML = `
+    <span class="dm-fab-dot"></span>
+    <span class="dm-fab-label">DM Panel</span>
+    <span class="dm-fab-count">${hints}</span>
+  `;
+  fab.onclick = window.restoreDmPanel;
+  fab.classList.remove('hidden');
+}
+window.renderDmFab = renderDmFab;
+
 function renderDmPanel(){
   const hud = document.getElementById('dm-panel');
   if(!hud) return;
@@ -276,7 +305,7 @@ function renderDmPanel(){
   renderDmFab(); // ensures FAB hides if visible
   hud.classList.remove('hidden');
 
-  // Build terrain groups (tips / adv / dis) and keep a global index for focus
+  // Build terrain groups (tips / adv / dis)
   const all = terrainChips(); // [{kind:'tip'|'adv'|'dis', name, why}]
   const tips = [], adv = [], dis = [];
   all.forEach((c, i) => {
@@ -312,7 +341,6 @@ function renderDmPanel(){
       </div>
     </div>`).join('');
 
-  // Terrain group renderers (cards with colored borders + click for detail)
   const terrGroup = (title, kindClass, arr) => `
     <div class="terr-group">
       <div class="terr-head ${kindClass}">${title}</div>
@@ -331,8 +359,6 @@ function renderDmPanel(){
   hud.innerHTML = `
     <div class="dm-head">
       <h3>DM Panel</h3>
-
-      <!-- Minimize button styled like your FAB -->
       <button class="btn dm-fab mini" type="button" title="Minimize" onclick="minimizeDmPanel()">
         <span class="dm-fab-dot"></span>
         <span class="dm-fab-label">Minimize</span>
@@ -369,8 +395,6 @@ function renderDmPanel(){
       </div>
     </div>
   `;
-}
-
 }
 
 // ---------- Views ----------
@@ -414,148 +438,4 @@ function Board(){
         <h3>Scene Board</h3>
         <div class="row">
           <label class="btn alt"><input type="file" accept="image/*" style="display:none" onchange="uploadSceneAndSetBg(this.files)">Upload Scene</label>
-          <button class="btn" onclick="state.selectedToken=null; save(); render();">Deselect</button>
-        </div>
-      </div>
-      <div class="board" style="margin-top:10px" onclick="boardClick(event)"></div>
-      <div class="small" style="margin-top:8px">Click a token to select it, then click a grid cell to move.</div>
-    </div>
-    <div class="panel"><h3>Tips</h3><div class="small">Use the floating DM panel (bottom‑right) for terrain + quick selects.</div></div>
-  </div>`;
-}
-function Characters(){
-  return `<div class="panel"><h3>Characters</h3>
-    <div class="list">
-      ${state.players.map(p=>`<div class="item">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="token"><img src="${p.avatar||ICONS[p.cls]}"/></div>
-          <div><div style="font-weight:600">${esc(p.name)}</div><div class="small">${esc(p.cls)} L${p.level}</div></div>
-        </div>
-        <button class="btn alt" onclick="state.selectedToken={id:'${p.id}',kind:'pc'}; save(); nav('board')">Select on Board</button>
-      </div>`).join('')}
-    </div>
-  </div>`;
-}
-function NPCs(){
-  return `<div class="panel"><h3>NPCs</h3>
-    <div class="list">
-      ${state.npcs.map(n=>`<div class="item">
-        <div style="display:flex;align-items:center;gap:8px">
-          ${n.avatar? `<div class="token"><img src="${esc(n.avatar)}"/></div>` : '<div class="token"></div>'}
-          <div><div style="font-weight:600">${esc(n.name)}</div><div class="small">${esc(n.role||'NPC')}</div></div>
-        </div>
-      </div>`).join('')}
-    </div>
-  </div>`;
-}
-function Enemies(){
-  return `<div class="panel"><h3>Enemies</h3>
-    <div class="list">
-      ${state.enemies.map(e=>`<div class="item">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="token"><img src="${esc(e.avatar||ICONS.Barbarian)}"/></div>
-          <div><div style="font-weight:600">${esc(e.name)}</div><div class="small">AC ${e.ac} • HP ${e.hp.cur}/${e.hp.max}</div></div>
-        </div>
-      </div>`).join('')}
-    </div>
-  </div>`;
-}
-function Dice(){
-  return `<div class="panel"><h2>Dice Roller</h2>
-    <div id="dice-roller"></div>
-  </div>`;
-}
-function Dialogue(){ return `<div class="panel"><h3>Dialogue</h3><div class="small">Roleplay log coming next pass.</div></div>`; }
-function Notes(){ return `<div class="panel"><h2>Notes</h2><textarea style="width:100%;height:300px" oninput="state.notes=this.value; save();">${esc(state.notes)}</textarea></div>`; }
-function SavePanel(){
-  return `<div class="panel"><h2>Save / Export</h2>
-    <button class="btn" onclick="const data=JSON.stringify(state,null,2); const blob=new Blob([data],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='tp-dm-lite-v2_1-session.json'; a.click();">Export (.json)</button>
-    <label class="btn"><input type="file" accept="application/json" style="display:none" onchange="const r=new FileReader(); r.onload=e=>{ try{ state=JSON.parse(e.target.result); save(); render(); }catch(err){ alert('Invalid JSON'); } }; r.readAsText(this.files[0]);">Import</label>
-    <button class="btn" onclick="if(confirm('Reset all data?')){ localStorage.removeItem('tp_dm_lite_v2_1'); location.reload(); }">Reset</button>
-  </div>`;
-}
-
-// ---------- Dice calculator render ----------
-function renderDice(){
-  ensureBuilder();
-  const wrap = document.getElementById('dice-roller');
-  if(!wrap) return;
-
-  const termChips = Object.entries(state.dice.builder.terms)
-    .filter(([,count])=>count>0)
-    .map(([sides,count])=>`
-      <span class="pill">
-        ${count}&times; d${sides}
-        <button class="pill-btn" title="remove one" onclick="decDie(${sides})">−</button>
-      </span>
-    `).join('') || '<span class="small" style="opacity:.75">No dice added yet</span>';
-
-  const modChip = state.dice.builder.mod ? `
-      <span class="pill ${state.dice.builder.mod>0?'pos':'neg'}">
-        ${state.dice.builder.mod>0?'+':''}${state.dice.builder.mod}
-        <button class="pill-btn" title="±1" onclick="addMod(${state.dice.builder.mod>0?-1:+1})">±</button>
-      </span>` : '';
-
-  wrap.innerHTML = `
-    <div class="calc">
-      <div class="calc-main">
-        <div class="dice" id="dice-box">—</div>
-        <div class="calc-panel">
-          <div class="small">Build roll</div>
-          <div class="row-wrap" style="margin:6px 0">${termChips} ${modChip}</div>
-          <div class="calc-row">
-            ${[20,12,10,8,6,4].map(s=>`<button class="btn alt" onclick="addDie(${s})">+ d${s}</button>`).join(' ')}
-          </div>
-          <div class="calc-row">
-            <button class="btn alt" onclick="addMod(+1)">+1</button>
-            <button class="btn alt" onclick="addMod(-1)">−1</button>
-            <button class="btn alt" onclick="addMod(+2)">+2</button>
-            <button class="btn alt" onclick="addMod(+5)">+5</button>
-            <button class="btn" style="margin-left:auto" onclick="clearBuilder()">Clear</button>
-          </div>
-          <div class="calc-row">
-            <input id="dice-expr" value="${esc(state.dice.expr)}" style="width:180px" 
-                   oninput="state.dice.expr=this.value; save();" />
-            <button class="btn active" onclick="rollVisual(document.getElementById('dice-expr').value)">Roll</button>
-            <span class="small">= <b id="dice-result">${state.dice.last}</b></span>
-          </div>
-        </div>
-      </div>
-      <div class="panel" style="margin-top:10px;background:#0f1115">
-        <div class="small"><b>Breakdown</b></div>
-        <div class="small" id="dice-break">${renderDiceBreakdownPreview()}</div>
-      </div>
-      <div class="panel" style="margin-top:10px;background:#0f1115">
-        <div class="small"><b>Log</b></div>
-        <div class="small">${state.dice.log.map(l=>`[${new Date(l.t).toLocaleTimeString()}] ${esc(l.expr)} → <b>${l.total}</b> [${l.parts.join(', ')}${l.mod? (l.mod>0? ' + '+l.mod : ' - '+Math.abs(l.mod)) : ''}]`).join('<br/>')||'No rolls yet.'}</div>
-      </div>
-    </div>
-  `;
-}
-
-// ---------- Router / render ----------
-function routeView(){
-  switch(state.route){
-    case 'home': return Home();
-    case 'board': return Board();
-    case 'chars': return Characters();
-    case 'npcs': return NPCs();
-    case 'enemies': return Enemies();
-    case 'dice': return Dice();
-    case 'dialogue': return Dialogue();
-    case 'notes': return Notes();
-    case 'save': return SavePanel();
-    default: return Home();
-  }
-}
-function render(){
-  document.getElementById('app').innerHTML = routeView();
-  if(state.route==='board'){
-    const b=document.querySelector('.board'); if(b){ renderBoard(); b.addEventListener('click', boardClick); }
-  }
-  if(state.route==='dice'){ renderDice(); }
-  renderDmPanel();
-  renderDmFab();
-  setActive();
-}
-render();
+         
