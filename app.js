@@ -252,42 +252,6 @@ function terrainChips(){
 }
 
 // ---------- DM Panel minimize / restore ----------
-function minimizeDmPanel(){
-  state.ui.dmMin = true; save();
-  renderDmPanel(); renderDmFab();
-}
-function restoreDmPanel(){
-  state.ui.dmMin = false; save();
-  renderDmPanel(); renderDmFab();
-}
-window.minimizeDmPanel = minimizeDmPanel;
-window.restoreDmPanel  = restoreDmPanel;
-
-function renderDmFab(){
-  let fab = document.getElementById('dm-fab');
-  if(!fab){
-    fab = document.createElement('button');
-    fab.id = 'dm-fab';
-    fab.className = 'dm-fab hidden';
-    fab.type = 'button';
-    document.body.appendChild(fab);
-  }
-  // Show only on Board and when minimized
-  if(state.route !== 'board' || !state.ui.dmMin){
-    fab.classList.add('hidden');
-    return;
-  }
-  const hints = (terrainChips()?.length || 0);
-  fab.innerHTML = `
-    <span class="dm-fab-dot"></span>
-    <span class="dm-fab-label">DM Panel</span>
-    <span class="dm-fab-count">${hints}</span>
-  `;
-  fab.onclick = window.restoreDmPanel;
-  fab.classList.remove('hidden');
-}
-window.renderDmFab = renderDmFab;
-
 function renderDmPanel(){
   const hud = document.getElementById('dm-panel');
   if(!hud) return;
@@ -312,98 +276,101 @@ function renderDmPanel(){
   renderDmFab(); // ensures FAB hides if visible
   hud.classList.remove('hidden');
 
-  const chips = terrainChips();
-  const focus = state.ui.terrainFocus;
-  const focusEntry = (focus!=null && chips[focus]) ? chips[focus] : null;
+  // Build terrain groups (tips / adv / dis) and keep a global index for focus
+  const all = terrainChips(); // [{kind:'tip'|'adv'|'dis', name, why}]
+  const tips = [], adv = [], dis = [];
+  all.forEach((c, i) => {
+    if (c.kind === 'tip') tips.push({...c, _idx:i});
+    else if (c.kind === 'adv') adv.push({...c, _idx:i});
+    else dis.push({...c, _idx:i});
+  });
+  const focus = (state.ui.terrainFocus!=null) ? all[state.ui.terrainFocus] : null;
 
-  // Party cards
+  // Party cards (compact)
   const partyHtml = state.players.map(p=>`
-    <div class="dm-card">
-      <div class="dm-avatar"><img src="${p.avatar || (p.cls && ICONS[p.cls]) || ''}" onerror="this.style.display='none'"></div>
+    <div class="dm-card pc">
+      <div class="dm-avatar sm"><img src="${p.avatar || (p.cls && ICONS[p.cls]) || ''}" onerror="this.style.display='none'"></div>
       <div class="dm-info">
         <div class="dm-name">${p.name}</div>
-        <div class="small">${p.cls} • L${p.level} • AC ${p.ac}${p.hp?` • HP ${p.hp.cur}/${p.hp.max}`:''}</div>
+        <div class="mini">L${p.level} • ${p.cls} • AC ${p.ac}${p.hp?` • ${p.hp.cur}/${p.hp.max} HP`:''}</div>
       </div>
       <div class="dm-actions">
-        <button class="btn alt small" onclick="state.selectedToken={id:'${p.id}',kind:'pc'}; save(); render();">Select</button>
+        <button class="btn alt tiny" onclick="state.selectedToken={id:'${p.id}',kind:'pc'}; save(); render();">Select</button>
       </div>
     </div>`).join('');
 
-  // Enemy cards
+  // Enemy cards (compact)
   const enemiesHtml = state.enemies.map(e=>`
-    <div class="dm-card">
-      <div class="dm-avatar"><img src="${e.avatar || ICONS.Barbarian}" onerror="this.style.display='none'"></div>
+    <div class="dm-card enemy">
+      <div class="dm-avatar sm"><img src="${e.avatar || ICONS.Barbarian}" onerror="this.style.display='none'"></div>
       <div class="dm-info">
         <div class="dm-name">${e.name}</div>
-        <div class="small">AC ${e.ac} • HP ${e.hp.cur}/${e.hp.max}${e.type?` • ${e.type}`:''}</div>
+        <div class="mini">AC ${e.ac} • ${e.hp.cur}/${e.hp.max} HP${e.type?` • ${e.type}`:''}</div>
       </div>
       <div class="dm-actions">
-        <button class="btn alt small" onclick="state.selectedToken={id:'${e.id}',kind:'enemy'}; save(); render();">Select</button>
+        <button class="btn alt tiny" onclick="state.selectedToken={id:'${e.id}',kind:'enemy'}; save(); render();">Select</button>
       </div>
     </div>`).join('');
 
-  // Build DM panel
+  // Terrain group renderers (cards with colored borders + click for detail)
+  const terrGroup = (title, kindClass, arr) => `
+    <div class="terr-group">
+      <div class="terr-head ${kindClass}">${title}</div>
+      <div class="terr-grid">
+        ${arr.map(c => `
+          <button class="terr-card ${kindClass} ${state.ui.terrainFocus===c._idx?'active':''}"
+                  title="Click for details"
+                  onclick="state.ui.terrainFocus=${c._idx}; save(); render();">
+            <span class="dot"></span>
+            <span class="label">${c.kind==='tip' ? c.name : (c.kind==='adv'?'Advantage: ':'Disadvantage: ')+c.name}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>`;
+
   hud.innerHTML = `
     <div class="dm-head">
       <h3>DM Panel</h3>
-      <button class="dm-min-btn" title="Minimize" onclick="minimizeDmPanel()">–</button>
+
+      <!-- Minimize button styled like your FAB -->
+      <button class="btn dm-fab mini" type="button" title="Minimize" onclick="minimizeDmPanel()">
+        <span class="dm-fab-dot"></span>
+        <span class="dm-fab-label">Minimize</span>
+      </button>
     </div>
 
     <div class="dm-section">
       <div class="small">Terrain</div>
-      <select style="width:100%;margin-top:6px" onchange="state.terrain=this.value; state.ui.terrainFocus=null; save(); render();">
+      <select style="width:100%;margin-top:6px"
+              onchange="state.terrain=this.value; state.ui.terrainFocus=null; save(); render();">
         ${Object.keys(TERRAIN).map(t=>`<option ${state.terrain===t?'selected':''}>${t}</option>`).join('')}
       </select>
 
-      <div class="dm-chips neat">
-        ${chips.map((c,idx)=>{
-          const kind = c.kind==='tip'?'tip':(c.kind==='adv'?'adv':'dis');
-          const label = c.kind==='tip' ? c.name : `${c.kind==='adv'?'Advantage:':'Disadvantage:'} ${c.name}`;
-          return `<span class="dm-chip ${kind}" onclick="state.ui.terrainFocus=${idx}; save(); render();"><span class="dot"></span>${label}</span>`;
-        }).join('')}
+      <div class="terr-wrap">
+        ${tips.length ? terrGroup('Environment Notes', 'tip', tips) : ''}
+        ${adv.length ? terrGroup('Advantages', 'adv', adv) : ''}
+        ${dis.length ? terrGroup('Disadvantages', 'dis', dis) : ''}
       </div>
 
-      ${focusEntry ? `<div class="dm-detail">${explainTerrainDetail(focusEntry)}</div>` : ''}
+      ${focus ? `<div class="dm-detail">${explainTerrainDetail(focus)}</div>` : ''}
     </div>
 
     <div class="dm-section">
       <div class="small">Party</div>
-      <div class="dm-list grid">
+      <div class="dm-list grid compact">
         ${partyHtml || '<div class="small">No party yet.</div>'}
       </div>
     </div>
 
     <div class="dm-section">
       <div class="small">Enemies</div>
-      <div class="dm-list grid">
+      <div class="dm-list grid compact">
         ${enemiesHtml || '<div class="small">No enemies yet.</div>'}
       </div>
     </div>
   `;
 }
 
-// Ensure the minimized FAB uses the same button feel
-function renderDmFab(){
-  let fab = document.getElementById('dm-fab');
-  if(!fab){
-    fab = document.createElement('button');
-    fab.id = 'dm-fab';
-    fab.className = 'dm-fab btn hidden'; // add btn class for consistent style
-    fab.type = 'button';
-    document.body.appendChild(fab);
-  }
-  if(state.route !== 'board' || !state.ui.dmMin){
-    fab.classList.add('hidden');
-    return;
-  }
-  const hints = (terrainChips()?.length || 0);
-  fab.innerHTML = `
-    <span class="dm-fab-dot"></span>
-    <span class="dm-fab-label">DM Panel</span>
-    <span class="dm-fab-count">${hints}</span>
-  `;
-  fab.onclick = window.restoreDmPanel;
-  fab.classList.remove('hidden');
 }
 
 // ---------- Views ----------
