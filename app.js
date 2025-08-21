@@ -1,11 +1,11 @@
-// ---------- Icons (paths) ----------
+// ---------- Icons ----------
 const ICONS = {
   Barbarian:'assets/class_icons/Barbarian.svg', Bard:'assets/class_icons/Bard.svg', Cleric:'assets/class_icons/Cleric.svg',
   Druid:'assets/class_icons/Druid.svg', Fighter:'assets/class_icons/Fighter.svg', Monk:'assets/class_icons/Monk.svg',
   Paladin:'assets/class_icons/Paladin.svg', Ranger:'assets/class_icons/Ranger.svg', Rogue:'assets/class_icons/Rogue.svg',
   Sorcerer:'assets/class_icons/Sorcerer.svg', Warlock:'assets/class_icons/Warlock.svg', Wizard:'assets/class_icons/Wizard.svg',
 };
-// Inline fallback icons (if files are missing)
+// inline fallback if missing
 const CLASS_COLORS = {
   Barbarian:'#f97316', Bard:'#22c55e', Cleric:'#eab308', Druid:'#84cc16', Fighter:'#60a5fa', Monk:'#14b8a6',
   Paladin:'#f59e0b', Ranger:'#10b981', Rogue:'#a1a1aa', Sorcerer:'#e879f9', Warlock:'#8b5cf6', Wizard:'#a78bfa'
@@ -21,7 +21,7 @@ function dataIcon(label, color){
 function classFallback(cls){ return dataIcon((cls?.[0]||'?').toUpperCase(), CLASS_COLORS[cls]||'#94a3b8'); }
 function iconSrc(obj){ return obj.avatar || (obj.cls && ICONS[obj.cls]) || classFallback(obj.cls); }
 
-// ---------- SRD-ish ----------
+// ---------- SRD data ----------
 const SRD = {
   classes: Object.keys(ICONS),
   races: ['Human','Elf','Dwarf','Halfling','Gnome','Half-Orc','Tiefling','Dragonborn'],
@@ -60,11 +60,11 @@ let state = JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null') || {
   dialog:{activeKind:'npc',activeId:null,log:[],snippets:['We mean no harm.','Any rumors?','We seek the old ruins.','Stand down.','Let’s make a deal.']},
   ui:{ terrainFocus:null, dmMin:false }
 };
-// Migration guard
 if (!state.ui) state.ui = { terrainFocus:null, dmMin:false };
 if (typeof state.ui.dmMin === 'undefined') state.ui.dmMin = false;
 
-let __saveTimer=null; function save(){ clearTimeout(__saveTimer); __saveTimer=setTimeout(()=>{ try{ localStorage.setItem('tp_dm_lite_v2_1', JSON.stringify(state)); }catch(e){} }, 300); }
+let __saveTimer=null;
+function save(){ clearTimeout(__saveTimer); __saveTimer=setTimeout(()=>{ try{ localStorage.setItem('tp_dm_lite_v2_1', JSON.stringify(state)); }catch(e){} }, 300); }
 function nav(route){ state.route=route; save(); render(); setActive(); }
 function setActive(){ ['home','board','chars','npcs','enemies','dice','dialogue','notes','save'].forEach(id=>{ const b=document.getElementById('nav-'+id); if(b) b.classList.toggle('active', state.route===id); }); }
 function esc(s){ return (''+s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
@@ -257,7 +257,7 @@ function renderDmPanel(){
   all.forEach((c,i)=>{ if(c.kind==='tip') tips.push({...c,_idx:i}); else if(c.kind==='adv') adv.push({...c,_idx:i}); else dis.push({...c,_idx:i}); });
   const focus = (state.ui.terrainFocus!=null) ? all[state.ui.terrainFocus] : null;
 
-  // Party grid cards
+  // GRID CARDS
   const partyHtml = state.players.map(p=>`
     <div class="dm-box pc">
       <div class="avatar"><img src="${iconSrc(p)}" onerror="this.onerror=null; this.src='${classFallback(p.cls)}'"></div>
@@ -268,7 +268,6 @@ function renderDmPanel(){
       </div>
     </div>`).join('');
 
-  // Enemy grid cards
   const enemiesHtml = state.enemies.map(e=>`
     <div class="dm-box enemy">
       <div class="avatar"><img src="${iconSrc(e)}" onerror="this.onerror=null; this.src='${classFallback(e.cls)}'"></div>
@@ -294,26 +293,24 @@ function renderDmPanel(){
       </div>
     </div>`;
 
-   hud.innerHTML = `
+  hud.innerHTML = `
     <div class="dm-head">
       <h3>DM Panel</h3>
       <button class="btn dm-fab mini" type="button" title="Minimize" onclick="minimizeDmPanel()">
-        <span class="dm-fab-dot"></span>
-        <span class="dm-fab-label">Minimize</span>
+        <span class="dm-fab-dot"></span><span class="dm-fab-label">Minimize</span>
       </button>
     </div>
 
     <div class="dm-section">
       <div class="small">Terrain</div>
-      <select style="width:100%;margin-top:6px"
-              onchange="state.terrain=this.value; state.ui.terrainFocus=null; save(); render();">
+      <select style="width:100%;margin-top:6px" onchange="state.terrain=this.value; state.ui.terrainFocus=null; save(); render();">
         ${Object.keys(TERRAIN).map(t=>`<option ${state.terrain===t?'selected':''}>${t}</option>`).join('')}
       </select>
 
       <div class="terr-wrap">
-        ${tips.length ? terrGroup('Environment Notes', 'tip', tips) : ''}
-        ${adv.length ? terrGroup('Advantages', 'adv', adv) : ''}
-        ${dis.length ? terrGroup('Disadvantages', 'dis', dis) : ''}
+        ${tips.length ? terrGroup('Environment Notes','tip',tips) : ''}
+        ${adv.length ? terrGroup('Advantages','adv',adv) : ''}
+        ${dis.length ? terrGroup('Disadvantages','dis',dis) : ''}
       </div>
 
       ${focus ? `<div class="dm-detail">${explainTerrainDetail(focus)}</div>` : ''}
@@ -333,6 +330,7 @@ function renderDmPanel(){
       </div>
     </div>
   `;
+}
 
 // ---------- Views ----------
 function Home(){
@@ -419,11 +417,11 @@ function SavePanel(){
   return `<div class="panel"><h2>Save / Export</h2>
     <button class="btn" onclick="const data=JSON.stringify(state,null,2); const blob=new Blob([data],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='tp-dm-lite-v2_1-session.json'; a.click();">Export (.json)</button>
     <label class="btn"><input type="file" accept="application/json" style="display:none" onchange="const r=new FileReader(); r.onload=e=>{ try{ state=JSON.parse(e.target.result); save(); render(); }catch(err){ alert('Invalid JSON'); } }; r.readAsText(this.files[0]);">Import</label>
-    <button class="btn" onclick="if(confirm('Reset all data?')){ localStorage.removeItem('tp-dm_lite_v2_1'); location.reload(); }">Reset</button>
+    <button class="btn" onclick="if(confirm('Reset all data?')){ localStorage.removeItem('tp_dm_lite_v2_1'); location.reload(); }">Reset</button>
   </div>`;
 }
 
-// Dice calculator view render
+// Dice view render
 function renderDice(){
   ensureBuilder();
   const wrap = document.getElementById('dice-roller'); if(!wrap) return;
