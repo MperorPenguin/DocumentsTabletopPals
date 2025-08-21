@@ -173,3 +173,43 @@ html { font-size: clamp(14px, 1.1vw, 16px) }
   }
 }
 
+/* === Permanent DM Panel icon sizing === */
+:root{
+  --dm-icon: 32px;       /* desktop/tablet default */
+  --dm-icon-sm: 24px;    /* phones */
+}
+
+/* Scope to DM panel only (doesn't affect board tokens) */
+.dm-panel .avatar,
+.dm-panel .token{
+  width: calc(var(--dm-icon) + 8px) !important;
+  height: calc(var(--dm-icon) + 8px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+/* The image itself */
+.dm-panel .avatar img,
+.dm-panel .token img{
+  width: var(--dm-icon) !important;
+  height: var(--dm-icon) !important;
+  object-fit: contain !important;
+  display: block !important;
+}
+
+/* Phone scaling */
+@media (max-width: 768px){
+  .dm-panel .avatar,
+  .dm-panel .token{
+    width: calc(var(--dm-icon-sm) + 8px) !important;
+    height: calc(var(--dm-icon-sm) + 8px) !important;
+  }
+  .dm-panel .avatar img,
+  .dm-panel .token img{
+    width: var(--dm-icon-sm) !important;
+    height: var(--dm-icon-sm) !important;
+  }
+}
