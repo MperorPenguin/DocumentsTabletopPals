@@ -153,3 +153,23 @@ html { font-size: clamp(14px, 1.1vw, 16px) }
   .board::after{ background-size: 40px 40px }
   .token{ width:36px; height:36px }
 }
+
+/* For DM Panel character/enemy icons */
+.dm-panel .token img {
+  width: 32px;       /* same size as board tokens */
+  height: 32px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: var(--gray-900);
+  padding: 2px;
+  box-sizing: border-box;
+}
+
+/* Make them scale down automatically on small devices */
+@media (max-width: 768px) {
+  .dm-panel .token img {
+    width: 24px;
+    height: 24px;
+  }
+}
+
