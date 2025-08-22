@@ -1,11 +1,11 @@
-/* ----------------------- helpers / storage ----------------------- */
+/* =============== helpers / storage / routing =============== */
 function esc(s){return (''+s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
 let __timer=null;
-function save(){clearTimeout(__timer);__timer=setTimeout(()=>{try{localStorage.setItem('tp_dm_lite_v2_1',JSON.stringify(state))}catch(e){}},150)}
+function save(){clearTimeout(__timer);__timer=setTimeout(()=>{try{localStorage.setItem('tp_dm_lite_v2_1',JSON.stringify(state))}catch(e){}},120)}
 function nav(route){state.route=route;save();render();setActive()}
 function setActive(){['home','board','chars','npcs','enemies','dice','notes','save'].forEach(id=>{const b=document.getElementById('nav-'+id);if(b)b.classList.toggle('active',state.route===id)})}
 
-/* ----------------------- data: icons/traits/terrain ----------------------- */
+/* =============== data: icons, traits, terrain =============== */
 const ICONS={Barbarian:'assets/class_icons/Barbarian.svg',Bard:'assets/class_icons/Bard.svg',Cleric:'assets/class_icons/Cleric.svg',Druid:'assets/class_icons/Druid.svg',Fighter:'assets/class_icons/Fighter.svg',Monk:'assets/class_icons/Monk.svg',Paladin:'assets/class_icons/Paladin.svg',Ranger:'assets/class_icons/Ranger.svg',Rogue:'assets/class_icons/Rogue.svg',Sorcerer:'assets/class_icons/Sorcerer.svg',Warlock:'assets/class_icons/Warlock.svg',Wizard:'assets/class_icons/Wizard.svg'};
 const CLASS_COLORS={Barbarian:'#f97316',Bard:'#22c55e',Cleric:'#eab308',Druid:'#84cc16',Fighter:'#60a5fa',Monk:'#14b8a6',Paladin:'#f59e0b',Ranger:'#10b981',Rogue:'#a1a1aa',Sorcerer:'#e879f9',Warlock:'#8b5cf6',Wizard:'#a78bfa'};
 function dataIcon(label,color){const svg=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect rx='8' width='64' height='64' fill='#111623'/><circle cx='32' cy='32' r='22' fill='${color}'/><text x='32' y='40' font-family='Segoe UI,Roboto,Arial' font-size='28' text-anchor='middle' fill='#0f1115' font-weight='700'>${label}</text></svg>`;return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg)}
@@ -60,7 +60,7 @@ let TERRAIN={
     dis:[{armor:'heavy',why:'Slick rocks + heavy armor = slips.'}]}
 };
 
-/* ----------------------- state ----------------------- */
+/* =============== state =============== */
 let state=JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null')||{
   route:'home',terrain:'Forest',
   players:[
@@ -82,7 +82,7 @@ let state=JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null')||{
   diceExpr:'1d20',diceResult:''
 };
 
-/* ----------------------- board sizing & rendering ----------------------- */
+/* =============== board sizing & rendering =============== */
 function recalcBoardSize(){
   const el=document.querySelector('.board'); if(!el) return;
   const containerW = el.clientWidth || el.getBoundingClientRect().width || 800;
@@ -128,7 +128,7 @@ function uploadSceneAndSetBg(files){
   r.readAsDataURL(file);
 }
 
-/* ----------------------- terrain matching ----------------------- */
+/* =============== terrain matching =============== */
 function terrainMatches(obj,q){
   const t=inferTags(obj);
   if(q.armor&&t.armor===q.armor)return true;
@@ -146,7 +146,7 @@ function terrainFocusForEntity(ent){
   return out;
 }
 
-/* ----------------------- DM panel min/max & tabs ----------------------- */
+/* =============== DM panel min/max & tabs =============== */
 function minimizeDmPanel(){state.ui.dmMin=true;save();renderDmPanel();renderDmFab()}
 function restoreDmPanel(){state.ui.dmMin=false;save();renderDmPanel();renderDmFab()}
 function setDmTab(tab){state.ui.dmTab=tab;save();renderDmPanel()}
@@ -161,20 +161,17 @@ function renderDmFab(){
   fab.onclick=restoreDmPanel; fab.classList.remove('hidden');
 }
 
-/* one confined card in the 3‑across grid */
+/* Build one confined character cell (NO chips underneath; only buttons) */
 function buildCell(obj,kind){
   const sel = state.selectedToken && state.selectedToken.id===obj.id && state.selectedToken.kind===kind;
   const onSel = `state.selectedToken={id:'${obj.id}',kind:'${kind}'}; save(); renderDmPanel(); selectTokenDom('${kind}','${obj.id}')`;
 
   const F=terrainFocusForEntity(obj);
   const mkLabel=(a,cls)=>a.want? (cls==='adv'?`Favor: ${a.want}`:`Weak: ${a.want}`) : a.mode?`Mode: ${a.mode}` : a.tag?`Tag: ${a.tag}` : a.armor?`Armor: ${a.armor}` : (cls==='adv'?'Advantage':'Disadvantage');
-  const chip=(a,cls)=>{const why=esc(a.why|| (cls==='adv'?'Advantage in this terrain.':'Disadvantage in this terrain.')); const label=mkLabel(a,cls); return `<span class="dm-chip ${cls}" title="${why}" onclick="event.stopPropagation(); state.ui.noteText='${why}'; save(); renderDmPanel();">${label}</span>`};
-  const advChips=F.adv.length?F.adv.map(a=>chip(a,'adv')).join(' '):`<span class="dm-chip adv" style="opacity:.65;cursor:default">No specific advantage</span>`;
-  const disChips=F.dis.length?F.dis.map(a=>chip(a,'dis')).join(' '):`<span class="dm-chip dis" style="opacity:.65;cursor:default">No specific disadvantage</span>`;
-
-  const summarize=(arr,label)=>!arr.length?`No specific ${label} for ${esc(obj.name||obj.role||'this entity')} in ${state.terrain}.`:
-    `${esc(obj.name||obj.role||'This entity')} — ${label} in ${state.terrain}:\n`+arr.map(a=>`• ${mkLabel(a,label==='Advantages'?'adv':'dis')} — ${a.why||''}`).join('\n');
-  const advSum=summarize(F.adv,'Advantages'), disSum=summarize(F.dis,'Disadvantages');
+  const advSum = F.adv.length? `${esc(obj.name||obj.role||'This entity')} — Advantages in ${state.terrain}:<br>`+F.adv.map(a=>`• ${esc(mkLabel(a,'adv'))} — ${esc(a.why||'')}`).join('<br>')
+                             : `No specific Advantages for ${esc(obj.name||obj.role||'this entity')} in ${state.terrain}.`;
+  const disSum = F.dis.length? `${esc(obj.name||obj.role||'This entity')} — Disadvantages in ${state.terrain}:<br>`+F.dis.map(a=>`• ${esc(mkLabel(a,'dis'))} — ${esc(a.why||'')}`).join('<br>')
+                             : `No specific Disadvantages for ${esc(obj.name||obj.role||'this entity')} in ${state.terrain}.`;
 
   const sub=kind==='pc'?`Lvl ${obj.level||1}`:kind==='enemy'?`AC ${obj.ac??'—'}`:(obj.role||'NPC');
 
@@ -191,22 +188,14 @@ function buildCell(obj,kind){
     </div>
 
     <div class="dm-adv">
-      <button class="dm-title-btn adv" onclick="event.stopPropagation(); state.ui.noteText=\`${esc(advSum)}\`; save(); renderDmPanel();">
-        <span class="dot"></span> Advantages
-      </button>
-      <div class="dm-chips">${advChips}</div>
+      <button class="dm-title-btn adv" onclick="event.stopPropagation(); state.ui.noteText=\`${advSum}\`; save(); renderDmPanel();"><span class="dot"></span> Advantages</button>
     </div>
-
     <div class="dm-dis">
-      <button class="dm-title-btn dis" onclick="event.stopPropagation(); state.ui.noteText=\`${esc(disSum)}\`; save(); renderDmPanel();">
-        <span class="dot"></span> Disadvantages
-      </button>
-      <div class="dm-chips">${disChips}</div>
+      <button class="dm-title-btn dis" onclick="event.stopPropagation(); state.ui.noteText=\`${disSum}\`; save(); renderDmPanel();"><span class="dot"></span> Disadvantages</button>
     </div>
   </div>`;
 }
 
-/* render panel */
 function renderDmPanel(){
   const hud=document.getElementById('dm-panel'); if(!hud) return;
   if(state.route!=='board'){hud.classList.add('hidden');hud.innerHTML='';renderDmFab();return}
@@ -214,7 +203,7 @@ function renderDmPanel(){
   renderDmFab(); hud.classList.remove('hidden');
 
   const tips=(TERRAIN[state.terrain]?.tips||[]);
-  const tipChips=tips.map(t=>`<span class="dm-chip tip" title="${esc(t)}" onclick="state.ui.noteText='${esc(t)}'; save(); renderDmPanel();">${esc(t)}</span>`).join(' ');
+  const tipChips=tips.map(t=>`<span class="btn tiny" style="border-radius:999px">${esc(t)}</span>`).join(' ');
   const tab=state.ui.dmTab||'pc';
   const pcs=state.players.map(p=>buildCell(p,'pc')).join('');
   const npcs=state.npcs.map(n=>buildCell(n,'npc')).join('');
@@ -235,7 +224,7 @@ function renderDmPanel(){
         ${Object.keys(TERRAIN).map(t=>`<option ${state.terrain===t?'selected':''}>${t}</option>`).join('')}
       </select>
       ${tipChips?`<div class="terr-row">${tipChips}</div>`:''}
-      ${state.ui.noteText?`<div class="dm-detail">${esc(state.ui.noteText).replace(/\n/g,'<br/>')}</div>`:''}
+      ${state.ui.noteText?`<div class="dm-detail">${state.ui.noteText}</div>`:''}
     </div>
 
     <div class="dm-section">
@@ -254,7 +243,7 @@ function renderDmPanel(){
   `;
 }
 
-/* ----------------------- views & router ----------------------- */
+/* =============== Views =============== */
 function Home(){return `<h1 style="margin:16px 0 6px 0">Welcome back, DM!</h1>
   <div class="small" style="margin-bottom:10px">Board + floating DM HUD • Terrain intel • Tabs & grid cards.</div>
   <div class="grid-3">
@@ -266,7 +255,7 @@ function Home(){return `<h1 style="margin:16px 0 6px 0">Welcome back, DM!</h1>
       {t:'Dice',c:'var(--purple)',d:'Visual calculator',a:"nav('dice')"},
       {t:'Notes',c:'var(--blue)',d:'Autosave notes',a:"nav('notes')"},
       {t:'Save',c:'var(--yellow)',d:'Import/Export JSON',a:"nav('save')"},
-    ].map(t=>`<div class="panel tile" onclick="${t.a}"><div style="font-weight:600">${t.t} <span class="chip" style="background:${t.c}">Open</span></div><div class="small" style="margin-top:6px">${t.d}</div></div>`).join('')}
+    ].map(t=>`<div class="panel tile" onclick="${t.a}"><div style="font-weight:600">${t.t} <span class="small" style="margin-left:6px;color:#ffe">${t.d}</span></div></div>`).join('')}
   </div>`}
 
 function Board(){return `<div class="grid-2"><div class="panel">
@@ -285,24 +274,35 @@ function Characters(){return `<div class="panel"><h3>Characters</h3><div class="
 function NPCs(){return `<div class="panel"><h3>NPCs</h3><div class="small">List view.</div></div>`}
 function Enemies(){return `<div class="panel"><h3>Enemies</h3><div class="small">List view.</div></div>`}
 
-/* Dice view (calculator style) */
+/* =============== Dice (with icons & animation) =============== */
+function dieSvg(sides){
+  // simple polygons styled via currentColor
+  const shapes={
+    4:"M32 6 L58 54 L6 54 Z",
+    6:"M16 10 H48 L58 32 L48 54 H16 L6 32 Z",
+    8:"M32 6 L54 20 L54 44 L32 58 L10 44 L10 20 Z",
+    10:"M32 6 L52 16 L58 36 L44 58 H20 L6 36 L12 16 Z",
+    12:"M32 6 L52 14 L58 32 L52 50 L32 58 L12 50 L6 32 L12 14 Z",
+    20:"M32 4 L50 10 L60 26 L56 46 L40 60 L24 60 L8 46 L4 26 L14 10 Z"
+  };
+  const d=shapes[sides]||shapes[6];
+  return `<svg class="die-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3"><path d="${d}" fill="currentColor" stroke="none" /></svg>`;
+}
+function diceButtons(){
+  const list=[4,6,8,10,12,20];
+  return list.map(n=>`<button class="die-btn" onclick="addDie('d${n}')">${dieSvg(n)} d${n}</button>`).join('');
+}
 function Dice(){
   return `
   <div class="panel">
     <h2>Dice Roller</h2>
-    <div class="small" style="margin-top:6px">Tap dice to build an expression (e.g., 2d6+3), then Roll.</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
-      ${['d4','d6','d8','d10','d12','d20','d100'].map(s=>`<button class="btn" onclick="addDie('${s}')">${s}</button>`).join('')}
-      <button class="btn" onclick="addPlus()">+</button>
-      <button class="btn" onclick="clearDice()">Clear</button>
-    </div>
+    <div class="small" style="margin-top:6px">Tap dice to build an expression (e.g., 2d6+1d8+3), then Roll.</div>
+    <div class="dice-row">${diceButtons()}<button class="btn" onclick="addPlus()">+</button><button class="btn" onclick="clearDice()">Clear</button></div>
     <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
       <input id="dice-input" style="flex:1" placeholder="2d6+3" value="${esc(state.diceExpr||'1d20')}">
-      <button class="btn" onclick="rollDice()">Roll</button>
+      <button id="roll-btn" class="btn" onclick="rollDice()">Roll</button>
     </div>
-    <div id="dice-output" class="panel" style="margin-top:10px;min-height:60px">
-      ${state.diceResult?state.diceResult:''}
-    </div>
+    <div id="dice-output" class="panel roll-output" style="margin-top:10px"></div>
   </div>`;
 }
 function addDie(s){const el=document.getElementById('dice-input'); if(!el) return; el.value=(el.value.trim()?el.value+'+':'')+'1'+s; state.diceExpr=el.value; save();}
@@ -310,20 +310,46 @@ function addPlus(){const el=document.getElementById('dice-input'); if(!el) retur
 function clearDice(){const el=document.getElementById('dice-input'); if(!el) return; el.value=''; state.diceExpr=''; state.diceResult=''; save(); render(); }
 function rollDice(){
   const el=document.getElementById('dice-input'); if(!el) return;
-  const expr=el.value.replace(/\s+/g,''); if(!expr){ state.diceResult='<div class="small">Enter an expression like <b>2d6+3</b>.</div>'; save(); render(); return; }
-  let total=0, parts=[]; const terms=expr.split(/(?=[+-])/g);
+  const btn=document.getElementById('roll-btn');
+  const out=document.getElementById('dice-output');
+  const expr=el.value.replace(/\s+/g,''); if(!expr){ out.innerHTML='<div class="small">Enter an expression like <b>2d6+3</b>.</div>'; return; }
+
+  // tiny shake animation on button
+  btn.classList.add('shake'); setTimeout(()=>btn.classList.remove('shake'),500);
+
+  let total=0, parts=[], visuals=[];
+  const terms=expr.split(/(?=[+-])/g);
   for(const t of terms){
     const m=t.match(/^([+-]?)(?:(\d*)d(\d+)|(\d+))$/i);
-    if(!m){ state.diceResult='<div class="small">Invalid term: '+esc(t)+'</div>'; save(); render(); return; }
+    if(!m){ out.innerHTML='<div class="small">Invalid term: '+esc(t)+'</div>'; return; }
     const sign = m[1]==='-'?-1:1;
-    if(m[3]){ const n=Number(m[2]||1), s=Number(m[3]); let rolls=[]; for(let i=0;i<n;i++){ rolls.push(1+Math.floor(Math.random()*s)); }
-      const sum=rolls.reduce((a,b)=>a+b,0)*sign; total+=sum; parts.push(`${sign<0?'-':''}${n}d${s} [${rolls.join(', ')}] = ${sum}`); }
-    else { const val=Number(m[4])*sign; total+=val; parts.push(`${sign<0?'-':''}${Math.abs(val)}`); }
+    if(m[3]){ 
+      const n=Number(m[2]||1), s=Number(m[3]); 
+      let rolls=[]; 
+      for(let i=0;i<n;i++){ rolls.push(1+Math.floor(Math.random()*s)); }
+      const sum=rolls.reduce((a,b)=>a+b,0)*sign; total+=sum; 
+      parts.push(`${sign<0?'-':''}${n}d${s} [${rolls.join(', ')}] = ${sum}`);
+      visuals.push({s,rolls});
+    }else{ 
+      const val=Number(m[4])*sign; total+=val; parts.push(`${sign<0?'-':''}${Math.abs(val)}`); 
+    }
   }
-  state.diceResult = `<div style="font-weight:700;font-size:18px;margin-bottom:6px">Total: ${total}</div><div class="small">${parts.join(' &nbsp;•&nbsp; ')}</div>`;
-  state.diceExpr = expr; save(); render();
+  // graphic reveal
+  const diceHtml = visuals.map(v=>{
+    const poly = dieSvg(v.s).replace('class="die-icon"','class="die-icon"');
+    const rollStr = v.rolls.join(', ');
+    return `<div style="display:flex;align-items:center;gap:10px;margin:4px 0">${poly}<div class="small">d${v.s} → [${rollStr}]</div></div>`
+  }).join('');
+
+  out.innerHTML = `<div class="roll-card">
+    <div class="roll-total">Total: ${total}</div>
+    ${diceHtml}
+    <div class="roll-breakdown" style="margin-top:6px">${parts.join(' &nbsp;•&nbsp; ')}</div>
+  </div>`;
+  state.diceExpr=expr; state.diceResult=out.innerHTML; save();
 }
 
+/* =============== Misc views =============== */
 function Notes(){return `<div class="panel"><h2>Notes</h2><textarea style="width:100%;height:300px" oninput="state.notes=this.value; save();">${esc(state.notes||'')}</textarea></div>`}
 function SavePanel(){return `<div class="panel"><h2>Save / Export</h2>
   <button class="btn" onclick="const data=JSON.stringify(state,null,2); const blob=new Blob([data],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='tp-dm_lite_v2_1-session.json'; a.click();">Export (.json)</button>
@@ -341,6 +367,6 @@ function render(){
   renderDmPanel(); renderDmFab(); setActive();
 }
 
-/* ----------------------- init ----------------------- */
+/* init */
 render();
 window.addEventListener('resize',()=>{if(state.route==='board'){recalcBoardSize();renderBoard()}})
