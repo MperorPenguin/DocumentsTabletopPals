@@ -6,9 +6,12 @@
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+.hidden{display:none}
 
+/* Headings / helpers */
 h1,h2,h3{margin:0 0 8px}
 .small{font-size:12px;color:var(--muted)}
+.chip{display:inline-block; padding:3px 8px; border-radius:999px; font-size:11px; color:#0f1115; background:#cbd5e1}
 
 /* Top bar */
 .top{position:sticky;top:0;z-index:50;backdrop-filter:blur(8px);background:#0f1115cc;border-bottom:1px solid var(--border)}
@@ -17,7 +20,7 @@ h1,h2,h3{margin:0 0 8px}
 .mark{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--purple),var(--yellow))}
 .nav{ display:flex; gap:8px; overflow:auto; -ms-overflow-style:none; scrollbar-width:none; }
 .nav::-webkit-scrollbar{ display:none; }
-.nav button{background:none;border:1px solid transparent;color:#c8cfdd;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all .15s}
+.nav button{appearance:none;background:none;border:1px solid transparent;color:#c8cfdd;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all .15s}
 .nav button:hover{background:var(--hover);color:#fff;border-color:var(--accent)}
 .nav button.active{background:color-mix(in srgb, var(--accent) 20%, transparent);border-color:var(--accent);color:#fff;box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset}
 
@@ -84,7 +87,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .dm-panel h3{margin:0 0 8px;font-size:14px;letter-spacing:.2px;border-bottom:1px solid var(--border);padding-bottom:6px}
 .dm-section{margin-top:10px;background:#0f1115;border:1px solid var(--border);border-radius:12px;padding:10px}
 
-/* Panel-wide button reset so no white OS buttons */
+/* Panel-wide button reset */
 .dm-panel button{appearance:none;border-radius:10px;border:1px solid var(--border);background:var(--hover);color:#e6e9f2;cursor:pointer;transition:.15s}
 .dm-panel button:hover{border-color:var(--accent);filter:brightness(1.06)}
 .dm-panel .btn.tiny{padding:4px 8px;font-size:11px}
@@ -103,7 +106,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .dm-sec-head.enemy{ background:color-mix(in srgb, var(--red)  12%, transparent);  border-color: color-mix(in srgb, var(--red)  45%, #000) }
 
 /* 3‑across grid, equal height */
-.dm-grid3{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; align-items:stretch; }
+.dm-grid3{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; align-items:stretch; grid-auto-rows:1fr; }
 
 /* === Confined character box === */
 .dm-character-box{
@@ -111,6 +114,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   background:#1e293b;border:1px solid #233044;border-radius:14px;padding:10px;
   box-shadow:0 2px 8px rgba(0,0,0,.35);
   transition:.15s border-color,.15s transform,.15s box-shadow;
+  min-width:0; overflow:hidden;
 }
 .dm-character-box:hover{
   border-color:var(--accent);
@@ -123,27 +127,28 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   background:#0f1422;border:1px solid var(--border);border-radius:10px;padding:10px 8px;
   display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;
   transition:transform .12s, box-shadow .15s, border-color .15s; cursor:pointer;
+  min-width:0;
 }
 .dm-card.selected{ border-color:var(--accent); background: color-mix(in srgb, var(--accent) 14%, #0f1422); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset; }
-.dm-card .name{ font-weight:800; font-size:13px; line-height:1.2; letter-spacing:.15px }
-.dm-card .avatar{ width:54px; height:54px; border-radius:10px; border:1px solid var(--border); background:#0b1020; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-.dm-card .avatar img{ width:44px; height:44px; object-fit:contain; display:block }
-.badges{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center }
-.badge{ font-size:11px; padding:4px 8px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#dbe1ee }
+.dm-card .name{ font-weight:800; font-size:12.5px; line-height:1.2; letter-spacing:.15px }
+.dm-card .avatar{ width:52px; height:52px; border-radius:10px; border:1px solid var(--border); background:#0b1020; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.dm-card .avatar img{ width:40px; height:40px; object-fit:contain; display:block }
+.badges{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center }
+.badge{ font-size:10.5px; padding:3px 8px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#dbe1ee }
 
 /* A/D sections inside the box */
-.dm-adv, .dm-dis{ background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:8px; }
+.dm-adv, .dm-dis{ background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:8px; overflow:hidden; }
 
-/* Title buttons (force green/red, never white) */
-.dm-title-btn{ appearance:none; display:inline-flex; align-items:center; gap:8px; border-radius:999px; border:1px solid transparent; padding:6px 10px; font-size:12px; font-weight:800; cursor:pointer; user-select:none; transition:.15s; }
+/* Title buttons (force green/red, full width) */
+.dm-title-btn{ appearance:none; display:inline-flex; align-items:center; gap:8px; border-radius:999px; border:1px solid transparent; padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer; user-select:none; transition:.15s; width:100%; justify-content:center; text-align:center; white-space:normal; line-height:1.2 }
 .dm-title-btn .dot{ width:8px; height:8px; border-radius:50%; background:#fff2 }
 .dm-title-btn:hover{ filter:brightness(1.05); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
 .dm-title-btn.adv{ background:#065f46; color:#d1fae5; border-color:#0b7a5b }
 .dm-title-btn.dis{ background:#7f1d1d; color:#fee2e2; border-color:#9b2222 }
 
-/* Chips */
-.dm-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px }
-.dm-chip{ font-size:11px; padding:5px 10px; border-radius:999px; border:1px solid var(--border); cursor:pointer; user-select:none; transition:.15s; }
+/* Chips: wrap, center, no overflow */
+.dm-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px }
+.dm-chip{ display:inline-flex; align-items:center; justify-content:center; padding:8px 12px; border-radius:999px; white-space:normal; line-height:1.2; word-break:break-word; max-width:100%; border:1px solid var(--border); cursor:pointer; user-select:none; transition:.15s; }
 .dm-chip.adv{ background:#065f46; color:#d1fae5; border-color:#0b7a5b }
 .dm-chip.dis{ background:#7f1d1d; color:#fee2e2; border-color:#9b2222 }
 .dm-chip.tip{ background:#334155; color:#e2e8f0; border-color:#475569 }
@@ -171,73 +176,3 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   .dm-panel{ left:12px; right:12px; bottom:12px; width:auto; }
   .dm-grid3{ grid-template-columns: repeat(3, 1fr); }
 }
-/* --- DM Panel tidy + scaling --- */
-
-/* keep all three columns same height and allow inner content to shrink */
-.dm-grid3{ grid-auto-rows: 1fr; }
-
-/* ensure nothing bleeds out of its box */
-.dm-character-box{ min-width:0; overflow:hidden; }
-
-/* inner sections also respect the box width */
-.dm-card, .dm-adv, .dm-dis{ min-width:0; }
-
-/* slightly smaller type + tighter badges so everything fits neatly */
-.dm-card .name{ font-size:12.5px; }
-.badges{ gap:6px; }
-.badge{ font-size:10.5px; padding:3px 8px; }
-.dm-card .avatar{ width:52px; height:52px; }
-.dm-card .avatar img{ width:40px; height:40px; }
-
-/* make the green/red title buttons fill the row and center text */
-.dm-title-btn{
-  width:100%;
-  justify-content:center;
-  text-align:center;
-  margin:2px 0 6px;
-}
-
-/* chips wrap gracefully and never overflow their box */
-.dm-chips{ gap:6px; margin-top:6px; }
-.dm-chip{
-  max-width:100%;
-  white-space:nowrap;
-  text-overflow:ellipsis;
-  overflow:hidden;
-  display:inline-flex; align-items:center;
-}
-
-/* keep A/D containers compact and clipped */
-.dm-adv, .dm-dis{ padding:8px; overflow:hidden; }
-
-/* mobile panel: a hair tighter */
-@media (max-width:480px){
-  .dm-card .name{ font-size:12px; }
-  .badge{ font-size:10px; padding:3px 7px; }
-}
-/* --- Chips & buttons: grow to fit text, no clipping/ellipsis --- */
-.dm-title-btn{
-  width:100%;
-  justify-content:center;
-  text-align:center;
-  white-space:normal;      /* allow wrapping */
-  line-height:1.2;
-  padding:8px 12px;
-}
-
-.dm-chips{ gap:8px; margin-top:8px; }
-.dm-chip{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:8px 12px;
-  border-radius:999px;
-  white-space:normal;      /* allow wrapping to multiple lines */
-  line-height:1.2;
-  word-break:break-word;   /* long words can wrap */
-  max-width:100%;          /* never exceed the column */
-}
-
-/* keep each character card boxed & self-contained */
-.dm-character-box{ min-width:0; overflow:hidden; }
-.dm-card, .dm-adv, .dm-dis{ min-width:0; }

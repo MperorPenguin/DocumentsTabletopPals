@@ -3,7 +3,7 @@ function esc(s){return (''+s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'
 let __timer=null;
 function save(){clearTimeout(__timer);__timer=setTimeout(()=>{try{localStorage.setItem('tp_dm_lite_v2_1',JSON.stringify(state))}catch(e){}},150)}
 function nav(route){state.route=route;save();render();setActive()}
-function setActive(){['home','board','chars','npcs','enemies','dice','dialogue','notes','save'].forEach(id=>{const b=document.getElementById('nav-'+id);if(b)b.classList.toggle('active',state.route===id)})}
+function setActive(){['home','board','chars','npcs','enemies','dice','notes','save'].forEach(id=>{const b=document.getElementById('nav-'+id);if(b)b.classList.toggle('active',state.route===id)})}
 
 /* ----------------------- data: icons/traits/terrain ----------------------- */
 const ICONS={Barbarian:'assets/class_icons/Barbarian.svg',Bard:'assets/class_icons/Bard.svg',Cleric:'assets/class_icons/Cleric.svg',Druid:'assets/class_icons/Druid.svg',Fighter:'assets/class_icons/Fighter.svg',Monk:'assets/class_icons/Monk.svg',Paladin:'assets/class_icons/Paladin.svg',Ranger:'assets/class_icons/Ranger.svg',Rogue:'assets/class_icons/Rogue.svg',Sorcerer:'assets/class_icons/Sorcerer.svg',Warlock:'assets/class_icons/Warlock.svg',Wizard:'assets/class_icons/Wizard.svg'};
@@ -11,9 +11,54 @@ const CLASS_COLORS={Barbarian:'#f97316',Bard:'#22c55e',Cleric:'#eab308',Druid:'#
 function dataIcon(label,color){const svg=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect rx='8' width='64' height='64' fill='#111623'/><circle cx='32' cy='32' r='22' fill='${color}'/><text x='32' y='40' font-family='Segoe UI,Roboto,Arial' font-size='28' text-anchor='middle' fill='#0f1115' font-weight='700'>${label}</text></svg>`;return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg)}
 function classFallback(cls){return dataIcon((cls?.[0]||'?').toUpperCase(),CLASS_COLORS[cls]||'#94a3b8')}
 function iconSrc(o){return o.avatar||(o.cls&&ICONS[o.cls])||classFallback(o.cls)}
-const CLASS_TRAITS={Rogue:{armor:'light',wants:['stealth','ranged'],modes:['walk']},Ranger:{armor:'medium',wants:['ranged','stealth'],modes:['walk']},Fighter:{armor:'heavy',wants:['melee'],modes:['walk']},Barbarian:{armor:'medium',wants:['melee'],modes:['walk']},Monk:{armor:'none',wants:['melee'],modes:['walk']},Wizard:{armor:'none',wants:['ranged'],modes:['walk']},Sorcerer:{armor:'none',wants:['ranged'],modes:['walk']},Warlock:{armor:'light',wants:['ranged'],modes:['walk']},Cleric:{armor:'medium',wants:['melee'],modes:['walk']},Paladin:{armor:'heavy',wants:['melee'],modes:['walk']},Druid:{armor:'light',wants:['stealth'],modes:['walk','swim']}};
-function inferTags(o){const base=CLASS_TRAITS[o.cls]||{};const t={...base,...(o.tags||{})};t.wants=[...(new Set([...(base.wants||[]),...((o.tags&&o.tags.wants)||[])]))];t.modes=[...(new Set([...(base.modes||[]),...((o.tags&&o.tags.modes)||[])]))];return t}
-let TERRAIN={Forest:{tips:['Undergrowth (difficult)','Cover available'],adv:[{want:'stealth',why:'Brush and shadows aid stealth.'},{tag:'beast',why:'Native beasts thrive here.'}],dis:[{armor:'heavy',why:'Heavy armor snags on undergrowth.'}]},Swamp:{tips:['Mud & water (difficult)'],adv:[{mode:'swim',why:'Swimming speed bypasses boggy ground.'}],dis:[{armor:'heavy',why:'Heavy armor sinks and clogs.'},{want:'stealth',why:'Ripples and mud prints betray you.'}]},Desert:{tips:['Heat & mirage','Open sightlines'],adv:[{want:'ranged',why:'Open terrain favors ranged combatants.'}],dis:[{want:'stealth',why:'Few places to hide in open sands.'},{armor:'heavy',why:'Heat drains stamina; heavy armor is punishing.'}]},Mountain:{tips:['Steep slopes','High winds'],adv:[{mode:'fly',why:'Flight bypasses treacherous climbs.'}],dis:[{armor:'heavy',why:'Heavy armor hinders climbing and balance.'}]},Urban:{tips:['Tight alleys','Guards nearby'],adv:[{want:'stealth',why:'Corners/crowds create hiding spots.'}],dis:[]},Dungeon:{tips:['Tight corridors','Darkness common'],adv:[{want:'darkvision',why:'Darkvision is valuable here.'}],dis:[{armor:'heavy',why:'Heavy armor is clumsy in tight spaces.'}]},Arctic:{tips:['Ice & snow','Extreme cold'],adv:[{mode:'walk',why:'Sure‑footed creatures handle ice.'}],dis:[{armor:'heavy',why:'Cold seeps through metal; movement suffers.'}]},Coastal:{tips:['Slippery rocks'],adv:[{mode:'swim',why:'Aquatic movement is a big edge.'}],dis:[{armor:'heavy',why:'Slick rocks + heavy armor = slips.'}]}};
+
+const CLASS_TRAITS={
+  Rogue:{armor:'light',wants:['stealth','ranged'],modes:['walk']},
+  Ranger:{armor:'medium',wants:['ranged','stealth'],modes:['walk']},
+  Fighter:{armor:'heavy',wants:['melee'],modes:['walk']},
+  Barbarian:{armor:'medium',wants:['melee'],modes:['walk']},
+  Monk:{armor:'none',wants:['melee'],modes:['walk']},
+  Wizard:{armor:'none',wants:['ranged'],modes:['walk']},
+  Sorcerer:{armor:'none',wants:['ranged'],modes:['walk']},
+  Warlock:{armor:'light',wants:['ranged'],modes:['walk']},
+  Cleric:{armor:'medium',wants:['melee'],modes:['walk']},
+  Paladin:{armor:'heavy',wants:['melee'],modes:['walk']},
+  Druid:{armor:'light',wants:['stealth'],modes:['walk','swim']}
+};
+function inferTags(o){
+  const base=CLASS_TRAITS[o.cls]||{};
+  const t={...base,...(o.tags||{})};
+  t.wants=[...(new Set([...(base.wants||[]),...((o.tags&&o.tags.wants)||[])]))];
+  t.modes=[...(new Set([...(base.modes||[]),...((o.tags&&o.tags.modes)||[])]))];
+  return t;
+}
+
+let TERRAIN={
+  Forest:{tips:['Undergrowth (difficult)','Cover available'],
+    adv:[{want:'stealth',why:'Brush and shadows aid stealth.'},{tag:'beast',why:'Native beasts thrive here.'}],
+    dis:[{armor:'heavy',why:'Heavy armor snags on undergrowth.'}]},
+  Swamp:{tips:['Mud & water (difficult)'],
+    adv:[{mode:'swim',why:'Swimming speed bypasses boggy ground.'}],
+    dis:[{armor:'heavy',why:'Heavy armor sinks and clogs.'},{want:'stealth',why:'Ripples and mud prints betray you.'}]},
+  Desert:{tips:['Heat & mirage','Open sightlines'],
+    adv:[{want:'ranged',why:'Open terrain favors ranged combatants.'}],
+    dis:[{want:'stealth',why:'Few places to hide in open sands.'},{armor:'heavy',why:'Heat drains stamina; heavy armor is punishing.'}]},
+  Mountain:{tips:['Steep slopes','High winds'],
+    adv:[{mode:'fly',why:'Flight bypasses treacherous climbs.'}],
+    dis:[{armor:'heavy',why:'Heavy armor hinders climbing and balance.'}]},
+  Urban:{tips:['Tight alleys','Guards nearby'],
+    adv:[{want:'stealth',why:'Corners/crowds create hiding spots.'}],
+    dis:[]},
+  Dungeon:{tips:['Tight corridors','Darkness common'],
+    adv:[{want:'darkvision',why:'Darkvision is valuable here.'}],
+    dis:[{armor:'heavy',why:'Heavy armor is clumsy in tight spaces.'}]},
+  Arctic:{tips:['Ice & snow','Extreme cold'],
+    adv:[{mode:'walk',why:'Sure‑footed creatures handle ice.'}],
+    dis:[{armor:'heavy',why:'Cold seeps through metal; movement suffers.'}]},
+  Coastal:{tips:['Slippery rocks'],
+    adv:[{mode:'swim',why:'Aquatic movement is a big edge.'}],
+    dis:[{armor:'heavy',why:'Slick rocks + heavy armor = slips.'}]}
+};
 
 /* ----------------------- state ----------------------- */
 let state=JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null')||{
@@ -33,7 +78,8 @@ let state=JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null')||{
   ],
   map:{w:24,h:18,size:48,bg:null},
   selectedToken:null,
-  ui:{dmMin:false,dmTab:'pc',noteText:''}
+  ui:{dmMin:false,dmTab:'pc',noteText:''},
+  diceExpr:'1d20',diceResult:''
 };
 
 /* ----------------------- board sizing & rendering ----------------------- */
@@ -83,8 +129,22 @@ function uploadSceneAndSetBg(files){
 }
 
 /* ----------------------- terrain matching ----------------------- */
-function terrainMatches(obj,q){const t=inferTags(obj); if(q.armor&&t.armor===q.armor)return true; if(q.mode&&(t.modes||[]).includes(q.mode))return true; if(q.want&&(t.wants||[]).includes(q.want))return true; if(q.tag&&(obj.type===q.tag||t.type===q.tag))return true; if(q.cls&&obj.cls===q.cls)return true; return false}
-function terrainFocusForEntity(ent){const cfg=TERRAIN[state.terrain]||{tips:[],adv:[],dis:[]};const out={adv:[],dis:[]}; if(!ent)return out; (cfg.adv||[]).forEach(a=>{if(terrainMatches(ent,a))out.adv.push(a)}); (cfg.dis||[]).forEach(a=>{if(terrainMatches(ent,a))out.dis.push(a)}); return out}
+function terrainMatches(obj,q){
+  const t=inferTags(obj);
+  if(q.armor&&t.armor===q.armor)return true;
+  if(q.mode&&(t.modes||[]).includes(q.mode))return true;
+  if(q.want&&(t.wants||[]).includes(q.want))return true;
+  if(q.tag&&(obj.type===q.tag||t.type===q.tag))return true;
+  if(q.cls&&obj.cls===q.cls)return true;
+  return false;
+}
+function terrainFocusForEntity(ent){
+  const cfg=TERRAIN[state.terrain]||{tips:[],adv:[],dis:[]};
+  const out={adv:[],dis:[]}; if(!ent)return out;
+  (cfg.adv||[]).forEach(a=>{if(terrainMatches(ent,a))out.adv.push(a)});
+  (cfg.dis||[]).forEach(a=>{if(terrainMatches(ent,a))out.dis.push(a)});
+  return out;
+}
 
 /* ----------------------- DM panel min/max & tabs ----------------------- */
 function minimizeDmPanel(){state.ui.dmMin=true;save();renderDmPanel();renderDmFab()}
@@ -101,7 +161,7 @@ function renderDmFab(){
   fab.onclick=restoreDmPanel; fab.classList.remove('hidden');
 }
 
-/* one confined card */
+/* one confined card in the 3‑across grid */
 function buildCell(obj,kind){
   const sel = state.selectedToken && state.selectedToken.id===obj.id && state.selectedToken.kind===kind;
   const onSel = `state.selectedToken={id:'${obj.id}',kind:'${kind}'}; save(); renderDmPanel(); selectTokenDom('${kind}','${obj.id}')`;
@@ -122,7 +182,7 @@ function buildCell(obj,kind){
   <div class="dm-character-box">
     <div class="dm-card ${sel?'selected':''}" onclick="(function(){ ${onSel} })()">
       <div class="name">${esc(obj.name||obj.role||'Unknown')}</div>
-      <div class="avatar"><img width="44" height="44" src="${iconSrc(obj)}" onerror="this.onerror=null; this.src='${classFallback(obj.cls)}'"/></div>
+      <div class="avatar"><img width="40" height="40" src="${iconSrc(obj)}" onerror="this.onerror=null; this.src='${classFallback(obj.cls)}'"/></div>
       <div class="badges">
         <span class="badge">${sub}</span>
         <span class="badge">HP ${(obj.hp?.cur??'—')}/${(obj.hp?.max??'—')}</span>
@@ -208,6 +268,7 @@ function Home(){return `<h1 style="margin:16px 0 6px 0">Welcome back, DM!</h1>
       {t:'Save',c:'var(--yellow)',d:'Import/Export JSON',a:"nav('save')"},
     ].map(t=>`<div class="panel tile" onclick="${t.a}"><div style="font-weight:600">${t.t} <span class="chip" style="background:${t.c}">Open</span></div><div class="small" style="margin-top:6px">${t.d}</div></div>`).join('')}
   </div>`}
+
 function Board(){return `<div class="grid-2"><div class="panel">
   <div class="row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
     <h3>Scene Board</h3>
@@ -219,43 +280,19 @@ function Board(){return `<div class="grid-2"><div class="panel">
   <div class="board" style="margin-top:10px" onclick="boardClick(event)"></div>
   <div class="small" style="margin-top:8px">Click a token to select it, then click a grid cell to move.</div>
 </div></div>`}
+
 function Characters(){return `<div class="panel"><h3>Characters</h3><div class="small">Roster view.</div></div>`}
 function NPCs(){return `<div class="panel"><h3>NPCs</h3><div class="small">List view.</div></div>`}
 function Enemies(){return `<div class="panel"><h3>Enemies</h3><div class="small">List view.</div></div>`}
-function Notes(){return `<div class="panel"><h2>Notes</h2><textarea style="width:100%;height:300px" oninput="state.notes=this.value; save();">${esc(state.notes||'')}</textarea></div>`}
-function SavePanel(){return `<div class="panel"><h2>Save / Export</h2>
-  <button class="btn" onclick="const data=JSON.stringify(state,null,2); const blob=new Blob([data],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='tp-dm_lite_v2_1-session.json'; a.click();">Export (.json)</button>
-  <label class="btn"><input type="file" accept="application/json" style="display:none" onchange="const r=new FileReader(); r.onload=e=>{try{state=JSON.parse(e.target.result); save(); render()}catch{alert('Invalid JSON')}}; r.readAsText(this.files[0])">Import</label>
-  <button class="btn" onclick="if(confirm('Reset all data?')){localStorage.removeItem('tp_dm_lite_v2_1'); location.reload();}">Reset</button>
-</div>`}
-function routeView(){
-  switch(state.route){
-    case 'home':   return Home();
-    case 'board':  return Board();
-    case 'chars':  return Characters();
-    case 'npcs':   return NPCs();
-    case 'enemies':return Enemies();
-    case 'dice':   return Dice();        // <-- make sure this line exists
-    case 'notes':  return Notes();
-    case 'save':   return SavePanel();
-    default:       return Home();
-  }
-}
-{switch(state.route){case'home':return Home();case'board':return Board();case'chars':return Characters();case'npcs':return NPCs();case'enemies':return Enemies();case'notes':return Notes();case'save':return SavePanel();default:return Home()}}
-function render(){
-  document.getElementById('app').innerHTML=routeView();
-  if(state.route==='board'){const b=document.querySelector('.board'); if(b){renderBoard(); b.addEventListener('click',boardClick)}}
-  renderDmPanel(); renderDmFab(); setActive();
-}
+
+/* Dice view (calculator style) */
 function Dice(){
-  // Simple calculator-style roller with animation
   return `
   <div class="panel">
     <h2>Dice Roller</h2>
     <div class="small" style="margin-top:6px">Tap dice to build an expression (e.g., 2d6+3), then Roll.</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
-      ${['d4','d6','d8','d10','d12','d20','d100'].map(s=>`
-        <button class="btn" onclick="addDie('${s}')">${s}</button>`).join('')}
+      ${['d4','d6','d8','d10','d12','d20','d100'].map(s=>`<button class="btn" onclick="addDie('${s}')">${s}</button>`).join('')}
       <button class="btn" onclick="addPlus()">+</button>
       <button class="btn" onclick="clearDice()">Clear</button>
     </div>
@@ -268,42 +305,40 @@ function Dice(){
     </div>
   </div>`;
 }
-
-// helpers for dice view
-function addDie(s){
-  const el=document.getElementById('dice-input'); if(!el) return;
-  el.value=(el.value.trim()?el.value+'+':'')+'1'+s; state.diceExpr=el.value; save();
-}
-function addPlus(){
-  const el=document.getElementById('dice-input'); if(!el) return;
-  if(el.value && !el.value.trim().endsWith('+')){ el.value=el.value+'+'; state.diceExpr=el.value; save(); }
-}
-function clearDice(){ const el=document.getElementById('dice-input'); if(!el) return; el.value=''; state.diceExpr=''; state.diceResult=''; save(); render(); }
-
+function addDie(s){const el=document.getElementById('dice-input'); if(!el) return; el.value=(el.value.trim()?el.value+'+':'')+'1'+s; state.diceExpr=el.value; save();}
+function addPlus(){const el=document.getElementById('dice-input'); if(!el) return; if(el.value && !el.value.trim().endsWith('+')){ el.value=el.value+'+'; state.diceExpr=el.value; save(); }}
+function clearDice(){const el=document.getElementById('dice-input'); if(!el) return; el.value=''; state.diceExpr=''; state.diceResult=''; save(); render(); }
 function rollDice(){
   const el=document.getElementById('dice-input'); if(!el) return;
-  const expr=el.value.replace(/\s+/g,'');
-  if(!expr){ state.diceResult='<div class="small">Enter an expression like <b>2d6+3</b>.</div>'; save(); render(); return; }
-  // parse simple NdS [+/- N]
-  let total=0, parts=[];
-  const terms=expr.split(/(?=[+-])/g);
+  const expr=el.value.replace(/\s+/g,''); if(!expr){ state.diceResult='<div class="small">Enter an expression like <b>2d6+3</b>.</div>'; save(); render(); return; }
+  let total=0, parts=[]; const terms=expr.split(/(?=[+-])/g);
   for(const t of terms){
     const m=t.match(/^([+-]?)(?:(\d*)d(\d+)|(\d+))$/i);
     if(!m){ state.diceResult='<div class="small">Invalid term: '+esc(t)+'</div>'; save(); render(); return; }
     const sign = m[1]==='-'?-1:1;
-    if(m[3]){ // NdS
-      const n = Number(m[2]||1), s = Number(m[3]);
-      let rolls=[]; for(let i=0;i<n;i++){ rolls.push(1+Math.floor(Math.random()*s)); }
-      const sum = rolls.reduce((a,b)=>a+b,0)*sign; total+=sum;
-      parts.push(`${sign<0?'-':''}${n}d${s} [${rolls.join(', ')}] = ${sum}`);
-    }else{ // flat number
-      const val = Number(m[4])*sign; total+=val; parts.push(`${sign<0?'-':''}${Math.abs(val)}`);
-    }
+    if(m[3]){ const n=Number(m[2]||1), s=Number(m[3]); let rolls=[]; for(let i=0;i<n;i++){ rolls.push(1+Math.floor(Math.random()*s)); }
+      const sum=rolls.reduce((a,b)=>a+b,0)*sign; total+=sum; parts.push(`${sign<0?'-':''}${n}d${s} [${rolls.join(', ')}] = ${sum}`); }
+    else { const val=Number(m[4])*sign; total+=val; parts.push(`${sign<0?'-':''}${Math.abs(val)}`); }
   }
-  // little “shake”
-  const out = `<div style="font-weight:700;font-size:18px;margin-bottom:6px">Total: ${total}</div>
-               <div class="small">${parts.join(' &nbsp;•&nbsp; ')}</div>`;
-  state.diceResult = out; state.diceExpr = expr; save(); render();
+  state.diceResult = `<div style="font-weight:700;font-size:18px;margin-bottom:6px">Total: ${total}</div><div class="small">${parts.join(' &nbsp;•&nbsp; ')}</div>`;
+  state.diceExpr = expr; save(); render();
+}
+
+function Notes(){return `<div class="panel"><h2>Notes</h2><textarea style="width:100%;height:300px" oninput="state.notes=this.value; save();">${esc(state.notes||'')}</textarea></div>`}
+function SavePanel(){return `<div class="panel"><h2>Save / Export</h2>
+  <button class="btn" onclick="const data=JSON.stringify(state,null,2); const blob=new Blob([data],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='tp-dm_lite_v2_1-session.json'; a.click();">Export (.json)</button>
+  <label class="btn"><input type="file" accept="application/json" style="display:none" onchange="const r=new FileReader(); r.onload=e=>{try{state=JSON.parse(e.target.result); save(); render()}catch{alert('Invalid JSON')}}; r.readAsText(this.files[0])">Import</label>
+  <button class="btn" onclick="if(confirm('Reset all data?')){localStorage.removeItem('tp_dm_lite_v2_1'); location.reload();}">Reset</button>
+</div>`}
+
+function routeView(){switch(state.route){
+  case'home':return Home(); case'board':return Board(); case'chars':return Characters(); case'npcs':return NPCs();
+  case'enemies':return Enemies(); case'dice':return Dice(); case'notes':return Notes(); case'save':return SavePanel(); default:return Home();
+}}
+function render(){
+  document.getElementById('app').innerHTML=routeView();
+  if(state.route==='board'){const b=document.querySelector('.board'); if(b){renderBoard(); b.addEventListener('click',boardClick)}}
+  renderDmPanel(); renderDmFab(); setActive();
 }
 
 /* ----------------------- init ----------------------- */

@@ -1,38 +1,34 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Tabletop Pals — DM Lite</title>
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="top">
     <div class="inner">
-      <div class="logo">
-        <div class="mark"></div>
-        <div>Tabletop Pals</div>
-      </div>
-      <div class="nav">
-        <button id="nav-home"     onclick="nav('home')">Home</button>
+      <div class="logo"><div class="mark"></div><strong>Tabletop Pals</strong></div>
+      <nav class="nav">
+        <button id="nav-home"     onclick="nav('home')"    class="active">Home</button>
         <button id="nav-board"    onclick="nav('board')">Board</button>
         <button id="nav-chars"    onclick="nav('chars')">Characters</button>
         <button id="nav-npcs"     onclick="nav('npcs')">NPCs</button>
         <button id="nav-enemies"  onclick="nav('enemies')">Enemies</button>
         <button id="nav-dice"     onclick="nav('dice')">Dice</button>
-        <button id="nav-dialogue" onclick="nav('dialogue')">Dialogue</button>
         <button id="nav-notes"    onclick="nav('notes')">Notes</button>
         <button id="nav-save"     onclick="nav('save')">Save</button>
-      </div>
+      </nav>
     </div>
   </header>
 
   <main id="app"></main>
-  <footer>Tabletop Pals — DM Lite • Local first • SRD‑style helpers</footer>
+  <footer>Tabletop Pals — DM Lite • Local‑first • SRD‑style helpers</footer>
 
-  <!-- Floating DM Panel -->
-  <div id="dm-panel" class="dm-panel"></div>
-  <!-- Restore FAB injected as #dm-fab -->
+  <!-- Floating DM HUD container (rendered only on Board) -->
+  <div id="dm-panel" class="dm-panel hidden"></div>
+  <!-- The restore FAB will be injected by JS when minimized -->
 
   <script src="app.js"></script>
 </body>
