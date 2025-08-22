@@ -20,7 +20,22 @@ function dataIcon(label, color){
 function classFallback(cls){ return dataIcon((cls?.[0]||'?').toUpperCase(), CLASS_COLORS[cls]||'#94a3b8'); }
 function iconSrc(obj){ return obj.avatar || (obj.cls && ICONS[obj.cls]) || classFallback(obj.cls); }
 
-// ---------- SRD-ish data ----------
+// Traits inference so A/D chips don’t go blank
+const CLASS_TRAITS = {
+  Rogue:   { armor:'light', wants:['stealth','ranged'],  modes:['walk'] },
+  Ranger:  { armor:'medium',wants:['ranged','stealth'],  modes:['walk'] },
+  Fighter: { armor:'heavy', wants:['melee'],             modes:['walk'] },
+  Barbarian:{armor:'medium',wants:['melee'],             modes:['walk'] },
+  Monk:    { armor:'none',   wants:['melee'],            modes:['walk'] },
+  Wizard:  { armor:'none',   wants:['ranged'],           modes:['walk'] },
+  Sorcerer:{ armor:'none',   wants:['ranged'],           modes:['walk'] },
+  Warlock: { armor:'light',  wants:['ranged'],           modes:['walk'] },
+  Cleric:  { armor:'medium', wants:['melee'],            modes:['walk'] },
+  Paladin: { armor:'heavy',  wants:['melee'],            modes:['walk'] },
+  Druid:   { armor:'light',  wants:['stealth'],          modes:['walk','swim'] },
+};
+
+// SRD-ish static data (for future builder extension)
 const SRD = {
   classes: Object.keys(ICONS),
   races: ['Human','Elf','Dwarf','Halfling','Gnome','Half-Orc','Tiefling','Dragonborn'],
@@ -28,17 +43,17 @@ const SRD = {
   alignments: ['LG','NG','CG','LN','N','CN','LE','NE','CE'],
 };
 
-// ---------- Terrain rules (added 'why' text so chips can explain) ----------
+// Terrain rules with “why”
 const TERRAIN = {
   Forest: {
     tips:['Undergrowth (difficult)','Cover available'],
-    adv:[{want:'stealth', why:'Thick brush and shadows aid stealth.'},{tag:'beast', why:'Native beasts are adapted to forest terrain.'}],
-    dis:[{armor:'heavy', why:'Heavy armor gets snagged in undergrowth, slowing movement.'}]
+    adv:[{want:'stealth', why:'Brush and shadows aid stealth.'},{tag:'beast', why:'Native beasts thrive here.'}],
+    dis:[{armor:'heavy', why:'Heavy armor snags on undergrowth.'}]
   },
   Swamp: {
     tips:['Mud & water (difficult)'],
-    adv:[{mode:'swim', why:'Amphibious or strong swimmers move freely.'}],
-    dis:[{armor:'heavy', why:'Heavy armor sinks and clogs in mud.'},{want:'stealth', why:'Ripples and mud prints betray movement.'}]
+    adv:[{mode:'swim', why:'Swimming speed bypasses boggy ground.'}],
+    dis:[{armor:'heavy', why:'Heavy armor sinks and clogs.'},{want:'stealth', why:'Ripples and mud prints betray you.'}]
   },
   Desert: {
     tips:['Heat & mirage','Open sightlines'],
@@ -52,46 +67,42 @@ const TERRAIN = {
   },
   Urban: {
     tips:['Tight alleys','Guards nearby'],
-    adv:[{want:'stealth', why:'Crowds and corners create hiding spots.'}],
+    adv:[{want:'stealth', why:'Corners/crowds create hiding spots.'}],
     dis:[]
   },
   Dungeon: {
     tips:['Tight corridors','Darkness common'],
-    adv:[{want:'darkvision', why:'Low light or darkness makes darkvision valuable.'}],
+    adv:[{want:'darkvision', why:'Darkvision is valuable here.'}],
     dis:[{armor:'heavy', why:'Heavy armor is clumsy in tight spaces.'}]
   },
   Arctic: {
     tips:['Ice & snow','Extreme cold'],
-    adv:[{mode:'walk', why:'Sure‑footed creatures handle ice better.'}],
+    adv:[{mode:'walk', why:'Sure‑footed creatures handle ice.'}],
     dis:[{armor:'heavy', why:'Cold seeps through metal; movement suffers.'}]
   },
   Coastal: {
     tips:['Slippery rocks'],
-    adv:[{mode:'swim', why:'Aquatic movement is a big edge here.'}],
-    dis:[{armor:'heavy', why:'Slick rocks + heavy armor = slips and falls.'}]
+    adv:[{mode:'swim', why:'Aquatic movement is a big edge.'}],
+    dis:[{armor:'heavy', why:'Slick rocks + heavy armor = slips.'}]
   },
 };
 
-// ---------- State ----------
+// ---------- App state ----------
 let state = JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null') || {
   route:'home', terrain:'Forest',
   players:[
     {id:'p1',name:'Aria',cls:'Rogue',race:'Human',bg:'Urchin',align:'CG',level:1,ac:15,abilities:{Str:10,Dex:15,Con:12,Int:12,Wis:11,Cha:10},skills:['Stealth (Dex)'],hp:{cur:10,max:10},pp:13,token:{x:2,y:3},avatar:ICONS.Rogue,tags:{armor:'light',modes:['walk'],wants:['stealth','ranged']}},
     {id:'p2',name:'Bronn',cls:'Fighter',race:'Human',bg:'Soldier',align:'LN',level:1,ac:17,abilities:{Str:16,Dex:12,Con:14,Int:10,Wis:10,Cha:10},skills:['Athletics (Str)'],hp:{cur:13,max:13},pp:11,token:{x:4,y:4},avatar:ICONS.Fighter,tags:{armor:'heavy',modes:['walk'],wants:['melee']}},
   ],
-  npcs:[{id:'n1',name:'Elder Bran',role:'Quest Giver',token:{x:8,y:6},avatar:null,tags:{armor:'none',modes:['walk']}}],
-  enemies:[{id:'e1',name:'Skeleton A',ac:13,hp:{cur:13,max:13},token:{x:10,y:6},avatar:ICONS.Wizard, type:'undead', tags:{armor:'medium',modes:['walk']}}],
+  npcs:[{id:'n1',name:'Elder Bran',role:'Quest Giver',token:{x:8,y:6},avatar:null}],
+  enemies:[{id:'e1',name:'Skeleton A',ac:13,hp:{cur:13,max:13},token:{x:10,y:6},avatar:ICONS.Wizard, type:'undead'}],
   map:{w:24,h:18,size:48,bg:null},
   dice:{expr:'d20',last:'—',log:[], builder:{terms:{}, mod:0}},
   library:[],
   notes:'',
   selectedToken:null,
-  editing:null,
-  iconPicker:{ open:false, target:{kind:null,id:null,field:'avatar'} },
-  dialog:{activeKind:'npc',activeId:null,log:[],snippets:['We mean no harm.','Any rumors?','We seek the old ruins.','Stand down.','Let’s make a deal.']},
   ui:{ terrainFocus:null, dmMin:false, focusEntity:null, noteText:'' }
 };
-if (!state.ui) state.ui = { terrainFocus:null, dmMin:false, focusEntity:null, noteText:'' };
 
 // ---------- Utils ----------
 let __saveTimer=null;
@@ -216,11 +227,19 @@ function uploadSceneAndSetBg(files){ handleUpload(files,'scene',(id)=>useAsScene
 function useAsScene(id){ const it=state.library.find(x=>x.id===id); if(!it) return; state.map.bg=it.dataUrl; save(); nav('board'); }
 
 // ---------- Terrain helpers ----------
+function inferTags(obj){
+  const inferred = CLASS_TRAITS[obj.cls] || {};
+  const t = {...inferred, ...(obj.tags||{})};
+  t.wants = Array.from(new Set([...(inferred.wants||[]), ...((obj.tags&&obj.tags.wants)||[])]));
+  t.modes = Array.from(new Set([...(inferred.modes||[]), ...((obj.tags&&obj.tags.modes)||[])]));
+  return t;
+}
 function terrainMatches(obj, q){
-  if(q.armor && obj.tags?.armor === q.armor) return true;
-  if(q.mode && (obj.tags?.modes||[]).includes(q.mode)) return true;
-  if(q.want && (obj.tags?.wants||[]).includes(q.want)) return true;
-  if(q.tag && (obj.type === q.tag || (obj.tags?.type === q.tag))) return true;
+  const tags = inferTags(obj);
+  if(q.armor && tags.armor === q.armor) return true;
+  if(q.mode && (tags.modes||[]).includes(q.mode)) return true;
+  if(q.want && (tags.wants||[]).includes(q.want)) return true;
+  if(q.tag && (obj.type === q.tag || tags.type === q.tag)) return true;
   if(q.cls && obj.cls === q.cls) return true;
   return false;
 }
@@ -258,42 +277,38 @@ function renderDmFab(){
 }
 window.renderDmFab = renderDmFab;
 
-// ---------- Build a 3-row column (Card + Adv + Dis) ----------
-function buildColumn(obj, kind){
+// ---------- Build one 3×3 “cell” (card + advantages + disadvantages) ----------
+function buildCell(obj, kind){
   const selected = state.selectedToken && state.selectedToken.id===obj.id && state.selectedToken.kind===kind;
   const onSelect = `state.selectedToken={id:'${obj.id}',kind:'${kind}'}; state.ui.focusEntity={id:'${obj.id}',kind:'${kind}'}; save(); render();`;
+
   const F = terrainFocusForEntity(obj);
-
-  const advChips = (F.adv.length?F.adv:['—']).map(a=>{
-    if(a==='—') return `<span class="dm-chip adv" style="opacity:.65;cursor:default">—</span>`;
-    const label = a.want ? `Favor: ${a.want}` :
+  const chip = (a, cls) => {
+    const label = a.want ? (cls==='adv' ? `Favor: ${a.want}` : `Weak: ${a.want}`) :
                   a.mode ? `Mode: ${a.mode}` :
-                  a.tag  ? `Tag: ${a.tag}` :
-                  a.armor? `Armor: ${a.armor}` : 'Advantage';
-    const why = esc(a.why||'Advantage in this terrain.');
-    return `<span class="dm-chip adv" title="${why}" onclick="event.stopPropagation(); state.ui.noteText='${why}'; save(); renderDmPanel();">${label}</span>`;
-  }).join(' ');
-
-  const disChips = (F.dis.length?F.dis:['—']).map(a=>{
-    if(a==='—') return `<span class="dm-chip dis" style="opacity:.65;cursor:default">—</span>`;
-    const label = a.want ? `Weak: ${a.want}` :
-                  a.mode ? `Mode: ${a.mode}` :
-                  a.tag  ? `Tag: ${a.tag}` :
-                  a.armor? `Armor: ${a.armor}` : 'Disadvantage';
-    const why = esc(a.why||'Disadvantage in this terrain.');
-    return `<span class="dm-chip dis" title="${why}" onclick="event.stopPropagation(); state.ui.noteText='${why}'; save(); renderDmPanel();">${label}</span>`;
-  }).join(' ');
+                  a.tag  ? `Tag: ${a.tag}`  :
+                  a.armor? `Armor: ${a.armor}` :
+                           (cls==='adv'?'Advantage':'Disadvantage');
+    const why = esc(a.why || (cls==='adv'?'Advantage in this terrain.':'Disadvantage in this terrain.'));
+    return `<span class="dm-chip ${cls}" title="${why}"
+             onclick="event.stopPropagation(); state.ui.noteText='${why}'; save(); renderDmPanel();">${label}</span>`;
+  };
+  const advChips = (F.adv.length ? F.adv.map(a=>chip(a,'adv')).join(' ') : `<span class="dm-chip adv" style="opacity:.65;cursor:default">—</span>`);
+  const disChips = (F.dis.length ? F.dis.map(a=>chip(a,'dis')).join(' ') : `<span class="dm-chip dis" style="opacity:.65;cursor:default">—</span>`);
 
   return `
-  <div class="dm-col">
+  <div class="dm-cell">
     <div class="dm-card ${selected?'selected':''}" onclick="(function(){ ${onSelect} })()">
       <div class="name">${esc(obj.name || obj.role || 'Unknown')}</div>
-      <div class="avatar"><img width="36" height="36" src="${iconSrc(obj)}" onerror="this.onerror=null; this.src='${classFallback(obj.cls)}'"/></div>
+      <div class="avatar"><img width="40" height="40" src="${iconSrc(obj)}"
+        onerror="this.onerror=null; this.src='${classFallback(obj.cls)}'"/></div>
       <div class="badges">
         <span class="badge">${kind==='pc' ? 'Lvl '+(obj.level||1) : (kind==='enemy' ? ('AC '+(obj.ac??'—')) : (obj.role||'NPC'))}</span>
         <span class="badge">HP ${(obj.hp?.cur??'—')}/${(obj.hp?.max??'—')}</span>
       </div>
-      <div class="actions" style="margin-top:4px"><button class="btn tiny" onclick="event.stopPropagation(); ${onSelect}">Select</button></div>
+      <div class="actions" style="margin-top:4px">
+        <button class="btn tiny" onclick="event.stopPropagation(); ${onSelect}">Select</button>
+      </div>
     </div>
     <div class="dm-adv">
       <div class="dm-adv-title">Advantages</div>
@@ -306,7 +321,7 @@ function buildColumn(obj, kind){
   </div>`;
 }
 
-// ---------- DM Panel (sections use the new column grid) ----------
+// ---------- Render DM Panel (3 columns per row) ----------
 function renderDmPanel(){
   const hud = document.getElementById('dm-panel'); if(!hud) return;
 
@@ -318,9 +333,9 @@ function renderDmPanel(){
   const tips = (TERRAIN[state.terrain]?.tips || []).map(t=>`
     <div class="terr-card"><span class="dot"></span><span class="label">${esc(t)}</span></div>`).join('');
 
-  const pcs  = state.players.map(p => buildColumn(p,'pc')).join('');
-  const npcs = state.npcs.map(n => buildColumn(n,'npc')).join('');
-  const foes = state.enemies.map(e => buildColumn(e,'enemy')).join('');
+  const pcs  = state.players.map(p => buildCell(p,'pc')).join('');
+  const npcs = state.npcs.map(n => buildCell(n,'npc')).join('');
+  const foes = state.enemies.map(e => buildCell(e,'enemy')).join('');
 
   hud.innerHTML = `
     <div class="dm-head">
@@ -399,43 +414,9 @@ function Board(){
     <div class="panel"><h3>Tips</h3><div class="small">Use the floating DM panel (bottom‑right) for terrain & quick selects.</div></div>
   </div>`;
 }
-function Characters(){
-  return `<div class="panel"><h3>Characters</h3>
-    <div class="list">
-      ${state.players.map(p=>`<div class="item">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="token" style="position:static;width:28px;height:28px;border-radius:6px"><img src="${iconSrc(p)}" onerror="this.onerror=null; this.src='${classFallback(p.cls)}'"/></div>
-          <div><div style="font-weight:600">${esc(p.name)}</div><div class="small">${esc(p.cls)} L${p.level}</div></div>
-        </div>
-        <button class="btn alt" onclick="state.selectedToken={id:'${p.id}',kind:'pc'}; save(); nav('board')">Select on Board</button>
-      </div>`).join('')}
-    </div>
-  </div>`;
-}
-function NPCs(){
-  return `<div class="panel"><h3>NPCs</h3>
-    <div class="list">
-      ${state.npcs.map(n=>`<div class="item">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="token" style="position:static;width:28px;height:28px;border-radius:6px">${n.avatar? `<img src="${esc(n.avatar)}"/>` : ''}</div>
-          <div><div style="font-weight:600">${esc(n.name)}</div><div class="small">${esc(n.role||'NPC')}</div></div>
-        </div>
-      </div>`).join('')}
-    </div>
-  </div>`;
-}
-function Enemies(){
-  return `<div class="panel"><h3>Enemies</h3>
-    <div class="list">
-      ${state.enemies.map(e=>`<div class="item">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="token" style="position:static;width:28px;height:28px;border-radius:6px"><img src="${iconSrc(e)}" onerror="this.onerror=null; this.src='${classFallback(e.cls)}'"/></div>
-          <div><div style="font-weight:600">${esc(e.name)}</div><div class="small">AC ${e.ac} • HP ${e.hp.cur}/${e.hp.max}</div></div>
-        </div>
-      </div>`).join('')}
-    </div>
-  </div>`;
-}
+function Characters(){ return `<div class="panel"><h3>Characters</h3><div class="small">Roster view.</div></div>`; }
+function NPCs(){ return `<div class="panel"><h3>NPCs</h3><div class="small">List view.</div></div>`; }
+function Enemies(){ return `<div class="panel"><h3>Enemies</h3><div class="small">List view.</div></div>`; }
 function Dice(){ return `<div class="panel"><h2>Dice Roller</h2><div id="dice-roller"></div></div>`; }
 function Dialogue(){ return `<div class="panel"><h3>Dialogue</h3><div class="small">Roleplay log coming next pass.</div></div>`; }
 function Notes(){ return `<div class="panel"><h2>Notes</h2><textarea style="width:100%;height:300px" oninput="state.notes=this.value; save();">${esc(state.notes)}</textarea></div>`; }
@@ -447,7 +428,7 @@ function SavePanel(){
   </div>`;
 }
 
-// Dice view render
+// ---------- Dice render ----------
 function renderDice(){
   ensureBuilder();
   const wrap = document.getElementById('dice-roller'); if(!wrap) return;

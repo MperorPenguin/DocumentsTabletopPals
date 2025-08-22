@@ -57,7 +57,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 /* ===== Compact Floating DM Panel ===== */
 .dm-panel{
   position:fixed; right:16px; bottom:16px;
-  width:330px; max-height:74vh; overflow:auto; z-index:1000;
+  width:360px; max-height:74vh; overflow:auto; z-index:1000;
   background:var(--panel); border:1px solid var(--border); border-radius:14px;
   padding:10px; box-shadow:0 14px 30px rgba(0,0,0,.5); backdrop-filter: blur(6px);
 }
@@ -71,30 +71,39 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .dm-sec-head.npc  { background:color-mix(in srgb, var(--teal) 12%, transparent);  border-color: color-mix(in srgb, var(--teal) 45%, #000) }
 .dm-sec-head.enemy{ background:color-mix(in srgb, var(--red)  12%, transparent);  border-color: color-mix(in srgb, var(--red)  45%, #000) }
 
-/* 3-column COLUMN grid (each item contains Card + Adv + Dis stacked) */
-.dm-grid3{
-  display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px;
+/* 3-column grid (each cell = card + A/D inside) */
+.dm-grid3{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; }
+.dm-cell{
+  background:#0f1422;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  transition:.15s border-color, .15s box-shadow, .12s transform;
 }
-.dm-col{ display:grid; grid-template-rows:auto auto auto; gap:6px; }
+.dm-cell:hover{
+  border-color:var(--accent);
+  box-shadow:0 6px 18px rgba(0,0,0,.45), 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset;
+  transform:translateY(-1px);
+}
 
-/* Card */
+/* Card in the cell */
 .dm-card{
   background:#0f1422;border:1px solid var(--border);border-radius:10px;padding:8px 6px;
   display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;
   transition:transform .12s, box-shadow .15s, border-color .15s; cursor:pointer;
 }
-.dm-card:hover{ transform:translateY(-1px); border-color:var(--accent); box-shadow:0 6px 18px rgba(0,0,0,.45), 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset; }
 .dm-card.selected{ border-color:var(--accent); background: color-mix(in srgb, var(--accent) 14%, #0f1422); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset; }
-.dm-card .avatar{ width:44px; height:44px; border-radius:8px; border:1px solid var(--border); background:#0b1020; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-.dm-card .avatar img{ width:36px; height:36px; object-fit:contain; display:block; }
 .dm-card .name{ font-weight:800; font-size:12.5px; line-height:1.2; letter-spacing:.2px }
+.dm-card .avatar{ width:48px; height:48px; border-radius:8px; border:1px solid var(--border); background:#0b1020; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.dm-card .avatar img{ width:40px; height:40px; object-fit:contain; display:block; }
 .badges{ display:flex; gap:6px; }
 .badge{ font-size:10px; padding:3px 6px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#dbe1ee }
 
-/* Adv/Dis rows (under each card) */
-.dm-adv, .dm-dis{
-  background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:6px;
-}
+/* Advantages / Disadvantages inside each cell */
+.dm-adv, .dm-dis{ background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:6px; }
 .dm-adv-title, .dm-dis-title{ font-size:11px; font-weight:700; margin-bottom:4px; }
 .dm-adv-title{ color: var(--teal); }
 .dm-dis-title{ color: var(--red); }
@@ -114,10 +123,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .terr-card{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:10px; border:1px solid var(--border); background:#12182a; color:#e6e9f2; }
 .terr-card .dot{ width:8px; height:8px; border-radius:50%; background:var(--sage) }
 
-/* detail note that appears when clicking a chip */
+/* detail note after clicking a chip */
 .dm-detail{ margin-top:8px;border:1px solid var(--border);background:#111623;color:#dbe1ee;border-radius:8px;padding:10px;font-size:13px }
 
-/* header row with minimize pill button + restore FAB */
+/* header row + minimize + restore FAB */
 .dm-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:6px}
 .dm-fab.mini{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--panel);color:var(--ink);box-shadow:0 6px 16px rgba(0,0,0,.35)}
 .dm-fab.mini .dm-fab-dot{ width:6px; height:6px; border-radius:50%; background:var(--accent) }
@@ -130,6 +139,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .dm-fab-dot{ width:8px; height:8px; border-radius:50%; background: var(--accent) }
 .dm-fab-label{ font-weight:600 }
 .dm-fab-count{ font-size:12px; color:#cbd5e1; background:#0f1115; border:1px solid var(--border); padding:2px 6px; border-radius:999px }
+
 @media (max-width: 768px){
   .dm-panel{ left:12px; right:12px; bottom:12px; width:auto; }
   .dm-grid3{ grid-template-columns: repeat(3, 1fr); }
