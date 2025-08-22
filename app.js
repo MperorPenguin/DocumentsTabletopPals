@@ -321,14 +321,13 @@ function buildCell(obj, kind){
   const advChips = (F.adv.length ? F.adv.map(a=>chip(a,'adv')).join(' ') : `<span class="dm-chip adv" style="opacity:.65;cursor:default">No specific advantage</span>`);
   const disChips = (F.dis.length ? F.dis.map(a=>chip(a,'dis')).join(' ') : `<span class="dm-chip dis" style="opacity:.65;cursor:default">No specific disadvantage</span>`);
 
-  // Title buttons: build a readable summary for this entity
   const summarize = (arr, kindLabel) => {
     if(!arr.length) return `No specific ${kindLabel} for ${esc(obj.name||obj.role||'this entity')} in ${state.terrain}.`;
     return `${esc(obj.name||obj.role||'This entity')} — ${kindLabel} in ${state.terrain}:\n` +
       arr.map(a => `• ${mkLabel(a, kindLabel==='Advantages'?'adv':'dis')} — ${a.why||''}`).join('\n');
   };
   const advSummary = summarize(F.adv, 'Advantages');
-  const disSummary = summarize(F.dis, 'Disadvantages');
+  const disSummary = summarize(F. dis, 'Disadvantages');
 
   const sub = kind==='pc' ? `Lvl ${obj.level||1}`
            : kind==='enemy' ? `AC ${obj.ac??'—'}`
@@ -336,29 +335,32 @@ function buildCell(obj, kind){
 
   return `
   <div class="dm-character-box">
+    <!-- Identity card -->
     <div class="dm-card ${selected?'selected':''}" onclick="(function(){ ${onSelect} })()">
       <div class="name">${esc(obj.name || obj.role || 'Unknown')}</div>
-      <div class="avatar"><img width="40" height="40" src="${iconSrc(obj)}"
+      <div class="avatar"><img width="44" height="44" src="${iconSrc(obj)}"
         onerror="this.onerror=null; this.src='${classFallback(obj.cls)}'"/></div>
       <div class="badges">
         <span class="badge">${sub}</span>
         <span class="badge">HP ${(obj.hp?.cur??'—')}/${(obj.hp?.max??'—')}</span>
       </div>
-      <div class="actions" style="margin-top:4px">
+      <div class="actions">
         <button class="btn tiny" onclick="event.stopPropagation(); ${onSelect}">Select</button>
       </div>
     </div>
 
+    <!-- Advantages -->
     <div class="dm-adv">
-      <button class="dm-title-btn adv" title="Show why this character has an edge here"
+      <button class="dm-title-btn adv"
         onclick="event.stopPropagation(); state.ui.noteText=\`${esc(advSummary)}\`; save(); renderDmPanel();">
         <span class="dot"></span> Advantages
       </button>
       <div class="dm-chips">${advChips}</div>
     </div>
 
+    <!-- Disadvantages -->
     <div class="dm-dis">
-      <button class="dm-title-btn dis" title="Show why this character is hindered here"
+      <button class="dm-title-btn dis"
         onclick="event.stopPropagation(); state.ui.noteText=\`${esc(disSummary)}\`; save(); renderDmPanel();">
         <span class="dot"></span> Disadvantages
       </button>

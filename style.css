@@ -188,3 +188,100 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   .dm-panel{ left:12px; right:12px; bottom:12px; width:auto; }
   .dm-grid3{ grid-template-columns: repeat(3, 1fr); }
 }
+/* --- DM Grid: enforce 3-across, equal height cards --- */
+.dm-grid3{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:12px;
+  align-items: stretch; /* equal height */
+}
+
+/* --- Confined card for EACH entity --- */
+.dm-character-box{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  background:#1e293b;            /* subtle contrast from panel */
+  border:1px solid #233044;
+  border-radius:14px;
+  padding:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,.35);
+  transition:.15s border-color, .15s transform, .15s box-shadow;
+}
+.dm-character-box:hover{
+  border-color:var(--accent);
+  transform:translateY(-1px);
+  box-shadow:0 8px 22px rgba(0,0,0,.45), 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent) inset;
+}
+
+/* Inner “identity” card (name + avatar + badges + select) */
+.dm-card{
+  background:#0f1422;
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:10px 8px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  gap:8px;
+  transition:transform .12s, box-shadow .15s, border-color .15s;
+  cursor:pointer;
+}
+.dm-card.selected{
+  border-color:var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, #0f1422);
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset;
+}
+.dm-card .name{
+  font-weight:800; font-size:13px; line-height:1.2; letter-spacing:.15px;
+}
+.dm-card .avatar{
+  width:54px; height:54px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:#0b1020;
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+}
+.dm-card .avatar img{ width:44px; height:44px; object-fit:contain; display:block }
+.badges{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center }
+.badge{
+  font-size:11px; padding:4px 8px;
+  border-radius:999px; border:1px solid var(--border);
+  background:#0f1115; color:#dbe1ee
+}
+
+/* A/D sections inside same box */
+.dm-adv, .dm-dis{
+  background:#0f1422; border:1px solid var(--border);
+  border-radius:10px; padding:8px;
+}
+.dm-title-btn{
+  display:inline-flex; align-items:center; gap:8px;
+  border-radius:999px; border:1px solid transparent;
+  padding:6px 10px; font-size:12px; font-weight:800;
+  cursor:pointer; user-select:none; transition:.15s;
+}
+.dm-title-btn .dot{ width:8px; height:8px; border-radius:50%; background:#fff2 }
+.dm-title-btn:hover{
+  filter:brightness(1.05);
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset;
+}
+.dm-title-btn.adv{ background:#065f46; color:#d1fae5; border-color:#0b7a5b }
+.dm-title-btn.dis{ background:#7f1d1d; color:#fee2e2; border-color:#9b2222 }
+
+.dm-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px }
+.dm-chip{
+  font-size:11px; padding:5px 10px; border-radius:999px;
+  border:1px solid var(--border); cursor:pointer; user-select:none; transition:.15s;
+}
+.dm-chip.adv{ background:#065f46; color:#d1fae5; border-color:#0b7a5b }
+.dm-chip.dis{ background:#7f1d1d; color:#fee2e2; border-color:#9b2222 }
+.dm-chip.tip{ background:#334155; color:#e2e8f0; border-color:#475569 }
+.dm-chip:hover{ border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
+
+/* mobile: still 3 across when space allows; naturally wraps */
+@media (max-width:768px){
+  .dm-panel{ left:12px; right:12px; bottom:12px; width:auto }
+  .dm-grid3{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
