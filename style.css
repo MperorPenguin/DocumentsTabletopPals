@@ -41,7 +41,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .board{
   position:relative;
   width:100%;
-  min-height:240px; /* JS sets exact height based on grid */
+  min-height:240px;
   border:1px solid var(--border);
   border-radius:12px;
   overflow:hidden;
@@ -102,7 +102,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 
 /* ===== Character/NPC/Enemy BOX (confined rounded panel) ===== */
 .dm-character-box{
-  background:#1e293b;           /* slightly lighter for separation */
+  background:#1e293b;
   border:1px solid #233044;
   border-radius:14px;
   padding:10px;
@@ -133,36 +133,40 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 
 /* Advantages / Disadvantages blocks inside the box */
 .dm-adv, .dm-dis{ background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:6px; }
-.dm-adv-title, .dm-dis-title{ font-size:11px; font-weight:800; margin-bottom:4px; }
-.dm-adv-title{ color:#34d399; }   /* bright green title */
-.dm-dis-title{ color:#f87171; }   /* bright red title */
+
+/* Title buttons (green/red) */
+.dm-title-btn{
+  display:inline-flex; align-items:center; gap:6px;
+  border-radius:999px; border:1px solid transparent;
+  padding:6px 10px; font-size:11.5px; font-weight:800;
+  cursor:pointer; user-select:none; transition:.15s;
+}
+.dm-title-btn .dot{ width:8px; height:8px; border-radius:50%; background:#fff2; }
+.dm-title-btn:hover{ filter:brightness(1.05); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
+
+.dm-title-btn.adv{ background:#065f46; color:#d1fae5; border-color:#0b7a5b; }
+.dm-title-btn.dis{ background:#7f1d1d; color:#fee2e2; border-color:#9b2222; }
 
 /* Chips */
-.dm-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.dm-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
 .dm-chip{
   font-size:11px; padding:4px 9px; border-radius:999px; border:1px solid var(--border); cursor:pointer; user-select:none; transition:.15s;
 }
 .dm-chip.adv{
-  background:#065f46; /* deep green */
-  color:#d1fae5;      /* mint text */
-  border-color:#0b7a5b;
+  background:#065f46; color:#d1fae5; border-color:#0b7a5b;
 }
 .dm-chip.dis{
-  background:#7f1d1d; /* deep red */
-  color:#fee2e2;      /* rose text */
-  border-color:#9b2222;
+  background:#7f1d1d; color:#fee2e2; border-color:#9b2222;
 }
 .dm-chip.tip{
-  background:#334155; /* slate */
-  color:#e2e8f0;
-  border-color:#475569;
+  background:#334155; color:#e2e8f0; border-color:#475569;
 }
 .dm-chip:hover{ border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
 
 /* Terrain tips mini row */
 .terr-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px }
 
-/* detail note after clicking a chip */
+/* detail note after clicking a chip or title button */
 .dm-detail{ margin-top:8px;border:1px solid var(--border);background:#111623;color:#dbe1ee;border-radius:8px;padding:10px;font-size:13px }
 
 /* header row + minimize + restore FAB */

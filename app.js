@@ -179,8 +179,8 @@ function recalcBoardSize(){
   const el = document.querySelector('.board');
   if(!el) return;
   const containerW = el.clientWidth || el.getBoundingClientRect().width || 800;
-  const idealCell = Math.floor(containerW / state.map.w);           // full width fit
-  const clamped   = Math.max(28, Math.min(56, idealCell));          // clamp for phones & desktop
+  const idealCell = Math.floor(containerW / state.map.w);
+  const clamped   = Math.max(28, Math.min(56, idealCell));
   state.map.size  = clamped;
   el.style.setProperty('--cell', clamped+'px');
   el.style.height = (state.map.h * clamped) + 'px';
@@ -297,23 +297,38 @@ function renderDmFab(){
   fab.classList.remove('hidden');
 }
 
-/* Build one grid item: a confined box containing the card + A/D sections */
+/* Build one grid item: contained card + buttons + chips */
 function buildCell(obj, kind){
   const selected = state.selectedToken && state.selectedToken.id===obj.id && state.selectedToken.kind===kind;
   const onSelect = `state.selectedToken={id:'${obj.id}',kind:'${kind}'}; save(); renderDmPanel(); selectTokenDom('${kind}','${obj.id}')`;
 
   const F = terrainFocusForEntity(obj);
+
+  const mkLabel = (a, cls) => {
+    if(a.want)  return cls==='adv'?`Favor: ${a.want}`:`Weak: ${a.want}`;
+    if(a.mode)  return `Mode: ${a.mode}`;
+    if(a.tag)   return `Tag: ${a.tag}`;
+    if(a.armor) return `Armor: ${a.armor}`;
+    return cls==='adv'?'Advantage':'Disadvantage';
+  };
+
   const chip = (a, cls) => {
-    const label = a.want ? (cls==='adv' ? `Favor: ${a.want}` : `Weak: ${a.want}`) :
-                  a.mode ? `Mode: ${a.mode}` :
-                  a.tag  ? `Tag: ${a.tag}`  :
-                  a.armor? `Armor: ${a.armor}` :
-                           (cls==='adv'?'Advantage':'Disadvantage');
+    const label = mkLabel(a, cls);
     const why = esc(a.why || (cls==='adv'?'Advantage in this terrain.':'Disadvantage in this terrain.'));
     return `<span class="dm-chip ${cls}" title="${why}" onclick="event.stopPropagation(); state.ui.noteText='${why}'; save(); renderDmPanel();">${label}</span>`;
   };
+
   const advChips = (F.adv.length ? F.adv.map(a=>chip(a,'adv')).join(' ') : `<span class="dm-chip adv" style="opacity:.65;cursor:default">No specific advantage</span>`);
   const disChips = (F.dis.length ? F.dis.map(a=>chip(a,'dis')).join(' ') : `<span class="dm-chip dis" style="opacity:.65;cursor:default">No specific disadvantage</span>`);
+
+  // Title buttons: build a readable summary for this entity
+  const summarize = (arr, kindLabel) => {
+    if(!arr.length) return `No specific ${kindLabel} for ${esc(obj.name||obj.role||'this entity')} in ${state.terrain}.`;
+    return `${esc(obj.name||obj.role||'This entity')} — ${kindLabel} in ${state.terrain}:\n` +
+      arr.map(a => `• ${mkLabel(a, kindLabel==='Advantages'?'adv':'dis')} — ${a.why||''}`).join('\n');
+  };
+  const advSummary = summarize(F.adv, 'Advantages');
+  const disSummary = summarize(F.dis, 'Disadvantages');
 
   const sub = kind==='pc' ? `Lvl ${obj.level||1}`
            : kind==='enemy' ? `AC ${obj.ac??'—'}`
@@ -333,12 +348,20 @@ function buildCell(obj, kind){
         <button class="btn tiny" onclick="event.stopPropagation(); ${onSelect}">Select</button>
       </div>
     </div>
+
     <div class="dm-adv">
-      <div class="dm-adv-title">Advantages</div>
+      <button class="dm-title-btn adv" title="Show why this character has an edge here"
+        onclick="event.stopPropagation(); state.ui.noteText=\`${esc(advSummary)}\`; save(); renderDmPanel();">
+        <span class="dot"></span> Advantages
+      </button>
       <div class="dm-chips">${advChips}</div>
     </div>
+
     <div class="dm-dis">
-      <div class="dm-dis-title">Disadvantages</div>
+      <button class="dm-title-btn dis" title="Show why this character is hindered here"
+        onclick="event.stopPropagation(); state.ui.noteText=\`${esc(disSummary)}\`; save(); renderDmPanel();">
+        <span class="dot"></span> Disadvantages
+      </button>
       <div class="dm-chips">${disChips}</div>
     </div>
   </div>`;
@@ -380,7 +403,7 @@ function renderDmPanel(){
         ${Object.keys(TERRAIN).map(t=>`<option ${state.terrain===t?'selected':''}>${t}</option>`).join('')}
       </select>
       ${tipChips ? `<div class="terr-row">${tipChips}</div>` : ''}
-      ${state.ui.noteText ? `<div class="dm-detail">${esc(state.ui.noteText)}</div>` : ''}
+      ${state.ui.noteText ? `<div class="dm-detail">${esc(state.ui.noteText).replace(/\n/g,'<br/>')}</div>` : ''}
     </div>
 
     <div class="dm-section">
@@ -516,7 +539,6 @@ function render(){
 
 /* ===================== INIT (load JSON overrides, then render) ===================== */
 async function init(){
-  // Try to load overrides (works best via local server; if file:// blocks, we keep safe defaults)
   const [terrainOvr, rosterOvr] = await Promise.all([
     loadJSON('data/terrain.json'),
     loadJSON('data/roster.json')
