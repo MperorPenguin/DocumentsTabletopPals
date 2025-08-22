@@ -5,7 +5,6 @@ const ICONS = {
   Paladin:'assets/class_icons/Paladin.svg', Ranger:'assets/class_icons/Ranger.svg', Rogue:'assets/class_icons/Rogue.svg',
   Sorcerer:'assets/class_icons/Sorcerer.svg', Warlock:'assets/class_icons/Warlock.svg', Wizard:'assets/class_icons/Wizard.svg',
 };
-// inline fallback colors used for data-icon
 const CLASS_COLORS = {
   Barbarian:'#f97316', Bard:'#22c55e', Cleric:'#eab308', Druid:'#84cc16', Fighter:'#60a5fa', Monk:'#14b8a6',
   Paladin:'#f59e0b', Ranger:'#10b981', Rogue:'#a1a1aa', Sorcerer:'#e879f9', Warlock:'#8b5cf6', Wizard:'#a78bfa'
@@ -29,16 +28,48 @@ const SRD = {
   alignments: ['LG','NG','CG','LN','N','CN','LE','NE','CE'],
 };
 
-// ---------- Terrain rules ----------
+// ---------- Terrain rules (added 'why' text so chips can explain) ----------
 const TERRAIN = {
-  Forest:   { tips:['Undergrowth (difficult)','Cover available'], adv:[{want:'stealth'},{tag:'beast'}], dis:[{armor:'heavy'}] },
-  Swamp:    { tips:['Mud & water (difficult)'], adv:[{mode:'swim'}], dis:[{armor:'heavy'},{want:'stealth'}] },
-  Desert:   { tips:['Heat & mirage','Open sightlines'], adv:[{want:'ranged'}], dis:[{want:'stealth'}] },
-  Mountain: { tips:['Steep slopes','High winds'], adv:[{mode:'fly'}], dis:[{armor:'heavy'}] },
-  Urban:    { tips:['Tight alleys','Guards nearby'], adv:[{want:'stealth'}], dis:[] },
-  Dungeon:  { tips:['Tight corridors','Darkness common'], adv:[{want:'darkvision'}], dis:[{armor:'heavy'}] },
-  Arctic:   { tips:['Ice & snow','Extreme cold'], adv:[{mode:'walk'}], dis:[{armor:'heavy'}] },
-  Coastal:  { tips:['Slippery rocks'], adv:[{mode:'swim'}], dis:[{armor:'heavy'}] },
+  Forest: {
+    tips:['Undergrowth (difficult)','Cover available'],
+    adv:[{want:'stealth', why:'Thick brush and shadows aid stealth.'},{tag:'beast', why:'Native beasts are adapted to forest terrain.'}],
+    dis:[{armor:'heavy', why:'Heavy armor gets snagged in undergrowth, slowing movement.'}]
+  },
+  Swamp: {
+    tips:['Mud & water (difficult)'],
+    adv:[{mode:'swim', why:'Amphibious or strong swimmers move freely.'}],
+    dis:[{armor:'heavy', why:'Heavy armor sinks and clogs in mud.'},{want:'stealth', why:'Ripples and mud prints betray movement.'}]
+  },
+  Desert: {
+    tips:['Heat & mirage','Open sightlines'],
+    adv:[{want:'ranged', why:'Open terrain favors ranged combatants.'}],
+    dis:[{want:'stealth', why:'Few places to hide in open sands.'}]
+  },
+  Mountain: {
+    tips:['Steep slopes','High winds'],
+    adv:[{mode:'fly', why:'Flight bypasses treacherous climbs.'}],
+    dis:[{armor:'heavy', why:'Heavy armor hinders climbing and balance.'}]
+  },
+  Urban: {
+    tips:['Tight alleys','Guards nearby'],
+    adv:[{want:'stealth', why:'Crowds and corners create hiding spots.'}],
+    dis:[]
+  },
+  Dungeon: {
+    tips:['Tight corridors','Darkness common'],
+    adv:[{want:'darkvision', why:'Low light or darkness makes darkvision valuable.'}],
+    dis:[{armor:'heavy', why:'Heavy armor is clumsy in tight spaces.'}]
+  },
+  Arctic: {
+    tips:['Ice & snow','Extreme cold'],
+    adv:[{mode:'walk', why:'Sure‑footed creatures handle ice better.'}],
+    dis:[{armor:'heavy', why:'Cold seeps through metal; movement suffers.'}]
+  },
+  Coastal: {
+    tips:['Slippery rocks'],
+    adv:[{mode:'swim', why:'Aquatic movement is a big edge here.'}],
+    dis:[{armor:'heavy', why:'Slick rocks + heavy armor = slips and falls.'}]
+  },
 };
 
 // ---------- State ----------
@@ -58,11 +89,9 @@ let state = JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null') || {
   editing:null,
   iconPicker:{ open:false, target:{kind:null,id:null,field:'avatar'} },
   dialog:{activeKind:'npc',activeId:null,log:[],snippets:['We mean no harm.','Any rumors?','We seek the old ruins.','Stand down.','Let’s make a deal.']},
-  ui:{ terrainFocus:null, dmMin:false, focusEntity:null }
+  ui:{ terrainFocus:null, dmMin:false, focusEntity:null, noteText:'' }
 };
-if (!state.ui) state.ui = { terrainFocus:null, dmMin:false, focusEntity:null };
-if (typeof state.ui.dmMin === 'undefined') state.ui.dmMin = false;
-if (typeof state.ui.focusEntity === 'undefined') state.ui.focusEntity = null;
+if (!state.ui) state.ui = { terrainFocus:null, dmMin:false, focusEntity:null, noteText:'' };
 
 // ---------- Utils ----------
 let __saveTimer=null;
@@ -158,7 +187,7 @@ function boardClick(e){
   obj.token.x=gx; obj.token.y=gy; moveTokenDom(state.selectedToken.kind,state.selectedToken.id,gx,gy); save();
 }
 
-// Upload scene and library
+// Upload scene/library
 function handleUpload(files, type, after){
   [...files].forEach(file=>{
     const reader = new FileReader();
@@ -229,7 +258,55 @@ function renderDmFab(){
 }
 window.renderDmFab = renderDmFab;
 
-// ---------- DM Panel (compact + 3-column grids + A/D focus) ----------
+// ---------- Build a 3-row column (Card + Adv + Dis) ----------
+function buildColumn(obj, kind){
+  const selected = state.selectedToken && state.selectedToken.id===obj.id && state.selectedToken.kind===kind;
+  const onSelect = `state.selectedToken={id:'${obj.id}',kind:'${kind}'}; state.ui.focusEntity={id:'${obj.id}',kind:'${kind}'}; save(); render();`;
+  const F = terrainFocusForEntity(obj);
+
+  const advChips = (F.adv.length?F.adv:['—']).map(a=>{
+    if(a==='—') return `<span class="dm-chip adv" style="opacity:.65;cursor:default">—</span>`;
+    const label = a.want ? `Favor: ${a.want}` :
+                  a.mode ? `Mode: ${a.mode}` :
+                  a.tag  ? `Tag: ${a.tag}` :
+                  a.armor? `Armor: ${a.armor}` : 'Advantage';
+    const why = esc(a.why||'Advantage in this terrain.');
+    return `<span class="dm-chip adv" title="${why}" onclick="event.stopPropagation(); state.ui.noteText='${why}'; save(); renderDmPanel();">${label}</span>`;
+  }).join(' ');
+
+  const disChips = (F.dis.length?F.dis:['—']).map(a=>{
+    if(a==='—') return `<span class="dm-chip dis" style="opacity:.65;cursor:default">—</span>`;
+    const label = a.want ? `Weak: ${a.want}` :
+                  a.mode ? `Mode: ${a.mode}` :
+                  a.tag  ? `Tag: ${a.tag}` :
+                  a.armor? `Armor: ${a.armor}` : 'Disadvantage';
+    const why = esc(a.why||'Disadvantage in this terrain.');
+    return `<span class="dm-chip dis" title="${why}" onclick="event.stopPropagation(); state.ui.noteText='${why}'; save(); renderDmPanel();">${label}</span>`;
+  }).join(' ');
+
+  return `
+  <div class="dm-col">
+    <div class="dm-card ${selected?'selected':''}" onclick="(function(){ ${onSelect} })()">
+      <div class="name">${esc(obj.name || obj.role || 'Unknown')}</div>
+      <div class="avatar"><img width="36" height="36" src="${iconSrc(obj)}" onerror="this.onerror=null; this.src='${classFallback(obj.cls)}'"/></div>
+      <div class="badges">
+        <span class="badge">${kind==='pc' ? 'Lvl '+(obj.level||1) : (kind==='enemy' ? ('AC '+(obj.ac??'—')) : (obj.role||'NPC'))}</span>
+        <span class="badge">HP ${(obj.hp?.cur??'—')}/${(obj.hp?.max??'—')}</span>
+      </div>
+      <div class="actions" style="margin-top:4px"><button class="btn tiny" onclick="event.stopPropagation(); ${onSelect}">Select</button></div>
+    </div>
+    <div class="dm-adv">
+      <div class="dm-adv-title">Advantages</div>
+      <div class="dm-chips">${advChips}</div>
+    </div>
+    <div class="dm-dis">
+      <div class="dm-dis-title">Disadvantages</div>
+      <div class="dm-chips">${disChips}</div>
+    </div>
+  </div>`;
+}
+
+// ---------- DM Panel (sections use the new column grid) ----------
 function renderDmPanel(){
   const hud = document.getElementById('dm-panel'); if(!hud) return;
 
@@ -238,54 +315,12 @@ function renderDmPanel(){
 
   renderDmFab(); hud.classList.remove('hidden');
 
-  // resolve focus entity (if any)
-  let focusEntity = null;
-  if(state.ui.focusEntity){
-    const {kind,id} = state.ui.focusEntity;
-    const pool = kind==='pc'?state.players : kind==='npc'?state.npcs : state.enemies;
-    focusEntity = pool.find(x=>x.id===id) || null;
-  }
-
-  // card renderer
-  const card = (obj, kindClass) => {
-    const selected = state.selectedToken && state.selectedToken.id===obj.id && state.selectedToken.kind===kindClass;
-    return `
-      <div class="dm-card ${selected?'selected':''}" onclick="(function(){
-        state.selectedToken={id:'${obj.id}',kind:'${kindClass}'};
-        state.ui.focusEntity={id:'${obj.id}',kind:'${kindClass}'};
-        save(); render();
-      })()">
-        <div class="avatar">
-          <img width="32" height="32" src="${iconSrc(obj)}" onerror="this.onerror=null; this.src='${classFallback(obj.cls)}'"/>
-        </div>
-        <div class="name">${obj.name || obj.role || 'Unknown'}</div>
-        <div class="meta">
-          ${kindClass==='pc' ? `L${obj.level||1} • ${obj.cls||''}` :
-            kindClass==='enemy' ? `AC ${obj.ac||'—'} • HP ${obj.hp?.cur||'—'}/${obj.hp?.max||'—'}` :
-            (obj.role? obj.role : 'NPC')}
-        </div>
-      </div>`;
-  };
-
-  const pcsGrid    = state.players.map(p => card(p,'pc')).join('');
-  const npcsGrid   = state.npcs.map(n => card(n,'npc')).join('');
-  const enemyGrid  = state.enemies.map(e => card(e,'enemy')).join('');
-
-  // global terrain notes (tips)
   const tips = (TERRAIN[state.terrain]?.tips || []).map(t=>`
-    <div class="terr-card" style="border-color: color-mix(in srgb, var(--sage) 60%, #000)">
-      <span class="dot" style="background:var(--sage)"></span>
-      <span class="label">${t}</span>
-    </div>`).join('');
+    <div class="terr-card"><span class="dot"></span><span class="label">${esc(t)}</span></div>`).join('');
 
-  // focused A/D for selected entity
-  const F = terrainFocusForEntity(focusEntity);
-  const advCards = F.adv.map(()=>`
-    <div class="terr-card adv"><span class="dot"></span><span class="label">Advantage here</span></div>
-  `).join('') || `<div class="small" style="opacity:.75">No specific advantages.</div>`;
-  const disCards = F.dis.map(()=>`
-    <div class="terr-card dis"><span class="dot"></span><span class="label">Disadvantage here</span></div>
-  `).join('') || `<div class="small" style="opacity:.75">No specific disadvantages.</div>`;
+  const pcs  = state.players.map(p => buildColumn(p,'pc')).join('');
+  const npcs = state.npcs.map(n => buildColumn(n,'npc')).join('');
+  const foes = state.enemies.map(e => buildColumn(e,'enemy')).join('');
 
   hud.innerHTML = `
     <div class="dm-head">
@@ -298,62 +333,28 @@ function renderDmPanel(){
     <div class="dm-section">
       <div class="small">Terrain</div>
       <select style="width:100%;margin-top:6px"
-              onchange="state.terrain=this.value; state.ui.terrainFocus=null; save(); render();">
+              onchange="state.terrain=this.value; state.ui.noteText=''; save(); render();">
         ${Object.keys(TERRAIN).map(t=>`<option ${state.terrain===t?'selected':''}>${t}</option>`).join('')}
       </select>
-      <div class="terr-wrap" style="margin-top:8px">
-        ${tips ? `<div><div class="terr-head tip">Environment Notes</div><div class="terr-grid">${tips}</div></div>` : ''}
-      </div>
+      ${tips ? `<div class="terr-wrap" style="margin-top:8px"><div class="terr-head">Environment Notes</div><div class="terr-grid">${tips}</div></div>` : ''}
     </div>
 
     <div class="dm-section">
-      <div class="dm-sec-head pc">
-        <span>Characters (PC)</span>
-        <span class="count">${state.players.length}</span>
-      </div>
-      <div class="dm-grid">
-        ${pcsGrid || '<div class="small">No party yet.</div>'}
-      </div>
+      <div class="dm-sec-head pc"><span>Characters (PC)</span><span class="count">${state.players.length}</span></div>
+      <div class="dm-grid3">${pcs || '<div class="small">No party yet.</div>'}</div>
     </div>
 
     <div class="dm-section">
-      <div class="dm-sec-head npc">
-        <span>NPCs</span>
-        <span class="count">${state.npcs.length}</span>
-      </div>
-      <div class="dm-grid">
-        ${npcsGrid || '<div class="small">No NPCs yet.</div>'}
-      </div>
+      <div class="dm-sec-head npc"><span>NPCs</span><span class="count">${state.npcs.length}</span></div>
+      <div class="dm-grid3">${npcs || '<div class="small">No NPCs yet.</div>'}</div>
     </div>
 
     <div class="dm-section">
-      <div class="dm-sec-head enemy">
-        <span>Enemies</span>
-        <span class="count">${state.enemies.length}</span>
-      </div>
-      <div class="dm-grid">
-        ${enemyGrid || '<div class="small">No enemies yet.</div>'}
-      </div>
+      <div class="dm-sec-head enemy"><span>Enemies</span><span class="count">${state.enemies.length}</span></div>
+      <div class="dm-grid3">${foes || '<div class="small">No enemies yet.</div>'}</div>
     </div>
 
-    <div class="dm-section">
-      <div class="small" style="font-weight:700">Advantages / Disadvantages</div>
-      <div class="small" style="margin:4px 0 8px 0; opacity:.85">
-        ${focusEntity ? `For: <b>${focusEntity.name || focusEntity.role}</b> • Terrain: <b>${state.terrain}</b>` : 'Select a token above to see modifiers.'}
-      </div>
-      ${focusEntity ? `
-        <div class="terr-wrap">
-          <div>
-            <div class="terr-head adv">Advantages</div>
-            <div class="terr-grid">${advCards}</div>
-          </div>
-          <div>
-            <div class="terr-head dis">Disadvantages</div>
-            <div class="terr-grid">${disCards}</div>
-          </div>
-        </div>
-      ` : ''}
-    </div>
+    ${state.ui.noteText ? `<div class="dm-detail">${esc(state.ui.noteText)}</div>` : ''}
   `;
 }
 
