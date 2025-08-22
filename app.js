@@ -1,4 +1,16 @@
-/* ========== ICONS & FALLBACKS ========== */
+/* ===================== HYBRID DATA LOADER (JSON overrides + safe fallbacks) ===================== */
+async function loadJSON(url){
+  try{
+    const res = await fetch(url, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    return await res.json();
+  }catch(e){
+    console.warn('Could not load', url, e.message || e);
+    return null; // triggers fallback
+  }
+}
+
+/* ===================== ICONS & FALLBACKS ===================== */
 const ICONS = {
   Barbarian:'assets/class_icons/Barbarian.svg', Bard:'assets/class_icons/Bard.svg', Cleric:'assets/class_icons/Cleric.svg',
   Druid:'assets/class_icons/Druid.svg', Fighter:'assets/class_icons/Fighter.svg', Monk:'assets/class_icons/Monk.svg',
@@ -20,7 +32,7 @@ function dataIcon(label, color){
 function classFallback(cls){ return dataIcon((cls?.[0]||'?').toUpperCase(), CLASS_COLORS[cls]||'#94a3b8'); }
 function iconSrc(obj){ return obj.avatar || (obj.cls && ICONS[obj.cls]) || classFallback(obj.cls); }
 
-/* ========== TRAITS (INFER) ========== */
+/* ===================== TRAITS (INFER) ===================== */
 const CLASS_TRAITS = {
   Rogue:   { armor:'light', wants:['stealth','ranged'],  modes:['walk'] },
   Ranger:  { armor:'medium',wants:['ranged','stealth'],  modes:['walk'] },
@@ -42,60 +54,58 @@ function inferTags(obj){
   return t;
 }
 
-/* ========== TERRAIN RULES (expanded so Fighters match Desert, etc.) ========== */
-const TERRAIN = {
-  Forest: {
-    tips:['Undergrowth (difficult)','Cover available'],
-    adv:[{want:'stealth', why:'Brush and shadows aid stealth.'},{tag:'beast', why:'Native beasts thrive here.'}],
-    dis:[{armor:'heavy', why:'Heavy armor snags on undergrowth.'}]
-  },
-  Swamp: {
-    tips:['Mud & water (difficult)'],
-    adv:[{mode:'swim', why:'Swimming speed bypasses boggy ground.'}],
-    dis:[{armor:'heavy', why:'Heavy armor sinks and clogs.'},{want:'stealth', why:'Ripples and mud prints betray you.'}]
-  },
-  Desert: {
-    tips:['Heat & mirage','Open sightlines'],
-    adv:[{want:'ranged', why:'Open terrain favors ranged combatants.'}],
-    // Added heavy-armor downside so Fighters/Paladins show a match here
-    dis:[{want:'stealth', why:'Few places to hide in open sands.'},{armor:'heavy', why:'Heat drains stamina; heavy armor is punishing.'}]
-  },
-  Mountain: {
-    tips:['Steep slopes','High winds'],
-    adv:[{mode:'fly', why:'Flight bypasses treacherous climbs.'}],
-    dis:[{armor:'heavy', why:'Heavy armor hinders climbing and balance.'}]
-  },
-  Urban: {
-    tips:['Tight alleys','Guards nearby'],
-    adv:[{want:'stealth', why:'Corners/crowds create hiding spots.'}],
-    dis:[]
-  },
-  Dungeon: {
-    tips:['Tight corridors','Darkness common'],
-    adv:[{want:'darkvision', why:'Darkvision is valuable here.'}],
-    dis:[{armor:'heavy', why:'Heavy armor is clumsy in tight spaces.'}]
-  },
-  Arctic: {
-    tips:['Ice & snow','Extreme cold'],
-    adv:[{mode:'walk', why:'Sure‑footed creatures handle ice.'}],
-    dis:[{armor:'heavy', why:'Cold seeps through metal; movement suffers.'}]
-  },
-  Coastal: {
-    tips:['Slippery rocks'],
-    adv:[{mode:'swim', why:'Aquatic movement is a big edge.'}],
-    dis:[{armor:'heavy', why:'Slick rocks + heavy armor = slips.'}]
-  },
+/* ===================== TERRAIN DEFAULTS (safe) ===================== */
+let TERRAIN = {
+  Forest:   { tips:['Undergrowth (difficult)','Cover available'],
+              adv:[{want:'stealth',why:'Brush and shadows aid stealth.'},{tag:'beast',why:'Native beasts thrive here.'}],
+              dis:[{armor:'heavy',why:'Heavy armor snags on undergrowth.'}] },
+  Swamp:    { tips:['Mud & water (difficult)'],
+              adv:[{mode:'swim',why:'Swimming speed bypasses boggy ground.'}],
+              dis:[{armor:'heavy',why:'Heavy armor sinks and clogs.'},{want:'stealth',why:'Ripples and mud prints betray you.'}] },
+  Desert:   { tips:['Heat & mirage','Open sightlines'],
+              adv:[{want:'ranged',why:'Open terrain favors ranged combatants.'}],
+              dis:[{want:'stealth',why:'Few places to hide in open sands.'},{armor:'heavy',why:'Heat drains stamina; heavy armor is punishing.'}] },
+  Mountain: { tips:['Steep slopes','High winds'],
+              adv:[{mode:'fly',why:'Flight bypasses treacherous climbs.'}],
+              dis:[{armor:'heavy',why:'Heavy armor hinders climbing and balance.'}] },
+  Urban:    { tips:['Tight alleys','Guards nearby'],
+              adv:[{want:'stealth',why:'Corners/crowds create hiding spots.'}],
+              dis:[] },
+  Dungeon:  { tips:['Tight corridors','Darkness common'],
+              adv:[{want:'darkvision',why:'Darkvision is valuable here.'}],
+              dis:[{armor:'heavy',why:'Heavy armor is clumsy in tight spaces.'}] },
+  Arctic:   { tips:['Ice & snow','Extreme cold'],
+              adv:[{mode:'walk',why:'Sure‑footed creatures handle ice.'}],
+              dis:[{armor:'heavy',why:'Cold seeps through metal; movement suffers.'}] },
+  Coastal:  { tips:['Slippery rocks'],
+              adv:[{mode:'swim',why:'Aquatic movement is a big edge.'}],
+              dis:[{armor:'heavy',why:'Slick rocks + heavy armor = slips.'}] },
 };
 
-/* ========== APP STATE ========== */
+/* ===================== STATE (with seeded roster) ===================== */
 let state = JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null') || {
   route:'home', terrain:'Forest',
   players:[
-    {id:'p1',name:'Aria',cls:'Rogue',level:1,ac:15,hp:{cur:10,max:10},token:{x:2,y:3},avatar:ICONS.Rogue,tags:{armor:'light',modes:['walk'],wants:['stealth','ranged']}},
+    {id:'p1',name:'Aria',cls:'Rogue',level:1,ac:15,hp:{cur:10,max:10},token:{x:2,y:3},avatar:ICONS.Rogue, tags:{armor:'light',modes:['walk'],wants:['stealth','ranged']}},
     {id:'p2',name:'Bronn',cls:'Fighter',level:1,ac:17,hp:{cur:13,max:13},token:{x:4,y:4},avatar:ICONS.Fighter,tags:{armor:'heavy',modes:['walk'],wants:['melee']}},
+    {id:'p3',name:'Mira',cls:'Cleric', level:1,ac:16,hp:{cur:11,max:11},token:{x:6,y:3},avatar:ICONS.Cleric, tags:{armor:'medium',modes:['walk'],wants:['melee']}},
+    {id:'p4',name:'Kael',cls:'Ranger', level:1,ac:14,hp:{cur:11,max:11},token:{x:2,y:5},avatar:ICONS.Ranger, tags:{armor:'medium',modes:['walk'],wants:['ranged','stealth']}},
+    {id:'p5',name:'Lysa',cls:'Wizard', level:1,ac:12,hp:{cur:8,max:8}, token:{x:4,y:6},avatar:ICONS.Wizard, tags:{armor:'none',modes:['walk'],wants:['ranged']}},
+    {id:'p6',name:'Dorn',cls:'Barbarian',level:1,ac:14,hp:{cur:15,max:15},token:{x:6,y:6},avatar:ICONS.Barbarian,tags:{armor:'medium',modes:['walk'],wants:['melee']}},
   ],
-  npcs:[{id:'n1',name:'Elder Bran',role:'Quest Giver',hp:{cur:8,max:8},token:{x:8,y:6},avatar:null}],
-  enemies:[{id:'e1',name:'Skeleton A',ac:13,hp:{cur:13,max:13},token:{x:10,y:6},avatar:ICONS.Wizard, type:'undead'}],
+  npcs:[
+    {id:'n1',name:'Elder Bran',role:'Quest Giver',hp:{cur:8,max:8}, token:{x:8,y:6},avatar:null},
+    {id:'n2',name:'Innkeeper Tilda',role:'Innkeeper',hp:{cur:7,max:7},token:{x:9,y:5},avatar:null},
+    {id:'n3',name:'Guard Jor',role:'Town Guard',hp:{cur:11,max:11},token:{x:11,y:6},avatar:null}
+  ],
+  enemies:[
+    {id:'e1',name:'Skeleton A',type:'undead',ac:13,hp:{cur:13,max:13},token:{x:14,y:6},avatar:ICONS.Wizard, tags:{armor:'none',modes:['walk'],wants:['ranged']}},
+    {id:'e2',name:'Goblin Scout',type:'goblinoid',ac:15,hp:{cur:7,max:7}, token:{x:16,y:7},avatar:ICONS.Rogue,  tags:{armor:'light',modes:['walk'],wants:['stealth','ranged']}},
+    {id:'e3',name:'Orc Warrior', type:'orc',      ac:13,hp:{cur:15,max:15},token:{x:18,y:7},avatar:ICONS.Fighter,tags:{armor:'medium',modes:['walk'],wants:['melee']}},
+    {id:'e4',name:'Bandit',      type:'humanoid', ac:12,hp:{cur:11,max:11},token:{x:15,y:9},avatar:ICONS.Rogue,  tags:{armor:'light',modes:['walk'],wants:['melee','stealth']}},
+    {id:'e5',name:'Wolf',        type:'beast',    ac:13,hp:{cur:11,max:11},token:{x:12,y:8},avatar:ICONS.Ranger, tags:{armor:'none',modes:['walk'],wants:['stealth']}},
+    {id:'e6',name:'Zombie',      type:'undead',   ac:8, hp:{cur:22,max:22},token:{x:17,y:5},avatar:ICONS.Warlock,tags:{armor:'none',modes:['walk'],wants:['melee']}},
+  ],
   map:{w:24,h:18,size:48,bg:null},
   dice:{expr:'d20',last:'—',log:[], builder:{terms:{}, mod:0}},
   library:[],
@@ -104,14 +114,14 @@ let state = JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null') || {
   ui:{ dmMin:false, dmTab:'pc', noteText:'' }
 };
 
-/* ========== UTILS ========== */
+/* ===================== UTILS ===================== */
 let __saveTimer=null;
 function save(){ clearTimeout(__saveTimer); __saveTimer=setTimeout(()=>{ try{ localStorage.setItem('tp_dm_lite_v2_1', JSON.stringify(state)); }catch(e){} }, 200); }
 function nav(route){ state.route=route; save(); render(); setActive(); }
 function setActive(){ ['home','board','chars','npcs','enemies','dice','dialogue','notes','save'].forEach(id=>{ const b=document.getElementById('nav-'+id); if(b) b.classList.toggle('active', state.route===id); }); }
 function esc(s){ return (''+s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 
-/* ========== DICE (unchanged visual) ========== */
+/* ===================== DICE ===================== */
 let diceTimer=null;
 function parseAny(expr){
   const tokens = (expr||'').replace(/\s+/g,'').match(/(\d*d\d+|\+|-|\d+)/gi);
@@ -164,13 +174,30 @@ function addMod(v){ ensureBuilder(); state.dice.builder.mod=(state.dice.builder.
 function clearBuilder(){ state.dice.builder={terms:{},mod:0}; rebuildExprFromBuilder(); renderDice(); }
 function renderDiceBreakdownPreview(){ const e=state.dice.expr||''; return esc(e.replace(/\+/g,' + ')); }
 
-/* ========== BOARD ========== */
+/* ===================== RESPONSIVE BOARD ===================== */
+function recalcBoardSize(){
+  const el = document.querySelector('.board');
+  if(!el) return;
+  const containerW = el.clientWidth || el.getBoundingClientRect().width || 800;
+  const idealCell = Math.floor(containerW / state.map.w);           // full width fit
+  const clamped   = Math.max(28, Math.min(56, idealCell));          // clamp for phones & desktop
+  state.map.size  = clamped;
+  el.style.setProperty('--cell', clamped+'px');
+  el.style.height = (state.map.h * clamped) + 'px';
+}
 function gridSize(){ return state.map.size; }
 function tokenEl(kind,id){ return document.querySelector(`.board .token[data-kind="${kind}"][data-id="${id}"]`); }
 function selectTokenDom(kind,id){ document.querySelectorAll('.board .token.selected').forEach(n=>n.classList.remove('selected')); const el=tokenEl(kind,id); if(el) el.classList.add('selected'); }
-function moveTokenDom(kind,id,x,y){ const el=tokenEl(kind,id); if(el){ const size=gridSize(); el.style.left=(x*size+2)+'px'; el.style.top=(y*size+2)+'px'; } }
+function moveTokenDom(kind,id,x,y){
+  const el=tokenEl(kind,id); if(el){
+    const size=gridSize();
+    el.style.left=(x*size+2)+'px'; el.style.top=(y*size+2)+'px';
+    el.style.width =(size-6)+'px'; el.style.height=(size-6)+'px';
+  }
+}
 function renderBoard(){
   const board=document.querySelector('.board'); if(!board) return;
+  recalcBoardSize();
   board.style.backgroundImage = state.map.bg ? `url('${state.map.bg}')` : 'linear-gradient(180deg,#1b2436,#0f1524)';
   board.querySelectorAll('.token').forEach(n=>n.remove());
   const size=gridSize();
@@ -179,6 +206,7 @@ function renderBoard(){
     const d=document.createElement('div'); d.className='token '+obj.kind; d.dataset.id=obj.id; d.dataset.kind=obj.kind;
     if(state.selectedToken && state.selectedToken.id===obj.id && state.selectedToken.kind===obj.kind) d.classList.add('selected');
     d.style.left=(obj.token.x*size+2)+'px'; d.style.top=(obj.token.y*size+2)+'px';
+    d.style.width =(size-6)+'px'; d.style.height=(size-6)+'px';
     const img=document.createElement('img'); img.loading="lazy";
     img.src = iconSrc(obj);
     img.onerror = ()=>{ img.onerror=null; img.src=classFallback(obj.cls); };
@@ -205,7 +233,7 @@ function handleUpload(files, type, after){
     reader.onload = ev => {
       const img = new Image();
       img.onload = ()=>{
-        const maxW=1280, scale=Math.min(1, maxW/img.width);
+        const maxW=1600, scale=Math.min(1, maxW/img.width);
         const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
         const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
         const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,w,h);
@@ -216,7 +244,7 @@ function handleUpload(files, type, after){
             save(); render();
             if(typeof after==='function'){ after(id); }
           }; fr.readAsDataURL(blob);
-        }, 'image/webp', 0.85);
+        }, 'image/webp', 0.9);
       };
       img.src = ev.target.result;
     };
@@ -226,7 +254,7 @@ function handleUpload(files, type, after){
 function uploadSceneAndSetBg(files){ handleUpload(files,'scene',(id)=>useAsScene(id)); }
 function useAsScene(id){ const it=state.library.find(x=>x.id===id); if(!it) return; state.map.bg=it.dataUrl; save(); nav('board'); }
 
-/* ========== TERRAIN MATCHING ========== */
+/* ===================== TERRAIN MATCHING ===================== */
 function terrainMatches(obj, q){
   const tags = inferTags(obj);
   if(q.armor && tags.armor === q.armor) return true;
@@ -245,7 +273,7 @@ function terrainFocusForEntity(entity){
   return res;
 }
 
-/* ========== DM PANEL MIN/MAX + FAB ========== */
+/* ===================== DM PANEL MIN/MAX + FAB + TABS ===================== */
 function minimizeDmPanel(){ state.ui.dmMin = true; save(); renderDmPanel(); renderDmFab(); }
 function restoreDmPanel(){ state.ui.dmMin = false; save(); renderDmPanel(); renderDmFab(); }
 window.minimizeDmPanel = minimizeDmPanel;
@@ -269,7 +297,7 @@ function renderDmFab(){
   fab.classList.remove('hidden');
 }
 
-/* ========== DM GRID CELL (card + A/D) ========== */
+/* Build one grid cell (card + adv/dis) */
 function buildCell(obj, kind){
   const selected = state.selectedToken && state.selectedToken.id===obj.id && state.selectedToken.kind===kind;
   const onSelect = `state.selectedToken={id:'${obj.id}',kind:'${kind}'}; save(); renderDmPanel(); selectTokenDom('${kind}','${obj.id}')`;
@@ -316,7 +344,7 @@ function buildCell(obj, kind){
   </div>`;
 }
 
-/* ========== DM PANEL RENDER (tabs + terrain chips) ========== */
+/* Render DM Panel */
 function renderDmPanel(){
   const hud = document.getElementById('dm-panel'); if(!hud) return;
 
@@ -328,7 +356,6 @@ function renderDmPanel(){
   const tips = (TERRAIN[state.terrain]?.tips || []);
   const tipChips = tips.map(t=>`<span class="dm-chip tip" title="${esc(t)}" onclick="state.ui.noteText='${esc(t)}'; save(); renderDmPanel();">${esc(t)}</span>`).join(' ');
 
-  // current tab
   const tab = state.ui.dmTab || 'pc';
   const pcs  = state.players.map(p => buildCell(p,'pc')).join('');
   const npcs = state.npcs.map(n => buildCell(n,'npc')).join('');
@@ -374,7 +401,7 @@ function renderDmPanel(){
   `;
 }
 
-/* ========== VIEWS ========== */
+/* ===================== VIEWS ===================== */
 function Home(){
   const tiles=[
     {t:'Board', c:'var(--yellow)', d:'2D grid + tokens + terrain', a:"nav('board')"},
@@ -402,17 +429,16 @@ function Home(){
 function Board(){
   return `<div class="grid-2">
     <div class="panel">
-      <div class="row" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div class="row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
         <h3>Scene Board</h3>
-        <div class="row" style="display:flex;gap:8px">
+        <div class="row" style="display:flex;gap:8px;flex-wrap:wrap">
           <label class="btn alt"><input type="file" accept="image/*" style="display:none" onchange="uploadSceneAndSetBg(this.files)">Upload Scene</label>
           <button class="btn" onclick="state.selectedToken=null; save(); render();">Deselect</button>
         </div>
       </div>
       <div class="board" style="margin-top:10px" onclick="boardClick(event)"></div>
-      <div class="small" style="margin-top:8px">Click a token to select it, then click a grid cell to move.</div>
+      <div class="small" style="margin-top:8px">Tap/click a token to select it, then tap/click a grid cell to move.</div>
     </div>
-    <div class="panel"><h3>Tips</h3><div class="small">Use the floating DM panel (bottom‑right) for terrain & quick selects.</div></div>
   </div>`;
 }
 function Characters(){ return `<div class="panel"><h3>Characters</h3><div class="small">Roster view.</div></div>`; }
@@ -429,7 +455,7 @@ function SavePanel(){
   </div>`;
 }
 
-/* ========== DICE RENDER ========== */
+/* ===================== DICE RENDER ===================== */
 function renderDice(){
   ensureBuilder();
   const wrap = document.getElementById('dice-roller'); if(!wrap) return;
@@ -462,7 +488,7 @@ function renderDice(){
     </div>`;
 }
 
-/* ========== ROUTER ========== */
+/* ===================== ROUTER / RENDER ===================== */
 function routeView(){
   switch(state.route){
     case 'home': return Home();
@@ -487,4 +513,34 @@ function render(){
   renderDmFab();
   setActive();
 }
-render();
+
+/* ===================== INIT (load JSON overrides, then render) ===================== */
+async function init(){
+  // Try to load overrides (works best via local server; if file:// blocks, we keep safe defaults)
+  const [terrainOvr, rosterOvr] = await Promise.all([
+    loadJSON('data/terrain.json'),
+    loadJSON('data/roster.json')
+  ]);
+
+  if(terrainOvr && typeof terrainOvr==='object'){
+    try{
+      // Very light validation: ensure keys exist and adv/dis arrays present
+      const ok = Object.values(terrainOvr).every(v=>v && 'adv' in v && 'dis' in v && Array.isArray(v.adv) && Array.isArray(v.dis));
+      if(ok){ TERRAIN = terrainOvr; }
+    }catch(e){ console.warn('Terrain override invalid, using defaults'); }
+  }
+  // Only seed roster from JSON if user has not saved a session before (i.e., fresh localStorage)
+  const firstRun = !localStorage.getItem('tp_dm_lite_v2_1');
+  if(firstRun && rosterOvr && typeof rosterOvr==='object'){
+    try{
+      if(Array.isArray(rosterOvr.players)) state.players = rosterOvr.players;
+      if(Array.isArray(rosterOvr.npcs))    state.npcs    = rosterOvr.npcs;
+      if(Array.isArray(rosterOvr.enemies)) state.enemies = rosterOvr.enemies;
+    }catch(e){ console.warn('Roster override invalid, keeping seeds'); }
+  }
+
+  render();
+  window.addEventListener('resize', ()=>{ if(state.route==='board'){ recalcBoardSize(); renderBoard(); } });
+}
+
+init();

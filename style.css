@@ -30,19 +30,39 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 
 .grid-2{display:grid;grid-template-columns:2fr 1fr;gap:12px}
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.list{display:flex;flex-direction:column;gap:8px}
-.item{display:flex;align-items:center;justify-content:space-between;background:#0f1115;border:1px solid var(--border);border-radius:10px;padding:10px}
-.chip{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;color:#0f1115;margin-left:6px}
+@media (max-width: 900px){ .grid-2{grid-template-columns:1fr} }
 
 /* Home tiles */
 .panel.tile{cursor:pointer;transition: transform .15s, box-shadow .15s, border-color .15s, background-color .15s;outline: none;}
 .panel.tile:hover,.panel.tile:focus-visible{border-color: var(--accent);box-shadow: 0 8px 28px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset;transform: translateY(-2px);background: color-mix(in srgb, var(--accent) 10%, var(--panel));}
 .panel.tile:active{transform: translateY(0);box-shadow: 0 4px 16px rgba(0,0,0,.35),0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent) inset}
 
-/* Board */
-.board{position:relative;height:560px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#0f141f;background-size:cover;background-position:center}
-.board::after{content:"";position:absolute;inset:0;background-image:linear-gradient(to right,rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(to bottom,rgba(255,255,255,.05) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
-.token{position:absolute;width:44px;height:44px;border-radius:6px;border:2px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer;user-select:none;transition:transform .05s, box-shadow .15s;overflow:hidden;background:#0f1115}
+/* ===== Responsive Board ===== */
+.board{
+  position:relative;
+  width:100%;
+  min-height:240px; /* JS sets exact height based on grid */
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+  background:#0f141f;
+  background-size:cover;background-position:center;
+  --cell: 48px; /* JS updates this */
+}
+.board::after{
+  content:"";position:absolute;inset:0;
+  background-image:
+    linear-gradient(to right,rgba(255,255,255,.05) 1px,transparent 1px),
+    linear-gradient(to bottom,rgba(255,255,255,.05) 1px,transparent 1px);
+  background-size: var(--cell) var(--cell);
+  pointer-events:none;
+}
+.token{
+  position:absolute;
+  border-radius:6px;border:2px solid rgba(255,255,255,.25);
+  display:flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer;user-select:none;
+  transition:transform .05s, box-shadow .15s;overflow:hidden;background:#0f1115;
+}
 .token img{width:100%;height:100%;object-fit:contain;display:block}
 .token.pc{background:#0ea5e9aa}
 .token.npc{background:#22c55eaa}
@@ -65,7 +85,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .dm-section{margin-top:10px;background:#0f1115;border:1px solid var(--border);border-radius:12px;padding:10px}
 
 /* DM Panel tabs */
-.dm-tabs{ display:flex; gap:6px; margin:6px 0 0 0; }
+.dm-tabs{ display:flex; gap:6px; margin:6px 0 8px 0; }
 .dm-tab{ flex:1; text-align:center; padding:6px 8px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#cbd5e1; cursor:pointer; transition:.15s }
 .dm-tab:hover{ border-color:var(--accent) }
 .dm-tab.active{ background:color-mix(in srgb, var(--accent) 18%, transparent); border-color:var(--accent); color:#fff }
@@ -108,34 +128,19 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .badges{ display:flex; gap:6px; }
 .badge{ font-size:10px; padding:3px 6px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#dbe1ee }
 
-/* Advantages / Disadvantages inside each cell */
+/* Advantage / Disadvantage chips */
 .dm-adv, .dm-dis{ background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:6px; }
 .dm-adv-title, .dm-dis-title{ font-size:11px; font-weight:700; margin-bottom:4px; }
 .dm-adv-title{ color: var(--teal); }
 .dm-dis-title{ color: var(--red); }
 .dm-chips{ display:flex; flex-wrap:wrap; gap:6px; }
-.dm-chip{
-  font-size:11px; padding:3px 8px; border-radius:999px; border:1px solid var(--border); cursor:pointer; user-select:none;
-  transition:.15s;
-}
-.dm-chip.adv{
-  color:#05241f;
-  background: color-mix(in srgb, var(--teal) 28%, #0f1422);
-  border-color: color-mix(in srgb, var(--teal) 60%, #000);
-}
-.dm-chip.dis{
-  color:#2a0b0b;
-  background: color-mix(in srgb, var(--red) 28%, #0f1422);
-  border-color: color-mix(in srgb, var(--red) 60%, #000);
-}
-.dm-chip.tip{
-  color:#0f1a10;
-  background: color-mix(in srgb, var(--sage) 28%, #0f1422);
-  border-color: color-mix(in srgb, var(--sage) 55%, #000);
-}
+.dm-chip{ font-size:11px; padding:3px 8px; border-radius:999px; border:1px solid var(--border); cursor:pointer; user-select:none; transition:.15s; }
+.dm-chip.adv{ color:#05241f; background: color-mix(in srgb, var(--teal) 28%, #0f1422); border-color: color-mix(in srgb, var(--teal) 60%, #000) }
+.dm-chip.dis{ color:#2a0b0b; background: color-mix(in srgb, var(--red) 28%, #0f1422); border-color: color-mix(in srgb, var(--red) 60%, #000) }
+.dm-chip.tip{ color:#0f1a10; background: color-mix(in srgb, var(--sage) 28%, #0f1422); border-color: color-mix(in srgb, var(--sage) 55%, #000) }
 .dm-chip:hover{ border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
 
-/* Terrain mini chips row */
+/* Terrain tips mini row */
 .terr-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px }
 
 /* detail note after clicking a chip */
@@ -155,6 +160,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .dm-fab-label{ font-weight:600 }
 .dm-fab-count{ font-size:12px; color:#cbd5e1; background:#0f1115; border:1px solid var(--border); padding:2px 6px; border-radius:999px }
 
+/* Mobile tweaks */
 @media (max-width: 768px){
   .dm-panel{ left:12px; right:12px; bottom:12px; width:auto; }
   .dm-grid3{ grid-template-columns: repeat(3, 1fr); }
