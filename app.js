@@ -104,7 +104,7 @@ let state = JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null') || {
     {id:'e3',name:'Orc Warrior', type:'orc',      ac:13,hp:{cur:15,max:15},token:{x:18,y:7},avatar:ICONS.Fighter,tags:{armor:'medium',modes:['walk'],wants:['melee']}},
     {id:'e4',name:'Bandit',      type:'humanoid', ac:12,hp:{cur:11,max:11},token:{x:15,y:9},avatar:ICONS.Rogue,  tags:{armor:'light',modes:['walk'],wants:['melee','stealth']}},
     {id:'e5',name:'Wolf',        type:'beast',    ac:13,hp:{cur:11,max:11},token:{x:12,y:8},avatar:ICONS.Ranger, tags:{armor:'none',modes:['walk'],wants:['stealth']}},
-    {id:'e6',name:'Zombie',      type:'undead',   ac:8, hp:{cur:22,max:22},token:{x:17,y:5},avatar:ICONS.Warlock,tags:{armor:'none',modes:['walk'],wants:['melee']}},
+    {id:'e6',name:'Zombie',      type:'undead',   ac:8, hp:{cur:22,max:22},token:{x:17,y:5},avatar:ICONS.Warlock,tags:{armor:'none',modes:['walk'],wants:['melee']}}
   ],
   map:{w:24,h:18,size:48,bg:null},
   dice:{expr:'d20',last:'—',log:[], builder:{terms:{}, mod:0}},
@@ -297,7 +297,7 @@ function renderDmFab(){
   fab.classList.remove('hidden');
 }
 
-/* Build one grid cell (card + adv/dis) */
+/* Build one grid item: a confined box containing the card + A/D sections */
 function buildCell(obj, kind){
   const selected = state.selectedToken && state.selectedToken.id===obj.id && state.selectedToken.kind===kind;
   const onSelect = `state.selectedToken={id:'${obj.id}',kind:'${kind}'}; save(); renderDmPanel(); selectTokenDom('${kind}','${obj.id}')`;
@@ -320,7 +320,7 @@ function buildCell(obj, kind){
            : (obj.role||'NPC');
 
   return `
-  <div class="dm-cell">
+  <div class="dm-character-box">
     <div class="dm-card ${selected?'selected':''}" onclick="(function(){ ${onSelect} })()">
       <div class="name">${esc(obj.name || obj.role || 'Unknown')}</div>
       <div class="avatar"><img width="40" height="40" src="${iconSrc(obj)}"
@@ -524,12 +524,10 @@ async function init(){
 
   if(terrainOvr && typeof terrainOvr==='object'){
     try{
-      // Very light validation: ensure keys exist and adv/dis arrays present
       const ok = Object.values(terrainOvr).every(v=>v && 'adv' in v && 'dis' in v && Array.isArray(v.adv) && Array.isArray(v.dis));
       if(ok){ TERRAIN = terrainOvr; }
     }catch(e){ console.warn('Terrain override invalid, using defaults'); }
   }
-  // Only seed roster from JSON if user has not saved a session before (i.e., fresh localStorage)
   const firstRun = !localStorage.getItem('tp_dm_lite_v2_1');
   if(firstRun && rosterOvr && typeof rosterOvr==='object'){
     try{

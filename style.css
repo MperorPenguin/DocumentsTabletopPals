@@ -97,25 +97,28 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .dm-sec-head.npc  { background:color-mix(in srgb, var(--teal) 12%, transparent);  border-color: color-mix(in srgb, var(--teal) 45%, #000) }
 .dm-sec-head.enemy{ background:color-mix(in srgb, var(--red)  12%, transparent);  border-color: color-mix(in srgb, var(--red)  45%, #000) }
 
-/* 3-column grid (each cell = card + A/D inside) */
+/* 3-column grid */
 .dm-grid3{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; }
-.dm-cell{
-  background:#0f1422;
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:8px;
+
+/* ===== Character/NPC/Enemy BOX (confined rounded panel) ===== */
+.dm-character-box{
+  background:#1e293b;           /* slightly lighter for separation */
+  border:1px solid #233044;
+  border-radius:14px;
+  padding:10px;
   display:flex;
   flex-direction:column;
   gap:8px;
-  transition:.15s border-color, .15s box-shadow, .12s transform;
+  box-shadow:0 2px 8px rgba(0,0,0,.35);
+  transition:.15s border-color, .15s transform, .15s box-shadow;
 }
-.dm-cell:hover{
+.dm-character-box:hover{
   border-color:var(--accent);
-  box-shadow:0 6px 18px rgba(0,0,0,.45), 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset;
   transform:translateY(-1px);
+  box-shadow:0 8px 22px rgba(0,0,0,.45), 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent) inset;
 }
 
-/* Card in the cell */
+/* The inner “card” area */
 .dm-card{
   background:#0f1422;border:1px solid var(--border);border-radius:10px;padding:8px 6px;
   display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;
@@ -128,16 +131,32 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .badges{ display:flex; gap:6px; }
 .badge{ font-size:10px; padding:3px 6px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#dbe1ee }
 
-/* Advantage / Disadvantage chips */
+/* Advantages / Disadvantages blocks inside the box */
 .dm-adv, .dm-dis{ background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:6px; }
-.dm-adv-title, .dm-dis-title{ font-size:11px; font-weight:700; margin-bottom:4px; }
-.dm-adv-title{ color: var(--teal); }
-.dm-dis-title{ color: var(--red); }
+.dm-adv-title, .dm-dis-title{ font-size:11px; font-weight:800; margin-bottom:4px; }
+.dm-adv-title{ color:#34d399; }   /* bright green title */
+.dm-dis-title{ color:#f87171; }   /* bright red title */
+
+/* Chips */
 .dm-chips{ display:flex; flex-wrap:wrap; gap:6px; }
-.dm-chip{ font-size:11px; padding:3px 8px; border-radius:999px; border:1px solid var(--border); cursor:pointer; user-select:none; transition:.15s; }
-.dm-chip.adv{ color:#05241f; background: color-mix(in srgb, var(--teal) 28%, #0f1422); border-color: color-mix(in srgb, var(--teal) 60%, #000) }
-.dm-chip.dis{ color:#2a0b0b; background: color-mix(in srgb, var(--red) 28%, #0f1422); border-color: color-mix(in srgb, var(--red) 60%, #000) }
-.dm-chip.tip{ color:#0f1a10; background: color-mix(in srgb, var(--sage) 28%, #0f1422); border-color: color-mix(in srgb, var(--sage) 55%, #000) }
+.dm-chip{
+  font-size:11px; padding:4px 9px; border-radius:999px; border:1px solid var(--border); cursor:pointer; user-select:none; transition:.15s;
+}
+.dm-chip.adv{
+  background:#065f46; /* deep green */
+  color:#d1fae5;      /* mint text */
+  border-color:#0b7a5b;
+}
+.dm-chip.dis{
+  background:#7f1d1d; /* deep red */
+  color:#fee2e2;      /* rose text */
+  border-color:#9b2222;
+}
+.dm-chip.tip{
+  background:#334155; /* slate */
+  color:#e2e8f0;
+  border-color:#475569;
+}
 .dm-chip:hover{ border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
 
 /* Terrain tips mini row */
