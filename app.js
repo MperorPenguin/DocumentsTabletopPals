@@ -1,4 +1,4 @@
-// ---------- Icons ----------
+/* ========== ICONS & FALLBACKS ========== */
 const ICONS = {
   Barbarian:'assets/class_icons/Barbarian.svg', Bard:'assets/class_icons/Bard.svg', Cleric:'assets/class_icons/Cleric.svg',
   Druid:'assets/class_icons/Druid.svg', Fighter:'assets/class_icons/Fighter.svg', Monk:'assets/class_icons/Monk.svg',
@@ -20,7 +20,7 @@ function dataIcon(label, color){
 function classFallback(cls){ return dataIcon((cls?.[0]||'?').toUpperCase(), CLASS_COLORS[cls]||'#94a3b8'); }
 function iconSrc(obj){ return obj.avatar || (obj.cls && ICONS[obj.cls]) || classFallback(obj.cls); }
 
-// Traits inference so A/D chips don’t go blank
+/* ========== TRAITS (INFER) ========== */
 const CLASS_TRAITS = {
   Rogue:   { armor:'light', wants:['stealth','ranged'],  modes:['walk'] },
   Ranger:  { armor:'medium',wants:['ranged','stealth'],  modes:['walk'] },
@@ -34,16 +34,15 @@ const CLASS_TRAITS = {
   Paladin: { armor:'heavy',  wants:['melee'],            modes:['walk'] },
   Druid:   { armor:'light',  wants:['stealth'],          modes:['walk','swim'] },
 };
+function inferTags(obj){
+  const inferred = CLASS_TRAITS[obj.cls] || {};
+  const t = {...inferred, ...(obj.tags||{})};
+  t.wants = Array.from(new Set([...(inferred.wants||[]), ...((obj.tags&&obj.tags.wants)||[])]));
+  t.modes = Array.from(new Set([...(inferred.modes||[]), ...((obj.tags&&obj.tags.modes)||[])]));
+  return t;
+}
 
-// SRD-ish static data (for future builder extension)
-const SRD = {
-  classes: Object.keys(ICONS),
-  races: ['Human','Elf','Dwarf','Halfling','Gnome','Half-Orc','Tiefling','Dragonborn'],
-  backgrounds: ['Acolyte','Criminal','Folk Hero','Noble','Outlander','Sage','Soldier','Urchin'],
-  alignments: ['LG','NG','CG','LN','N','CN','LE','NE','CE'],
-};
-
-// Terrain rules with “why”
+/* ========== TERRAIN RULES (expanded so Fighters match Desert, etc.) ========== */
 const TERRAIN = {
   Forest: {
     tips:['Undergrowth (difficult)','Cover available'],
@@ -58,7 +57,8 @@ const TERRAIN = {
   Desert: {
     tips:['Heat & mirage','Open sightlines'],
     adv:[{want:'ranged', why:'Open terrain favors ranged combatants.'}],
-    dis:[{want:'stealth', why:'Few places to hide in open sands.'}]
+    // Added heavy-armor downside so Fighters/Paladins show a match here
+    dis:[{want:'stealth', why:'Few places to hide in open sands.'},{armor:'heavy', why:'Heat drains stamina; heavy armor is punishing.'}]
   },
   Mountain: {
     tips:['Steep slopes','High winds'],
@@ -87,31 +87,31 @@ const TERRAIN = {
   },
 };
 
-// ---------- App state ----------
+/* ========== APP STATE ========== */
 let state = JSON.parse(localStorage.getItem('tp_dm_lite_v2_1')||'null') || {
   route:'home', terrain:'Forest',
   players:[
-    {id:'p1',name:'Aria',cls:'Rogue',race:'Human',bg:'Urchin',align:'CG',level:1,ac:15,abilities:{Str:10,Dex:15,Con:12,Int:12,Wis:11,Cha:10},skills:['Stealth (Dex)'],hp:{cur:10,max:10},pp:13,token:{x:2,y:3},avatar:ICONS.Rogue,tags:{armor:'light',modes:['walk'],wants:['stealth','ranged']}},
-    {id:'p2',name:'Bronn',cls:'Fighter',race:'Human',bg:'Soldier',align:'LN',level:1,ac:17,abilities:{Str:16,Dex:12,Con:14,Int:10,Wis:10,Cha:10},skills:['Athletics (Str)'],hp:{cur:13,max:13},pp:11,token:{x:4,y:4},avatar:ICONS.Fighter,tags:{armor:'heavy',modes:['walk'],wants:['melee']}},
+    {id:'p1',name:'Aria',cls:'Rogue',level:1,ac:15,hp:{cur:10,max:10},token:{x:2,y:3},avatar:ICONS.Rogue,tags:{armor:'light',modes:['walk'],wants:['stealth','ranged']}},
+    {id:'p2',name:'Bronn',cls:'Fighter',level:1,ac:17,hp:{cur:13,max:13},token:{x:4,y:4},avatar:ICONS.Fighter,tags:{armor:'heavy',modes:['walk'],wants:['melee']}},
   ],
-  npcs:[{id:'n1',name:'Elder Bran',role:'Quest Giver',token:{x:8,y:6},avatar:null}],
+  npcs:[{id:'n1',name:'Elder Bran',role:'Quest Giver',hp:{cur:8,max:8},token:{x:8,y:6},avatar:null}],
   enemies:[{id:'e1',name:'Skeleton A',ac:13,hp:{cur:13,max:13},token:{x:10,y:6},avatar:ICONS.Wizard, type:'undead'}],
   map:{w:24,h:18,size:48,bg:null},
   dice:{expr:'d20',last:'—',log:[], builder:{terms:{}, mod:0}},
   library:[],
   notes:'',
   selectedToken:null,
-  ui:{ terrainFocus:null, dmMin:false, focusEntity:null, noteText:'' }
+  ui:{ dmMin:false, dmTab:'pc', noteText:'' }
 };
 
-// ---------- Utils ----------
+/* ========== UTILS ========== */
 let __saveTimer=null;
-function save(){ clearTimeout(__saveTimer); __saveTimer=setTimeout(()=>{ try{ localStorage.setItem('tp_dm_lite_v2_1', JSON.stringify(state)); }catch(e){} }, 300); }
+function save(){ clearTimeout(__saveTimer); __saveTimer=setTimeout(()=>{ try{ localStorage.setItem('tp_dm_lite_v2_1', JSON.stringify(state)); }catch(e){} }, 200); }
 function nav(route){ state.route=route; save(); render(); setActive(); }
 function setActive(){ ['home','board','chars','npcs','enemies','dice','dialogue','notes','save'].forEach(id=>{ const b=document.getElementById('nav-'+id); if(b) b.classList.toggle('active', state.route===id); }); }
 function esc(s){ return (''+s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 
-// ---------- Dice ----------
+/* ========== DICE (unchanged visual) ========== */
 let diceTimer=null;
 function parseAny(expr){
   const tokens = (expr||'').replace(/\s+/g,'').match(/(\d*d\d+|\+|-|\d+)/gi);
@@ -164,7 +164,7 @@ function addMod(v){ ensureBuilder(); state.dice.builder.mod=(state.dice.builder.
 function clearBuilder(){ state.dice.builder={terms:{},mod:0}; rebuildExprFromBuilder(); renderDice(); }
 function renderDiceBreakdownPreview(){ const e=state.dice.expr||''; return esc(e.replace(/\+/g,' + ')); }
 
-// ---------- Board ----------
+/* ========== BOARD ========== */
 function gridSize(){ return state.map.size; }
 function tokenEl(kind,id){ return document.querySelector(`.board .token[data-kind="${kind}"][data-id="${id}"]`); }
 function selectTokenDom(kind,id){ document.querySelectorAll('.board .token.selected').forEach(n=>n.classList.remove('selected')); const el=tokenEl(kind,id); if(el) el.classList.add('selected'); }
@@ -183,8 +183,8 @@ function renderBoard(){
     img.src = iconSrc(obj);
     img.onerror = ()=>{ img.onerror=null; img.src=classFallback(obj.cls); };
     d.appendChild(img);
-    d.title = obj.name;
-    d.onclick = (ev)=>{ ev.stopPropagation(); state.selectedToken={id:obj.id,kind:obj.kind}; save(); selectTokenDom(obj.kind,obj.id); };
+    d.title = obj.name || obj.role || '';
+    d.onclick = (ev)=>{ ev.stopPropagation(); state.selectedToken={id:obj.id,kind:obj.kind}; save(); selectTokenDom(obj.kind,obj.id); renderDmPanel(); };
     board.appendChild(d);
   });
 }
@@ -198,7 +198,7 @@ function boardClick(e){
   obj.token.x=gx; obj.token.y=gy; moveTokenDom(state.selectedToken.kind,state.selectedToken.id,gx,gy); save();
 }
 
-// Upload scene/library
+/* Upload scene */
 function handleUpload(files, type, after){
   [...files].forEach(file=>{
     const reader = new FileReader();
@@ -226,14 +226,7 @@ function handleUpload(files, type, after){
 function uploadSceneAndSetBg(files){ handleUpload(files,'scene',(id)=>useAsScene(id)); }
 function useAsScene(id){ const it=state.library.find(x=>x.id===id); if(!it) return; state.map.bg=it.dataUrl; save(); nav('board'); }
 
-// ---------- Terrain helpers ----------
-function inferTags(obj){
-  const inferred = CLASS_TRAITS[obj.cls] || {};
-  const t = {...inferred, ...(obj.tags||{})};
-  t.wants = Array.from(new Set([...(inferred.wants||[]), ...((obj.tags&&obj.tags.wants)||[])]));
-  t.modes = Array.from(new Set([...(inferred.modes||[]), ...((obj.tags&&obj.tags.modes)||[])]));
-  return t;
-}
+/* ========== TERRAIN MATCHING ========== */
 function terrainMatches(obj, q){
   const tags = inferTags(obj);
   if(q.armor && tags.armor === q.armor) return true;
@@ -252,11 +245,13 @@ function terrainFocusForEntity(entity){
   return res;
 }
 
-// ---------- DM Panel minimize / restore ----------
+/* ========== DM PANEL MIN/MAX + FAB ========== */
 function minimizeDmPanel(){ state.ui.dmMin = true; save(); renderDmPanel(); renderDmFab(); }
 function restoreDmPanel(){ state.ui.dmMin = false; save(); renderDmPanel(); renderDmFab(); }
 window.minimizeDmPanel = minimizeDmPanel;
 window.restoreDmPanel  = restoreDmPanel;
+function setDmTab(tab){ state.ui.dmTab = tab; save(); renderDmPanel(); }
+window.setDmTab = setDmTab;
 
 function renderDmFab(){
   let fab = document.getElementById('dm-fab');
@@ -267,20 +262,17 @@ function renderDmFab(){
     fab.type = 'button';
     document.body.appendChild(fab);
   }
-  if(state.route !== 'board' || !state.ui.dmMin){
-    fab.classList.add('hidden'); return;
-  }
+  if(state.route !== 'board' || !state.ui.dmMin){ fab.classList.add('hidden'); return; }
   const hints = (TERRAIN[state.terrain]?.tips?.length || 0);
   fab.innerHTML = `<span class="dm-fab-dot"></span><span class="dm-fab-label">DM Panel</span><span class="dm-fab-count">${hints}</span>`;
   fab.onclick = window.restoreDmPanel;
   fab.classList.remove('hidden');
 }
-window.renderDmFab = renderDmFab;
 
-// ---------- Build one 3×3 “cell” (card + advantages + disadvantages) ----------
+/* ========== DM GRID CELL (card + A/D) ========== */
 function buildCell(obj, kind){
   const selected = state.selectedToken && state.selectedToken.id===obj.id && state.selectedToken.kind===kind;
-  const onSelect = `state.selectedToken={id:'${obj.id}',kind:'${kind}'}; state.ui.focusEntity={id:'${obj.id}',kind:'${kind}'}; save(); render();`;
+  const onSelect = `state.selectedToken={id:'${obj.id}',kind:'${kind}'}; save(); renderDmPanel(); selectTokenDom('${kind}','${obj.id}')`;
 
   const F = terrainFocusForEntity(obj);
   const chip = (a, cls) => {
@@ -290,11 +282,14 @@ function buildCell(obj, kind){
                   a.armor? `Armor: ${a.armor}` :
                            (cls==='adv'?'Advantage':'Disadvantage');
     const why = esc(a.why || (cls==='adv'?'Advantage in this terrain.':'Disadvantage in this terrain.'));
-    return `<span class="dm-chip ${cls}" title="${why}"
-             onclick="event.stopPropagation(); state.ui.noteText='${why}'; save(); renderDmPanel();">${label}</span>`;
+    return `<span class="dm-chip ${cls}" title="${why}" onclick="event.stopPropagation(); state.ui.noteText='${why}'; save(); renderDmPanel();">${label}</span>`;
   };
-  const advChips = (F.adv.length ? F.adv.map(a=>chip(a,'adv')).join(' ') : `<span class="dm-chip adv" style="opacity:.65;cursor:default">—</span>`);
-  const disChips = (F.dis.length ? F.dis.map(a=>chip(a,'dis')).join(' ') : `<span class="dm-chip dis" style="opacity:.65;cursor:default">—</span>`);
+  const advChips = (F.adv.length ? F.adv.map(a=>chip(a,'adv')).join(' ') : `<span class="dm-chip adv" style="opacity:.65;cursor:default">No specific advantage</span>`);
+  const disChips = (F.dis.length ? F.dis.map(a=>chip(a,'dis')).join(' ') : `<span class="dm-chip dis" style="opacity:.65;cursor:default">No specific disadvantage</span>`);
+
+  const sub = kind==='pc' ? `Lvl ${obj.level||1}`
+           : kind==='enemy' ? `AC ${obj.ac??'—'}`
+           : (obj.role||'NPC');
 
   return `
   <div class="dm-cell">
@@ -303,7 +298,7 @@ function buildCell(obj, kind){
       <div class="avatar"><img width="40" height="40" src="${iconSrc(obj)}"
         onerror="this.onerror=null; this.src='${classFallback(obj.cls)}'"/></div>
       <div class="badges">
-        <span class="badge">${kind==='pc' ? 'Lvl '+(obj.level||1) : (kind==='enemy' ? ('AC '+(obj.ac??'—')) : (obj.role||'NPC'))}</span>
+        <span class="badge">${sub}</span>
         <span class="badge">HP ${(obj.hp?.cur??'—')}/${(obj.hp?.max??'—')}</span>
       </div>
       <div class="actions" style="margin-top:4px">
@@ -321,7 +316,7 @@ function buildCell(obj, kind){
   </div>`;
 }
 
-// ---------- Render DM Panel (3 columns per row) ----------
+/* ========== DM PANEL RENDER (tabs + terrain chips) ========== */
 function renderDmPanel(){
   const hud = document.getElementById('dm-panel'); if(!hud) return;
 
@@ -330,12 +325,18 @@ function renderDmPanel(){
 
   renderDmFab(); hud.classList.remove('hidden');
 
-  const tips = (TERRAIN[state.terrain]?.tips || []).map(t=>`
-    <div class="terr-card"><span class="dot"></span><span class="label">${esc(t)}</span></div>`).join('');
+  const tips = (TERRAIN[state.terrain]?.tips || []);
+  const tipChips = tips.map(t=>`<span class="dm-chip tip" title="${esc(t)}" onclick="state.ui.noteText='${esc(t)}'; save(); renderDmPanel();">${esc(t)}</span>`).join(' ');
 
+  // current tab
+  const tab = state.ui.dmTab || 'pc';
   const pcs  = state.players.map(p => buildCell(p,'pc')).join('');
   const npcs = state.npcs.map(n => buildCell(n,'npc')).join('');
   const foes = state.enemies.map(e => buildCell(e,'enemy')).join('');
+
+  const section = tab==='pc' ? { cls:'pc', title:'Characters (PC)', count: state.players.length, body: pcs || '<div class="small">No party yet.</div>' }
+                : tab==='npc'? { cls:'npc',title:'NPCs', count: state.npcs.length, body: npcs || '<div class="small">No NPCs yet.</div>' }
+                :               { cls:'enemy',title:'Enemies', count: state.enemies.length, body: foes || '<div class="small">No enemies yet.</div>' };
 
   hud.innerHTML = `
     <div class="dm-head">
@@ -351,29 +352,29 @@ function renderDmPanel(){
               onchange="state.terrain=this.value; state.ui.noteText=''; save(); render();">
         ${Object.keys(TERRAIN).map(t=>`<option ${state.terrain===t?'selected':''}>${t}</option>`).join('')}
       </select>
-      ${tips ? `<div class="terr-wrap" style="margin-top:8px"><div class="terr-head">Environment Notes</div><div class="terr-grid">${tips}</div></div>` : ''}
+      ${tipChips ? `<div class="terr-row">${tipChips}</div>` : ''}
+      ${state.ui.noteText ? `<div class="dm-detail">${esc(state.ui.noteText)}</div>` : ''}
     </div>
 
     <div class="dm-section">
-      <div class="dm-sec-head pc"><span>Characters (PC)</span><span class="count">${state.players.length}</span></div>
-      <div class="dm-grid3">${pcs || '<div class="small">No party yet.</div>'}</div>
-    </div>
+      <div class="dm-tabs">
+        <button class="dm-tab ${tab==='pc'?'active':''}"   onclick="setDmTab('pc')">PCs</button>
+        <button class="dm-tab ${tab==='npc'?'active':''}"  onclick="setDmTab('npc')">NPCs</button>
+        <button class="dm-tab ${tab==='enemy'?'active':''}"onclick="setDmTab('enemy')">Enemies</button>
+      </div>
 
-    <div class="dm-section">
-      <div class="dm-sec-head npc"><span>NPCs</span><span class="count">${state.npcs.length}</span></div>
-      <div class="dm-grid3">${npcs || '<div class="small">No NPCs yet.</div>'}</div>
-    </div>
+      <div class="dm-sec-head ${section.cls}">
+        <span>${section.title}</span><span class="count">${section.count}</span>
+      </div>
 
-    <div class="dm-section">
-      <div class="dm-sec-head enemy"><span>Enemies</span><span class="count">${state.enemies.length}</span></div>
-      <div class="dm-grid3">${foes || '<div class="small">No enemies yet.</div>'}</div>
+      <div class="dm-grid3">
+        ${section.body}
+      </div>
     </div>
-
-    ${state.ui.noteText ? `<div class="dm-detail">${esc(state.ui.noteText)}</div>` : ''}
   `;
 }
 
-// ---------- Views ----------
+/* ========== VIEWS ========== */
 function Home(){
   const tiles=[
     {t:'Board', c:'var(--yellow)', d:'2D grid + tokens + terrain', a:"nav('board')"},
@@ -386,7 +387,7 @@ function Home(){
     {t:'Save', c:'var(--yellow)', d:'Import/Export JSON', a:"nav('save')"},
   ];
   return `<h1 style="margin:16px 0 6px 0">Welcome back, DM!</h1>
-    <div class="small" style="margin-bottom:10px">Board + floating DM HUD • Terrain intel • Icons.</div>
+    <div class="small" style="margin-bottom:10px">Board + floating DM HUD • Terrain intel • Tabs & grid cards.</div>
     <div class="grid-3">
       ${tiles.map(t=>`
         <div class="panel tile" role="button" tabindex="0" aria-label="Open ${t.t}"
@@ -428,7 +429,7 @@ function SavePanel(){
   </div>`;
 }
 
-// ---------- Dice render ----------
+/* ========== DICE RENDER ========== */
 function renderDice(){
   ensureBuilder();
   const wrap = document.getElementById('dice-roller'); if(!wrap) return;
@@ -461,7 +462,7 @@ function renderDice(){
     </div>`;
 }
 
-// ---------- Router / render ----------
+/* ========== ROUTER ========== */
 function routeView(){
   switch(state.route){
     case 'home': return Home();

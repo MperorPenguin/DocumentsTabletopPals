@@ -57,12 +57,18 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 /* ===== Compact Floating DM Panel ===== */
 .dm-panel{
   position:fixed; right:16px; bottom:16px;
-  width:360px; max-height:74vh; overflow:auto; z-index:1000;
+  width:380px; max-height:74vh; overflow:auto; z-index:1000;
   background:var(--panel); border:1px solid var(--border); border-radius:14px;
   padding:10px; box-shadow:0 14px 30px rgba(0,0,0,.5); backdrop-filter: blur(6px);
 }
 .dm-panel h3{margin:0 0 8px;font-size:14px;letter-spacing:.2px;border-bottom:1px solid var(--border);padding-bottom:6px}
 .dm-section{margin-top:10px;background:#0f1115;border:1px solid var(--border);border-radius:12px;padding:10px}
+
+/* DM Panel tabs */
+.dm-tabs{ display:flex; gap:6px; margin:6px 0 0 0; }
+.dm-tab{ flex:1; text-align:center; padding:6px 8px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#cbd5e1; cursor:pointer; transition:.15s }
+.dm-tab:hover{ border-color:var(--accent) }
+.dm-tab.active{ background:color-mix(in srgb, var(--accent) 18%, transparent); border-color:var(--accent); color:#fff }
 
 /* colored section headers */
 .dm-sec-head{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:8px;font-weight:700;font-size:12px;border:1px solid var(--border);margin-bottom:8px}
@@ -110,18 +116,27 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .dm-chips{ display:flex; flex-wrap:wrap; gap:6px; }
 .dm-chip{
   font-size:11px; padding:3px 8px; border-radius:999px; border:1px solid var(--border); cursor:pointer; user-select:none;
-  background:#12182a; color:#e6e9f2; transition:.15s;
+  transition:.15s;
 }
-.dm-chip.adv{ border-color: color-mix(in srgb, var(--teal) 60%, #000) }
-.dm-chip.dis{ border-color: color-mix(in srgb, var(--red) 60%, #000) }
+.dm-chip.adv{
+  color:#05241f;
+  background: color-mix(in srgb, var(--teal) 28%, #0f1422);
+  border-color: color-mix(in srgb, var(--teal) 60%, #000);
+}
+.dm-chip.dis{
+  color:#2a0b0b;
+  background: color-mix(in srgb, var(--red) 28%, #0f1422);
+  border-color: color-mix(in srgb, var(--red) 60%, #000);
+}
+.dm-chip.tip{
+  color:#0f1a10;
+  background: color-mix(in srgb, var(--sage) 28%, #0f1422);
+  border-color: color-mix(in srgb, var(--sage) 55%, #000);
+}
 .dm-chip:hover{ border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
 
-/* Terrain tips block */
-.terr-wrap{ display:flex; flex-direction:column; gap:8px; margin-top:8px }
-.terr-head{ font-size:12px; font-weight:700; padding:4px 8px; border-radius:8px; display:inline-block; border:1px solid var(--border); background:#0f1115; color:#cbd5e1 }
-.terr-grid{ display:grid; grid-template-columns:1fr; gap:6px; margin-top:6px }
-.terr-card{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:10px; border:1px solid var(--border); background:#12182a; color:#e6e9f2; }
-.terr-card .dot{ width:8px; height:8px; border-radius:50%; background:var(--sage) }
+/* Terrain mini chips row */
+.terr-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px }
 
 /* detail note after clicking a chip */
 .dm-detail{ margin-top:8px;border:1px solid var(--border);background:#111623;color:#dbe1ee;border-radius:8px;padding:10px;font-size:13px }
