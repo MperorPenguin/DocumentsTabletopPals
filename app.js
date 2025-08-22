@@ -228,11 +228,82 @@ function SavePanel(){return `<div class="panel"><h2>Save / Export</h2>
   <label class="btn"><input type="file" accept="application/json" style="display:none" onchange="const r=new FileReader(); r.onload=e=>{try{state=JSON.parse(e.target.result); save(); render()}catch{alert('Invalid JSON')}}; r.readAsText(this.files[0])">Import</label>
   <button class="btn" onclick="if(confirm('Reset all data?')){localStorage.removeItem('tp_dm_lite_v2_1'); location.reload();}">Reset</button>
 </div>`}
-function routeView(){switch(state.route){case'home':return Home();case'board':return Board();case'chars':return Characters();case'npcs':return NPCs();case'enemies':return Enemies();case'notes':return Notes();case'save':return SavePanel();default:return Home()}}
+function routeView(){
+  switch(state.route){
+    case 'home':   return Home();
+    case 'board':  return Board();
+    case 'chars':  return Characters();
+    case 'npcs':   return NPCs();
+    case 'enemies':return Enemies();
+    case 'dice':   return Dice();        // <-- make sure this line exists
+    case 'notes':  return Notes();
+    case 'save':   return SavePanel();
+    default:       return Home();
+  }
+}
+{switch(state.route){case'home':return Home();case'board':return Board();case'chars':return Characters();case'npcs':return NPCs();case'enemies':return Enemies();case'notes':return Notes();case'save':return SavePanel();default:return Home()}}
 function render(){
   document.getElementById('app').innerHTML=routeView();
   if(state.route==='board'){const b=document.querySelector('.board'); if(b){renderBoard(); b.addEventListener('click',boardClick)}}
   renderDmPanel(); renderDmFab(); setActive();
+}
+function Dice(){
+  // Simple calculator-style roller with animation
+  return `
+  <div class="panel">
+    <h2>Dice Roller</h2>
+    <div class="small" style="margin-top:6px">Tap dice to build an expression (e.g., 2d6+3), then Roll.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+      ${['d4','d6','d8','d10','d12','d20','d100'].map(s=>`
+        <button class="btn" onclick="addDie('${s}')">${s}</button>`).join('')}
+      <button class="btn" onclick="addPlus()">+</button>
+      <button class="btn" onclick="clearDice()">Clear</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+      <input id="dice-input" style="flex:1" placeholder="2d6+3" value="${esc(state.diceExpr||'1d20')}">
+      <button class="btn" onclick="rollDice()">Roll</button>
+    </div>
+    <div id="dice-output" class="panel" style="margin-top:10px;min-height:60px">
+      ${state.diceResult?state.diceResult:''}
+    </div>
+  </div>`;
+}
+
+// helpers for dice view
+function addDie(s){
+  const el=document.getElementById('dice-input'); if(!el) return;
+  el.value=(el.value.trim()?el.value+'+':'')+'1'+s; state.diceExpr=el.value; save();
+}
+function addPlus(){
+  const el=document.getElementById('dice-input'); if(!el) return;
+  if(el.value && !el.value.trim().endsWith('+')){ el.value=el.value+'+'; state.diceExpr=el.value; save(); }
+}
+function clearDice(){ const el=document.getElementById('dice-input'); if(!el) return; el.value=''; state.diceExpr=''; state.diceResult=''; save(); render(); }
+
+function rollDice(){
+  const el=document.getElementById('dice-input'); if(!el) return;
+  const expr=el.value.replace(/\s+/g,'');
+  if(!expr){ state.diceResult='<div class="small">Enter an expression like <b>2d6+3</b>.</div>'; save(); render(); return; }
+  // parse simple NdS [+/- N]
+  let total=0, parts=[];
+  const terms=expr.split(/(?=[+-])/g);
+  for(const t of terms){
+    const m=t.match(/^([+-]?)(?:(\d*)d(\d+)|(\d+))$/i);
+    if(!m){ state.diceResult='<div class="small">Invalid term: '+esc(t)+'</div>'; save(); render(); return; }
+    const sign = m[1]==='-'?-1:1;
+    if(m[3]){ // NdS
+      const n = Number(m[2]||1), s = Number(m[3]);
+      let rolls=[]; for(let i=0;i<n;i++){ rolls.push(1+Math.floor(Math.random()*s)); }
+      const sum = rolls.reduce((a,b)=>a+b,0)*sign; total+=sum;
+      parts.push(`${sign<0?'-':''}${n}d${s} [${rolls.join(', ')}] = ${sum}`);
+    }else{ // flat number
+      const val = Number(m[4])*sign; total+=val; parts.push(`${sign<0?'-':''}${Math.abs(val)}`);
+    }
+  }
+  // little “shake”
+  const out = `<div style="font-weight:700;font-size:18px;margin-bottom:6px">Total: ${total}</div>
+               <div class="small">${parts.join(' &nbsp;•&nbsp; ')}</div>`;
+  state.diceResult = out; state.diceExpr = expr; save(); render();
 }
 
 /* ----------------------- init ----------------------- */

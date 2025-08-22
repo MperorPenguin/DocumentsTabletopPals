@@ -215,3 +215,29 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   .dm-card .name{ font-size:12px; }
   .badge{ font-size:10px; padding:3px 7px; }
 }
+/* --- Chips & buttons: grow to fit text, no clipping/ellipsis --- */
+.dm-title-btn{
+  width:100%;
+  justify-content:center;
+  text-align:center;
+  white-space:normal;      /* allow wrapping */
+  line-height:1.2;
+  padding:8px 12px;
+}
+
+.dm-chips{ gap:8px; margin-top:8px; }
+.dm-chip{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 12px;
+  border-radius:999px;
+  white-space:normal;      /* allow wrapping to multiple lines */
+  line-height:1.2;
+  word-break:break-word;   /* long words can wrap */
+  max-width:100%;          /* never exceed the column */
+}
+
+/* keep each character card boxed & self-contained */
+.dm-character-box{ min-width:0; overflow:hidden; }
+.dm-card, .dm-adv, .dm-dis{ min-width:0; }
