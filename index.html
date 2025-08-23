@@ -1,32 +1,137 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta charset="utf-8">
   <title>Tabletop Pals — DM Lite</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="top">
     <div class="inner">
-      <div class="logo"><div class="mark"></div><strong>Tabletop Pals</strong></div>
+      <div class="logo">
+        <div class="mark"></div>
+        <div>
+          <div style="font-weight:800;letter-spacing:.3px">Tabletop Pals</div>
+          <div class="small">DM Lite</div>
+        </div>
+      </div>
       <nav class="nav">
-        <button id="nav-home"     onclick="nav('home')" class="active">Home</button>
-        <button id="nav-board"    onclick="nav('board')">Board</button>
-        <button id="nav-chars"    onclick="nav('chars')">Characters</button>
-        <button id="nav-npcs"     onclick="nav('npcs')">NPCs</button>
-        <button id="nav-enemies"  onclick="nav('enemies')">Enemies</button>
-        <button id="nav-dice"     onclick="nav('dice')">Dice</button>
-        <button id="nav-notes"    onclick="nav('notes')">Notes</button>
-        <button id="nav-save"     onclick="nav('save')">Save</button>
+        <button id="nav-home"    onclick="nav('home')">Home</button>
+        <button id="nav-board"   onclick="nav('board')">Board</button>
+        <button id="nav-gallery" onclick="nav('gallery')">Gallery</button>
+        <button id="nav-chars"   onclick="nav('chars')">Characters</button>
+        <button id="nav-npcs"    onclick="nav('npcs')">NPCs</button>
+        <button id="nav-enemies" onclick="nav('enemies')">Enemies</button>
+        <button id="nav-dice"    onclick="nav('dice')">Dice</button>
+        <button id="nav-notes"   onclick="nav('notes')">Notes</button>
+        <button id="nav-save"    onclick="nav('save')">Save</button>
       </nav>
     </div>
   </header>
 
-  <main id="app"></main>
-  <footer>Tabletop Pals — DM Lite • Local‑first • SRD‑style helpers</footer>
+  <main id="view-home">
+    <h2>Welcome</h2>
+    <div class="grid-3">
+      <div class="panel tile" onclick="nav('board')" tabindex="0">
+        <h3>Board</h3>
+        <div class="small">Run encounters on a gridded scene.</div>
+      </div>
+      <div class="panel tile" onclick="nav('gallery')" tabindex="0">
+        <h3>Gallery</h3>
+        <div class="small">Upload & manage your battle maps.</div>
+      </div>
+      <div class="panel tile" onclick="nav('dice')" tabindex="0">
+        <h3>Dice</h3>
+        <div class="small">Visual roller with multi‑die support.</div>
+      </div>
+    </div>
+  </main>
 
-  <!-- Floating DM HUD container (rendered only on Board) -->
+  <main id="view-board" class="hidden">
+    <div class="panel">
+      <div class="row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <h3>Scene Board</h3>
+        <!-- Buttons removed by request -->
+      </div>
+
+      <!-- Map picker strip (populated from Gallery) -->
+      <div id="map-strip" class="map-strip panel" style="margin-top:10px;display:none"></div>
+
+      <div id="board" class="board" style="margin-top: 10px;" onclick="boardClick(event)"></div>
+      <div class="small" style="margin-top:8px">Click a token to select it, then click a grid cell to move.</div>
+    </div>
+  </main>
+
+  <main id="view-gallery" class="hidden">
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <h3>Map Gallery</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <label class="btn">
+            <input id="gallery-input" type="file" accept=".png,.jpg,.jpeg,.svg" multiple style="display:none" onchange="addGalleryFiles(this.files)">
+            Upload Maps
+          </label>
+          <button class="btn" onclick="clearEmptyGallery()">Cleanup</button>
+        </div>
+      </div>
+
+      <div id="gallery-drop" class="dropzone small" ondragover="event.preventDefault()" ondrop="galleryDrop(event)">
+        Drag & drop PNG/JPEG/SVG battle maps here
+      </div>
+
+      <div id="gallery-grid" class="gallery-grid"></div>
+      <div class="small" style="margin-top:8px">
+        Tip: Click <b>Use on Board</b> to set a map as the current scene background.
+      </div>
+    </div>
+  </main>
+
+  <main id="view-chars" class="hidden">
+    <div class="panel"><h3>Characters</h3><div class="small">Your party setup (unchanged).</div></div>
+  </main>
+
+  <main id="view-npcs" class="hidden">
+    <div class="panel"><h3>NPCs</h3><div class="small">Your friendly / neutral characters.</div></div>
+  </main>
+
+  <main id="view-enemies" class="hidden">
+    <div class="panel"><h3>Enemies</h3><div class="small">Hostile creatures and monsters.</div></div>
+  </main>
+
+  <main id="view-dice" class="hidden">
+    <div class="panel">
+      <h3>Dice</h3>
+      <div class="dice-row" id="dice-buttons"></div>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn" onclick="rollAll()">Roll</button>
+        <button class="btn" onclick="clearDice()">Clear</button>
+        <div class="small" id="dice-selection">No dice selected</div>
+      </div>
+      <div id="dice-output" class="panel roll-output" style="margin-top:10px"></div>
+    </div>
+  </main>
+
+  <main id="view-notes" class="hidden">
+    <div class="panel"><h3>Notes</h3><textarea id="notes" rows="8" style="width:100%" oninput="state.notes=this.value; save()"></textarea></div>
+  </main>
+
+  <main id="view-save" class="hidden">
+    <div class="panel">
+      <h3>Save / Load</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="downloadState()">Export JSON</button>
+        <label class="btn"><input type="file" style="display:none" accept="application/json" onchange="importState(this.files)">Import JSON</label>
+      </div>
+    </div>
+  </main>
+
+  <!-- Floating DM Panel FAB & Panel (unchanged behavior) -->
+  <button id="dm-fab" class="dm-fab btn hidden" type="button" onclick="maximizeDmPanel()">
+    <span class="dm-fab-dot"></span>
+    <span class="dm-fab-label">DM Panel</span>
+    <span class="dm-fab-count" id="dm-fab-count">4</span>
+  </button>
   <div id="dm-panel" class="dm-panel hidden"></div>
 
   <script src="app.js"></script>
