@@ -1,138 +1,129 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Tabletop Pals — DM Lite</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
+  <title>DND Local DM Toolkit</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="top">
+  <!-- Top bar -->
+  <div class="top">
     <div class="inner">
       <div class="logo">
         <div class="mark"></div>
-        <div>
-          <div style="font-weight:800;letter-spacing:.3px">Tabletop Pals</div>
-          <div class="small">DM Lite</div>
-        </div>
+        <strong>DM Toolkit</strong>
       </div>
-      <nav class="nav">
-        <button id="nav-home"    onclick="nav('home')">Home</button>
-        <button id="nav-board"   onclick="nav('board')">Board</button>
-        <button id="nav-gallery" onclick="nav('gallery')">Gallery</button>
-        <button id="nav-chars"   onclick="nav('chars')">Characters</button>
-        <button id="nav-npcs"    onclick="nav('npcs')">NPCs</button>
-        <button id="nav-enemies" onclick="nav('enemies')">Enemies</button>
-        <button id="nav-dice"    onclick="nav('dice')">Dice</button>
-        <button id="nav-notes"   onclick="nav('notes')">Notes</button>
-        <button id="nav-save"    onclick="nav('save')">Save</button>
-      </nav>
-    </div>
-  </header>
-
-  <main id="view-home">
-    <h2>Welcome</h2>
-    <div class="grid-3">
-      <div class="panel tile" onclick="nav('board')" tabindex="0">
-        <h3>Board</h3>
-        <div class="small">Run encounters on a gridded scene.</div>
-      </div>
-      <div class="panel tile" onclick="nav('gallery')" tabindex="0">
-        <h3>Gallery</h3>
-        <div class="small">Upload & manage your battle maps.</div>
-      </div>
-      <div class="panel tile" onclick="nav('dice')" tabindex="0">
-        <h3>Dice</h3>
-        <div class="small">Visual roller with multi‑die support.</div>
+      <div class="nav">
+        <button id="nav-home"   onclick="nav('home')">Home</button>
+        <button id="nav-board"  onclick="nav('board')">Board</button>
+        <button id="nav-gallery"onclick="nav('gallery')">Gallery</button>
+        <button id="nav-dice"   onclick="nav('dice')">Dice</button>
+        <button id="nav-notes"  onclick="nav('notes')">Notes</button>
       </div>
     </div>
-  </main>
+  </div>
 
-  <main id="view-board" class="hidden">
-    <div class="panel">
-      <div class="row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-        <h3>Scene Board</h3>
-        <!-- Buttons removed by request -->
+  <main>
+    <!-- HOME -->
+    <section id="view-home" class="">
+      <div class="panel tile" tabindex="0" onclick="nav('board')">
+        <h2>Battle Board</h2>
+        <div class="small">Square grid, tokens, fullscreen &amp; pop‑out.</div>
       </div>
-
-      <!-- Map picker strip (populated from Gallery) -->
-      <div id="map-strip" class="map-strip panel" style="margin-top:10px;display:none"></div>
-
-      <div id="board" class="board" style="margin-top: 10px;" onclick="boardClick(event)"></div>
-      <div class="small" style="margin-top:8px">Click a token to select it, then click a grid cell to move.</div>
-    </div>
-  </main>
-
-  <main id="view-gallery" class="hidden">
-    <div class="panel">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-        <h3>Map Gallery</h3>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <label class="btn">
-            <input id="gallery-input" type="file" accept=".png,.jpg,.jpeg,.svg" multiple style="display:none" onchange="addGalleryFiles(this.files)">
-            Upload Maps
-          </label>
-          <button class="btn" onclick="clearEmptyGallery()">Cleanup</button>
-        </div>
+      <div class="panel tile" tabindex="0" onclick="nav('gallery')">
+        <h2>Map Gallery</h2>
+        <div class="small">Upload maps and set as scene.</div>
       </div>
-
-      <div id="gallery-drop" class="dropzone small" ondragover="event.preventDefault()" ondrop="galleryDrop(event)">
-        Drag & drop PNG/JPEG/SVG battle maps here
+      <div class="panel tile" tabindex="0" onclick="nav('dice')">
+        <h2>Dice</h2>
+        <div class="small">Quick multi‑die rolling panel.</div>
       </div>
+      <div class="panel tile" tabindex="0" onclick="nav('notes')">
+        <h2>Notes</h2>
+        <div class="small">Campaign/session notes synced with DM panel.</div>
+      </div>
+    </section>
 
-      <div id="gallery-grid" class="gallery-grid"></div>
+    <!-- BOARD -->
+    <section id="view-board" class="hidden">
+      <h2>Board</h2>
+      <div id="board" class="board" style="margin-top:10px" onclick="boardClick(event)"></div>
+      <div id="map-strip" class="map-strip" style="margin-top:10px; display:none"></div>
       <div class="small" style="margin-top:8px">
-        Tip: Click <b>Use on Board</b> to set a map as the current scene background.
+        Tip: Click a token to select it, then click a grid cell to move. Press <b>Shift+D</b> to toggle the DM Panel.
       </div>
-    </div>
-  </main>
+    </section>
 
-  <main id="view-chars" class="hidden">
-    <div class="panel"><h3>Characters</h3><div class="small">Your party setup (unchanged).</div></div>
-  </main>
-
-  <main id="view-npcs" class="hidden">
-    <div class="panel"><h3>NPCs</h3><div class="small">Your friendly / neutral characters.</div></div>
-  </main>
-
-  <main id="view-enemies" class="hidden">
-    <div class="panel"><h3>Enemies</h3><div class="small">Hostile creatures and monsters.</div></div>
-  </main>
-
-  <main id="view-dice" class="hidden">
-    <div class="panel">
-      <h3>Dice</h3>
-      <div class="dice-row" id="dice-buttons"></div>
-      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <button class="btn" onclick="rollAll()">Roll</button>
-        <button class="btn" onclick="clearDice()">Clear</button>
-        <div class="small" id="dice-selection">No dice selected</div>
+    <!-- GALLERY -->
+    <section id="view-gallery" class="hidden">
+      <h2>Gallery</h2>
+      <div class="panel">
+        <div class="small">Upload PNG, JPEG, or SVG. Drag &amp; drop works too.</div>
+        <div class="dropzone" ondragover="event.preventDefault()" ondrop="galleryDrop(event)">
+          <input id="gallery-input" type="file" accept=".png,.jpg,.jpeg,.svg" multiple
+                 onchange="addGalleryFiles(this.files)" />
+        </div>
       </div>
-      <div id="dice-output" class="panel roll-output" style="margin-top:10px"></div>
-    </div>
-  </main>
+      <div id="gallery-grid" class="gallery-grid"></div>
+    </section>
 
-  <main id="view-notes" class="hidden">
-    <div class="panel"><h3>Notes</h3><textarea id="notes" rows="8" style="width:100%" oninput="state.notes=this.value; save()"></textarea></div>
-  </main>
-
-  <main id="view-save" class="hidden">
-    <div class="panel">
-      <h3>Save / Load</h3>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn" onclick="downloadState()">Export JSON</button>
-        <label class="btn"><input type="file" style="display:none" accept="application/json" onchange="importState(this.files)">Import JSON</label>
+    <!-- DICE -->
+    <section id="view-dice" class="hidden">
+      <h2>Dice</h2>
+      <div class="panel">
+        <div id="dice-buttons" class="dice-row"></div>
+        <div style="margin-top:10px; display:flex; gap:8px; align-items:center">
+          <div id="dice-selection" class="small">No dice selected</div>
+          <button class="btn tiny" onclick="rollAll()">Roll</button>
+          <button class="btn tiny" onclick="clearDice()">Clear</button>
+        </div>
+        <div id="dice-output" class="roll-output" style="margin-top:10px"></div>
       </div>
-    </div>
+    </section>
+
+    <!-- NOTES -->
+    <section id="view-notes" class="hidden">
+      <h2>Notes</h2>
+      <div class="panel">
+        <textarea id="notes" rows="12" style="width:100%"></textarea>
+      </div>
+    </section>
+
+    <!-- Placeholders for routes referenced by nav (kept hidden / unused directly) -->
+    <section id="view-chars"   class="hidden"></section>
+    <section id="view-npcs"    class="hidden"></section>
+    <section id="view-enemies" class="hidden"></section>
+    <section id="view-save"    class="hidden"></section>
   </main>
 
-  <!-- Floating DM Panel FAB & Panel (your baseline HTML kept) -->
-  <button id="dm-fab" class="dm-fab btn hidden" type="button" onclick="maximizeDmPanel()">
+  <footer>
+    <div class="small">Local, offline‑friendly DM toolkit. Saves to your browser storage.</div>
+  </footer>
+
+  <!-- DM Panel -->
+  <div id="dm-panel" class="dm-panel hidden"></div>
+
+  <!-- DM FAB (toggle) -->
+  <button id="dm-fab" class="dm-fab" onclick="maximizeDmPanel()">
     <span class="dm-fab-dot"></span>
     <span class="dm-fab-label">DM Panel</span>
-    <span class="dm-fab-count" id="dm-fab-count">4</span>
+    <span id="dm-fab-count" class="dm-fab-count">0</span>
   </button>
-  <div id="dm-panel" class="dm-panel hidden"></div>
+
+  <!-- Gallery Modal -->
+  <div id="gallery-modal" class="modal" aria-hidden="true">
+    <div class="modal-body">
+      <div class="modal-head">
+        <h3>Choose a Map</h3>
+        <button class="modal-close" onclick="closeGalleryModal()">Close</button>
+      </div>
+      <div id="gallery-modal-grid" class="modal-grid"></div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

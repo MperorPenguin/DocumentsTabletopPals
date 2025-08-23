@@ -1,4 +1,4 @@
-// ===== Config: fixed grid =====
+// ===== Fixed Grid =====
 const GRID_COLS = 26;
 const GRID_ROWS = 26;
 
@@ -24,15 +24,12 @@ const state = load() || {
   ui: { dmOpen:false, dmTab:'party' }
 };
 
-// ===== Sync channel (for pop-out viewer) =====
+// ===== Live Sync Channel (for Pop‑out viewer) =====
 const chan = new BroadcastChannel('board-sync');
 function broadcastState(){ chan.postMessage({type:'state', payload:state}); }
 
 // ===== Persistence =====
-function save(){
-  localStorage.setItem('tp_state', JSON.stringify(state));
-  broadcastState();
-}
+function save(){ localStorage.setItem('tp_state', JSON.stringify(state)); broadcastState(); }
 function load(){ try{ return JSON.parse(localStorage.getItem('tp_state')); }catch(e){ return null; } }
 
 // ===== Routing =====
@@ -49,28 +46,35 @@ function nav(route){
   render();
 }
 
-// ===== Board sizing (fit screen, fixed 26x26) =====
+// ===== Board sizing (fit screen, 26x26) =====
 const boardEl = () => document.getElementById('board');
 
 function fitBoard(){
   const el = boardEl(); if(!el) return;
-  // Available width = parent content width; available height = viewport minus rough UI space
-  const parent = el.parentElement || document.body;
-  const availW = Math.max(240, parent.clientWidth - 2);      // padding safe
-  const availH = Math.max(240, window.innerHeight * 0.82);   // leave room for top bar
-  // Choose the largest square that fits both directions but is an exact multiple of GRID size
+
+  // Real viewport on mobile when available
+  const vpH = Math.min(window.innerHeight, (window.visualViewport?.height || window.innerHeight));
+  const vpW = Math.min(window.innerWidth,  (window.visualViewport?.width  || window.innerWidth));
+
+  // Breathing room for header/footers
+  const SAFE_H_PAD = 140;
+  const SAFE_W_PAD = 24;
+
+  const availH = Math.max(240, vpH - SAFE_H_PAD);
+  const availW = Math.max(240, vpW - SAFE_W_PAD);
   const maxSquare = Math.floor(Math.min(availW, availH));
-  const cell = Math.max(18, Math.floor(maxSquare / Math.max(GRID_COLS, GRID_ROWS)));
-  const boardSize = cell * Math.max(GRID_COLS, GRID_ROWS);
+
+  const GRID = Math.max(GRID_COLS, GRID_ROWS);
+  const cell = Math.max(16, Math.floor(maxSquare / GRID));
+  const boardSize = cell * GRID;
 
   el.style.setProperty('--cell', cell + 'px');
   el.style.setProperty('--boardSize', boardSize + 'px');
 }
-
 window.addEventListener('resize', ()=>{ fitBoard(); renderBoard(); });
 document.addEventListener('fullscreenchange', ()=>{ fitBoard(); renderBoard(); });
 
-// ===== Board events =====
+// ===== Board interactions =====
 function cellsz(){
   const cs = getComputedStyle(boardEl()).getPropertyValue('--cell').trim();
   return parseInt(cs.replace('px','')) || 42;
@@ -90,7 +94,7 @@ function selectTokenDom(kind,id){
   state.selected = {kind,id}; save(); renderBoard();
 }
 
-// ===== Render Board (DM page) =====
+// ===== Board render (DM page) =====
 function renderBoard(){
   const el = boardEl(); if(!el) return;
   fitBoard();
@@ -102,16 +106,11 @@ function renderBoard(){
   const size = cellsz();
   el.innerHTML = '';
 
-  // Overlay controls (Fullscreen + Pop-out + Modal)
+  // Overlay controls
   const ctrls = document.createElement('div');
   ctrls.className = 'board-controls';
   ctrls.innerHTML = `
-    <button class="board-ctrl" onclick="toggleBoardFullscreen()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M9 3H5a2 2 0 0 0-2 2v4M15 3h4a2 2 0 0 1 2 2v4M9 21H5a2 2 0 0 1-2-2v-4M15 21h4a2 2 0 0 0 2-2v-4"/>
-      </svg>
-      <span id="fs-label">${isFullscreen()? 'Exit' : 'Full'}</span>
-    </button>
+    <button class="board-ctrl" onclick="toggleBoardFullscreen()">Full</button>
     <button class="board-ctrl" onclick="openBoardViewer()">Pop‑out</button>
     <button class="board-ctrl" onclick="openGalleryModal()">Gallery</button>
   `;
@@ -122,13 +121,17 @@ function renderBoard(){
     (state.tokens[kind] || []).forEach(t=>{
       const tok = document.createElement('div');
       tok.className = `token ${kind}` + (state.selected && state.selected.id===t.id && state.selected.kind===kind ? ' selected':'');
-      tok.dataset.id = t.id; tok.dataset.kind = kind; tok.title = t.name;
+      tok.dataset.id = t.id;
+      tok.dataset.kind = kind;
+      tok.title = t.name;
       tok.style.left = (t.pos[0]*size + 2) + 'px';
       tok.style.top  = (t.pos[1]*size + 2) + 'px';
       tok.style.width = (size-6) + 'px';
       tok.style.height= (size-6) + 'px';
       tok.onclick = (e)=>{ e.stopPropagation(); selectTokenDom(kind,t.id); };
-      const img = document.createElement('img'); img.loading='lazy'; img.src = `assets/class_icons/${t.cls}.svg`;
+      const img = document.createElement('img');
+      img.loading='lazy';
+      img.src = `assets/class_icons/${t.cls}.svg`;
       tok.appendChild(img);
       el.appendChild(tok);
     });
@@ -138,22 +141,17 @@ function renderBoard(){
   updateDmFab();
 }
 
-// ===== Fullscreen helpers =====
+// ===== Fullscreen =====
 function isFullscreen(){ return document.fullscreenElement === boardEl(); }
 function toggleBoardFullscreen(){
   const el = boardEl(); if(!el) return;
   if(!document.fullscreenElement){ el.requestFullscreen?.(); }
   else { document.exitFullscreen?.(); }
 }
-document.addEventListener('fullscreenchange', ()=>{
-  const label = document.getElementById('fs-label');
-  if(label) label.textContent = isFullscreen()? 'Exit' : 'Full';
-});
 
-// ===== Pop-out Viewer (second window) =====
+// ===== Pop‑out viewer (sync via BroadcastChannel) =====
 let viewerWin = null;
 function openBoardViewer(){
-  // If already open, focus it
   if(viewerWin && !viewerWin.closed){ viewerWin.focus(); broadcastState(); return; }
 
   viewerWin = window.open('', 'BoardViewer', 'width=900,height=900');
@@ -161,6 +159,7 @@ function openBoardViewer(){
 
   const html = `
 <!doctype html><html><head><meta charset="utf-8"><title>Board Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
   :root{ --cell: 42px; --boardSize: 546px; }
   html,body{ height:100%; margin:0; background:#0f1115; color:#e6e9f2; font:14px system-ui,Segoe UI,Roboto,Arial }
@@ -183,9 +182,12 @@ function openBoardViewer(){
   window.addEventListener('resize', fit);
   function fit(){
     const el = document.getElementById('viewerBoard');
-    const avail = Math.min(document.body.clientWidth-40, window.innerHeight-40);
-    const cell = Math.max(14, Math.floor(avail / Math.max(GRID_COLS, GRID_ROWS)));
-    const size = cell * Math.max(GRID_COLS, GRID_ROWS);
+    const vpH = Math.min(window.innerHeight, (window.visualViewport?.height || window.innerHeight));
+    const vpW = Math.min(window.innerWidth,  (window.visualViewport?.width  || window.innerWidth));
+    const avail = Math.min(vpW-40, vpH-40);
+    const grid = Math.max(GRID_COLS, GRID_ROWS);
+    const cell = Math.max(14, Math.floor(avail / grid));
+    const size = cell * grid;
     el.style.setProperty('--cell', cell+'px');
     el.style.setProperty('--boardSize', size+'px');
   }
@@ -209,12 +211,11 @@ function openBoardViewer(){
       });
     });
   }
-  // Ask for state immediately
   chan.postMessage({type:'ping'});
 </script></body></html>`;
   viewerWin.document.open(); viewerWin.document.write(html); viewerWin.document.close();
 
-  // Reply to ping requests from viewer and broadcast immediately
+  // Answer pings from the viewer
   chan.onmessage = (e)=>{ if(e?.data?.type==='ping'){ broadcastState(); } };
   broadcastState();
 }
@@ -242,7 +243,7 @@ function renderMapStrip(){
   });
 }
 
-// ===== Gallery (page + modal) =====
+// ===== Gallery (page + drop) =====
 function addGalleryFiles(files){
   if(!files || !files.length) return;
   const list = Array.from(files);
@@ -263,10 +264,7 @@ function addGalleryFiles(files){
 }
 function galleryDrop(ev){ ev.preventDefault(); const files = ev.dataTransfer.files; addGalleryFiles(files); }
 function clearEmptyGallery(){ state.gallery = state.gallery.filter(g=>g && g.dataUrl); save(); renderGallery(); }
-function useOnBoard(id){
-  const g = state.gallery.find(x=>x.id===id); if(!g) return;
-  state.boardBg = g.dataUrl; save(); nav('board');
-}
+function useOnBoard(id){ const g = state.gallery.find(x=>x.id===id); if(!g) return; state.boardBg = g.dataUrl; save(); nav('board'); }
 function deleteMap(id){
   state.gallery = state.gallery.filter(x=>x.id!==id);
   if(state.boardBg && !state.gallery.some(x=>x.dataUrl===state.boardBg)) state.boardBg = null;
@@ -274,7 +272,10 @@ function deleteMap(id){
 }
 function renderGallery(){
   const grid = document.getElementById('gallery-grid'); if(!grid) return;
-  if(!state.gallery.length){ grid.innerHTML = `<div class="small">No maps yet. Upload PNG/JPEG/SVG above.</div>`; return; }
+  if(!state.gallery.length){
+    grid.innerHTML = `<div class="small">No maps yet. Upload PNG/JPEG/SVG above.</div>`;
+    return;
+  }
   grid.innerHTML = state.gallery.map(g=>`
     <div class="gallery-card">
       <div class="thumb">${thumbImg(g)}</div>
@@ -285,13 +286,16 @@ function renderGallery(){
           <button class="btn tiny" onclick="deleteMap('${g.id}')">Delete</button>
         </div>
       </div>
-    </div>`).join('');
+    </div>
+  `).join('');
 }
 function thumbImg(g){
   if(g.ext==='svg' && !g.dataUrl.startsWith('data:image')){
     const svg = encodeURIComponent(g.dataUrl);
     return `<img src="data:image/svg+xml;utf8,${svg}">`;
-  }else{ return `<img src="${g.dataUrl}">`; }
+  }else{
+    return `<img src="${g.dataUrl}">`;
+  }
 }
 
 // ===== Gallery Modal (reinstated) =====
@@ -326,6 +330,7 @@ function maximizeDmPanel(){ state.ui.dmOpen = true; save(); renderDmPanel(); upd
 function minimizeDmPanel(){ state.ui.dmOpen = false; save(); renderDmPanel(); updateDmFab(); }
 function toggleDmPanel(){ state.ui.dmOpen = !state.ui.dmOpen; save(); renderDmPanel(); updateDmFab(); }
 
+// Keyboard toggle
 document.addEventListener('keydown', (e)=>{
   if(e.shiftKey && (e.key==='D' || e.key==='d')){ e.preventDefault(); toggleDmPanel(); }
 });
@@ -441,7 +446,7 @@ function renderDmPanel(){
   }
 }
 
-// ===== Toasts with DM instruction =====
+// ===== Toast with short DM instructions =====
 function showToast(title,msg,hint){
   let t=document.querySelector('.dm-toast'); if(t) t.remove();
   const div=document.createElement('div');
@@ -519,7 +524,7 @@ function rollAll(){
 function roll(tag){ const n=parseInt(tag.replace('d',''),10)||6; return 1+Math.floor(Math.random()*n); }
 function shakeOutput(){ const out=document.getElementById('dice-output'); out.classList.remove('shake'); void out.offsetWidth; out.classList.add('shake'); }
 
-// ===== Utilities =====
+// ===== Utils =====
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 // ===== Initial render =====
@@ -538,25 +543,25 @@ function render(){
   updateDmFab();
   renderDmPanel();
 
-  // Sync Notes page textarea
+  // sync Notes page textarea
   const notes=document.getElementById('notes'); if(notes) notes.value=state.notes||'';
 }
 
-// boot
+// Boot
 document.addEventListener('DOMContentLoaded', ()=>{
   nav(state.route||'home');
   fitBoard();
 });
 
-// ===== Expose some fns to window (inline HTML calls) =====
-window.boardClick = boardClick;
-window.nav = nav;
-window.openGalleryModal = openGalleryModal;
-window.closeGalleryModal = closeGalleryModal;
-window.setMapAndClose = setMapAndClose;
-window.openBoardViewer = openBoardViewer;
-window.toggleBoardFullscreen = toggleBoardFullscreen;
-window.quickD20 = quickD20;
-window.quickAdvFor = quickAdvFor;
-window.quickDisFor = quickDisFor;
-window.selectFromPanel = selectFromPanel;
+// Expose for inline handlers
+window.boardClick=boardClick;
+window.nav=nav;
+window.openGalleryModal=openGalleryModal;
+window.closeGalleryModal=closeGalleryModal;
+window.setMapAndClose=setMapAndClose;
+window.openBoardViewer=openBoardViewer;
+window.toggleBoardFullscreen=toggleBoardFullscreen;
+window.quickD20=quickD20;
+window.quickAdvFor=quickAdvFor;
+window.quickDisFor=quickDisFor;
+window.selectFromPanel=selectFromPanel;
