@@ -104,7 +104,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 
 /* A/D containers + title buttons (full width, wrap safe) */
 .dm-adv, .dm-dis{ background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:8px; overflow:hidden; }
-.dm-title-btn {
+.dm-title-btn{
+
   appearance:none;
   display:inline-flex;
   align-items:center;
@@ -112,7 +113,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   border-radius:999px;
   border:1px solid transparent;
   padding:8px 12px;
-  font-size:12px;
+  font-size:9px;
   font-weight:800;
   cursor:pointer;
   user-select:none;
@@ -126,6 +127,16 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   overflow: hidden;          /* prevent overflow if too long */
   text-overflow: ellipsis;   /* add … if it doesn’t fit */
 }
+
+  appearance:none; display:inline-flex; align-items:center; gap:8px; border-radius:999px; border:1px solid transparent;
+  padding:8px 12px; font-size:9px; font-weight:500; cursor:pointer; user-select:none; transition:.15s;
+  width:100%; justify-content:center; text-align:center; white-space:normal; line-height:1.2; overflow-wrap:anywhere;
+}
+.dm-title-btn .dot{ width:8px; height:8px; border-radius:50%; background:#fff2 }
+.dm-title-btn:hover{ filter:brightness(1.05); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
+.dm-title-btn.adv{ background:#065f46; color:#d1fae5; border-color:#0b7a5b }
+.dm-title-btn.dis{ background:#7f1d1d; color:#fee2e2; border-color:#9b2222 }
+
 /* Detail box */
 .dm-detail{ margin-top:8px;border:1px solid var(--border);background:#111623;color:#dbe1ee;border-radius:8px;padding:10px;font-size:13px }
 
