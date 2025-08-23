@@ -42,9 +42,16 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 
 /* Board */
 .board{
-  position:relative;width:100%;min-height:240px;border:1px solid var(--border);
-  border-radius:12px;overflow:hidden;background:#0f141f;background-size:cover;background-position:center;
-  --cell:48px;
+  position:relative;
+  width:100%;
+  aspect-ratio: 1/1;   /* square scalable */
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+  background:#0f141f;
+  background-size:cover;
+  background-position:center;
+  --cell: 42px;
 }
 .board::after{
   content:"";position:absolute;inset:0;
@@ -77,17 +84,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 }
 
 /* Gallery */
-.dropzone{
-  margin-top:10px; padding:16px; text-align:center; border:1px dashed var(--border); border-radius:10px; background:#0f1115;
-}
-.gallery-grid{
-  margin-top:12px;
-  display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:12px;
-}
-.gallery-card{
-  background:#0f141f; border:1px solid var(--border); border-radius:12px; overflow:hidden;
-  display:flex; flex-direction:column; min-width:0;
-}
+.dropzone{margin-top:10px; padding:16px; text-align:center; border:1px dashed var(--border); border-radius:10px; background:#0f1115;}
+.gallery-grid{margin-top:12px;display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:12px;}
+.gallery-card{background:#0f141f; border:1px solid var(--border); border-radius:12px; overflow:hidden;display:flex; flex-direction:column; min-width:0;}
 .gallery-card .thumb{ width:100%; aspect-ratio: 16/9; background:#0b1020; overflow:hidden }
 .gallery-card .thumb img{ width:100%; height:100%; object-fit:cover; display:block }
 .gallery-card .meta{ padding:8px; display:flex; gap:8px; align-items:center; justify-content:space-between }
@@ -95,7 +94,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .gallery-card .row{ display:flex; gap:8px }
 
 /* =========================
-   DM Panel (your working styles)
+   DM Panel (restored + themed buttons)
    ========================= */
 .dm-panel{
   position:fixed; right:16px; bottom:16px; width:420px; max-height:74vh; overflow:auto; z-index:1000;
@@ -115,55 +114,29 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 
 /* Section heads */
 .dm-sec-head{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:8px;font-weight:700;font-size:12px;border:1px solid var(--border);margin-bottom:8px}
-.dm-sec-head .count{ font-weight:600; opacity:.9; }
-.dm-sec-head.pc   { background:color-mix(in srgb, var(--blue) 12%, transparent);  border-color: color-mix(in srgb, var(--blue) 45%, #000) }
-.dm-sec-head.npc  { background:color-mix(in srgb, var(--teal) 12%, transparent);  border-color: color-mix(in srgb, var(--teal) 45%, #000) }
-.dm-sec-head.enemy{ background:color-mix(in srgb, var(--red)  12%, transparent);  border-color: color-mix(in srgb, var(--red)  45%, #000) }
 
-/* Grid */
+/* Grid & Cards */
 .dm-grid3{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; align-items:stretch; grid-auto-rows:1fr; }
-.dm-character-box{
-  display:flex;flex-direction:column;gap:10px;background:#1e293b;border:1px solid #233044;border-radius:14px;padding:10px;
-  box-shadow:0 2px 8px rgba(0,0,0,.35);transition:.15s border-color,.15s transform,.15s box-shadow;min-width:0; overflow:hidden;
-}
+.dm-character-box{ display:flex; flex-direction:column; gap:10px; background:#1e293b; border:1px solid #233044; border-radius:14px; padding:10px; box-shadow:0 2px 8px rgba(0,0,0,.35);transition:.15s border-color,.15s transform,.15s box-shadow;min-width:0; overflow:hidden; }
 .dm-character-box:hover{ border-color:var(--accent); transform:translateY(-1px); box-shadow:0 8px 22px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent) inset; }
-
-/* Identity card */
-.dm-card{
-  background:#0f1422;border:1px solid var(--border);border-radius:10px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;
-  transition:transform .12s, box-shadow .15s, border-color .15s; cursor:pointer; min-width:0;
-}
-.dm-card.selected{ border-color:var(--accent); background: color-mix(in srgb, var(--accent) 14%, #0f1422); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset; }
-.dm-card .name{ font-weight:800; font-size:12.5px; line-height:1.2; letter-spacing:.15px; text-align:center; }
+.dm-card{ background:#0f1422;border:1px solid var(--border);border-radius:10px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;cursor:pointer; }
+.dm-card.selected{ border-color:var(--accent); background: color-mix(in srgb, var(--accent) 14%, #0f1422); }
+.dm-card .name{ font-weight:800; font-size:12.5px; }
 .dm-card .avatar{ width:52px; height:52px; border-radius:10px; border:1px solid var(--border); background:#0b1020; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-.dm-card .avatar img{ width:40px; height:40px; object-fit:contain; display:block }
+.dm-card .avatar img{ width:40px; height:40px; object-fit:contain; }
+
+/* Badges */
 .badges{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center }
 .badge{ font-size:10.5px; padding:3px 8px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#dbe1ee }
 
-/* Advantage / Disadvantage containers + title buttons */
-.dm-adv, .dm-dis{ background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:8px; overflow:hidden; }
+/* Advantage/Disadvantage */
+.dm-adv,.dm-dis{ background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:8px; overflow:hidden; }
 .dm-title-btn{
-  appearance:none;
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  border-radius:999px;
-  border:1px solid transparent;
-  padding:8px 12px;
-  font-size:12px;
-  font-weight:800;
-  cursor:pointer;
-  user-select:none;
-  transition:.15s;
-  width:100%;
-  justify-content:center;
-  text-align:center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  appearance:none; display:inline-flex; align-items:center; gap:8px; border-radius:999px; border:1px solid var(--border);
+  padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer; user-select:none; transition:.15s;
+  width:100%; justify-content:center; text-align:center; background:var(--panel); color:var(--ink);
 }
-.dm-title-btn .dot{ width:8px; height:8px; border-radius:50%; background:#fff2 }
-.dm-title-btn:hover{ filter:brightness(1.05); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
+.dm-title-btn:hover{ background:color-mix(in srgb, var(--accent) 20%, var(--panel)); }
 .dm-title-btn.adv{ background:#065f46; color:#d1fae5; border-color:#0b7a5b }
 .dm-title-btn.dis{ background:#7f1d1d; color:#fee2e2; border-color:#9b2222 }
 
@@ -191,6 +164,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 
 /* Mobile */
 @media (max-width: 768px){
+  .board{ height:60vh; aspect-ratio:auto; }
   .dm-panel{ left:12px; right:12px; bottom:12px; width:auto; }
-  .dm-grid3{ grid-template-columns: repeat(3, 1fr); }
+  .dm-grid3{ grid-template-columns: repeat(2, 1fr); }
 }

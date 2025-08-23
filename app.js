@@ -1,8 +1,8 @@
 // ===== State =====
 const state = load() || {
   route: 'home',
-  boardBg: null,          // dataURL of selected map
-  gallery: [],            // [{id,name,dataUrl,ext}]
+  boardBg: null,
+  gallery: [],
   tokens: {
     pc: [
       {id:'p1', name:'Aria',   cls:'Rogue',   hp:[10,10], pos:[2,3]},
@@ -15,7 +15,7 @@ const state = load() || {
       {id:'e1', name:'Skeleton A', cls:'Enemy', hp:[13,13], pos:[8,4]},
     ]
   },
-  selected: null, // {kind:'pc'|'npc'|'enemy', id:'p1'}
+  selected: null,
   notes: '',
   ui: { dmOpen:false, dmTab:'party' }
 };
@@ -40,9 +40,9 @@ function nav(route){
 
 // ===== Board =====
 const boardEl = () => document.getElementById('board');
-function cellsz(){ // read from CSS var
+function cellsz(){
   const cs = getComputedStyle(boardEl()).getPropertyValue('--cell').trim();
-  return parseInt(cs.replace('px','')) || 48;
+  return parseInt(cs.replace('px','')) || 42;
 }
 function boardClick(ev){
   const rect = boardEl().getBoundingClientRect();
@@ -66,7 +66,7 @@ function renderBoard(){
     : 'linear-gradient(#1b2436,#0f1524)';
 
   const size = cellsz();
-  el.innerHTML = ''; // clear tokens
+  el.innerHTML = '';
 
   ['pc','npc','enemy'].forEach(kind=>{
     (state.tokens[kind] || []).forEach(t=>{
@@ -143,7 +143,6 @@ function galleryDrop(ev){
   addGalleryFiles(files);
 }
 function clearEmptyGallery(){
-  // remove any empty/invalid entries
   state.gallery = state.gallery.filter(g=>g && g.dataUrl);
   save(); renderGallery();
 }
@@ -152,7 +151,7 @@ function useOnBoard(id){
   if(!g) return;
   state.boardBg = g.dataUrl;
   save();
-  nav('board'); // go to board and show it
+  nav('board');
 }
 function deleteMap(id){
   state.gallery = state.gallery.filter(x=>x.id!==id);
@@ -183,7 +182,6 @@ function renderGallery(){
   `).join('');
 }
 function thumbImg(g){
-  // if SVG text, inline as data:svg; if dataURL from raster, use directly
   if(g.ext==='svg' && !g.dataUrl.startsWith('data:image')){
     const svg = encodeURIComponent(g.dataUrl);
     return `<img src="data:image/svg+xml;utf8,${svg}">`;
@@ -192,17 +190,9 @@ function thumbImg(g){
   }
 }
 
-// ===== DM Panel (restored UI) =====
-function maximizeDmPanel(){
-  state.ui.dmOpen = true; save();
-  renderDmPanel();
-  updateDmFab();
-}
-function minimizeDmPanel(){
-  state.ui.dmOpen = false; save();
-  renderDmPanel();
-  updateDmFab();
-}
+// ===== DM Panel =====
+function maximizeDmPanel(){ state.ui.dmOpen = true; save(); renderDmPanel(); updateDmFab(); }
+function minimizeDmPanel(){ state.ui.dmOpen = false; save(); renderDmPanel(); updateDmFab(); }
 function toggleDmPanel(){ state.ui.dmOpen = !state.ui.dmOpen; save(); renderDmPanel(); updateDmFab(); }
 
 document.addEventListener('keydown', (e)=>{
@@ -212,24 +202,36 @@ document.addEventListener('keydown', (e)=>{
 function updateDmFab(){
   const fab = document.getElementById('dm-fab');
   const count = document.getElementById('dm-fab-count');
-  if(!fab || !count) return;
+  if(!fab||!count) return;
   const total = (state.tokens.pc?.length||0)+(state.tokens.npc?.length||0)+(state.tokens.enemy?.length||0);
   count.textContent = total;
   fab.classList.remove('hidden');
 }
 
 function dmTabButton(id,label,active){ return `<button class="dm-tab ${active?'active':''}" onclick="setDmTab('${id}')">${label}</button>`; }
-function setDmTab(id){ state.ui.dmTab = id; save(); renderDmPanel(); }
+function setDmTab(id){ state.ui.dmTab=id; save(); renderDmPanel(); }
 
-function tokenCard(kind,t){
+function tokenCardWithAdv(kind,t){
   const sel = state.selected && state.selected.kind===kind && state.selected.id===t.id;
   return `
-    <div class="dm-card ${sel?'selected':''}" onclick="selectFromPanel('${kind}','${t.id}')">
-      <div class="avatar"><img src="assets/class_icons/${t.cls}.svg" alt=""></div>
-      <div class="name">${escapeHtml(t.name)}</div>
-      <div class="badges">
-        <span class="badge">${escapeHtml(t.cls)}</span>
-        <span class="badge">HP ${t.hp[0]}/${t.hp[1]}</span>
+    <div class="dm-character-box">
+      <div class="dm-card ${sel?'selected':''}" onclick="selectFromPanel('${kind}','${t.id}')">
+        <div class="avatar"><img src="assets/class_icons/${t.cls}.svg" alt=""></div>
+        <div class="name">${escapeHtml(t.name)}</div>
+        <div class="badges">
+          <span class="badge">${escapeHtml(t.cls)}</span>
+          <span class="badge">HP ${t.hp[0]}/${t.hp[1]}</span>
+        </div>
+      </div>
+      <div class="dm-grid3" style="margin-top:6px">
+        <div class="dm-adv">
+          <button class="dm-title-btn adv" onclick="quickAdv()">Advantage</button>
+          <div class="dm-detail">Roll 2d20, highest</div>
+        </div>
+        <div class="dm-dis">
+          <button class="dm-title-btn dis" onclick="quickDis()">Disadvantage</button>
+          <div class="dm-detail">Roll 2d20, lowest</div>
+        </div>
       </div>
     </div>`;
 }
@@ -238,61 +240,51 @@ function selectFromPanel(kind,id){
   renderDmPanel();
   if(state.route!=='board') nav('board'); else renderBoard();
 }
-
 function renderDmPanel(){
-  const panel = document.getElementById('dm-panel');
+  const panel=document.getElementById('dm-panel');
   if(!panel) return;
 
   if(!state.ui.dmOpen){
     panel.classList.add('hidden');
-    panel.setAttribute('aria-hidden','true');
     return;
   }
   panel.classList.remove('hidden');
-  panel.setAttribute('aria-hidden','false');
 
-  const pcs = state.tokens.pc || [];
-  const npcs = state.tokens.npc || [];
-  const enemies = state.tokens.enemy || [];
+  const pcs = state.tokens.pc||[];
+  const npcs= state.tokens.npc||[];
+  const enemies= state.tokens.enemy||[];
+  const tab= state.ui.dmTab||'party';
 
-  // Tabs
-  const tab = state.ui.dmTab || 'party';
-  const tabsHtml = `
-    <div class="dm-tabs">
-      ${dmTabButton('party','Party', tab==='party')}
-      ${dmTabButton('npcs','NPCs', tab==='npcs')}
-      ${dmTabButton('enemies','Enemies', tab==='enemies')}
-      ${dmTabButton('scene','Scene', tab==='scene')}
-      ${dmTabButton('tools','Tools', tab==='tools')}
-    </div>`;
+  const tabsHtml=`<div class="dm-tabs">
+    ${dmTabButton('party','Party',tab==='party')}
+    ${dmTabButton('npcs','NPCs',tab==='npcs')}
+    ${dmTabButton('enemies','Enemies',tab==='enemies')}
+    ${dmTabButton('scene','Scene',tab==='scene')}
+    ${dmTabButton('tools','Tools',tab==='tools')}
+  </div>`;
 
-  // Sections per tab
-  let body = '';
+  let body='';
   if(tab==='party'){
-    body += `
-      <div class="dm-sec-head pc"><span>Players</span><span class="count">${pcs.length}</span></div>
-      <div class="dm-grid3">
-        ${pcs.map(p=>`<div class="dm-character-box">${tokenCard('pc',p)}</div>`).join('') || '<div class="small">No PCs yet.</div>'}
-      </div>`;
+    // No "Players count" header; grid wraps naturally for >3 players
+    body += `<div class="dm-grid3">
+      ${pcs.map(p=>tokenCardWithAdv('pc',p)).join('')||'<div class="small">No PCs yet.</div>'}
+    </div>`;
   }
   if(tab==='npcs'){
-    body += `
-      <div class="dm-sec-head npc"><span>NPCs</span><span class="count">${npcs.length}</span></div>
-      <div class="dm-grid3">
-        ${npcs.map(n=>`<div class="dm-character-box">${tokenCard('npc',n)}</div>`).join('') || '<div class="small">No NPCs yet.</div>'}
-      </div>`;
+    body += `<div class="dm-grid3">
+      ${npcs.map(n=>tokenCardWithAdv('npc',n)).join('')||'<div class="small">No NPCs yet.</div>'}
+    </div>`;
   }
   if(tab==='enemies'){
-    body += `
-      <div class="dm-sec-head enemy"><span>Enemies</span><span class="count">${enemies.length}</span></div>
-      <div class="dm-grid3">
-        ${enemies.map(e=>`<div class="dm-character-box">${tokenCard('enemy',e)}</div>`).join('') || '<div class="small">No Enemies yet.</div>'}
-      </div>`;
+    body += `<div class="dm-grid3">
+      ${enemies.map(e=>tokenCardWithAdv('enemy',e)).join('')||'<div class="small">No Enemies yet.</div>'}
+    </div>`;
   }
   if(tab==='scene'){
+    // A/D removed from Scene; only controls + notes remain
     body += `
       <div class="dm-section">
-        <div class="dm-sec-head"><span>Scene Controls</span><span class="count">${state.gallery.length} maps</span></div>
+        <div class="dm-sec-head"><span>Scene Controls</span></div>
         <div class="dm-grid3">
           <button class="dm-title-btn" onclick="nav('gallery')">Open Gallery</button>
           <button class="dm-title-btn" onclick="state.boardBg=null; save(); renderBoard()">Clear Map</button>
@@ -303,149 +295,134 @@ function renderDmPanel(){
         </div>
       </div>
 
-      <div class="dm-grid3" style="margin-top:10px">
-        <div class="dm-adv">
-          <button class="dm-title-btn adv" onclick="quickAdv()">Advantage</button>
-          <div class="dm-detail">Roll 2d20, take highest.</div>
-        </div>
-        <div class="dm-dis">
-          <button class="dm-title-btn dis" onclick="quickDis()">Disadvantage</button>
-          <div class="dm-detail">Roll 2d20, take lowest.</div>
-        </div>
-        <div class="dm-section">
-          <div class="dm-sec-head"><span>Notes</span><span class="count">session</span></div>
-          <textarea id="dm-notes" rows="6" style="width:100%">${escapeHtml(state.notes||'')}</textarea>
-        </div>
+      <div class="dm-section" style="margin-top:10px">
+        <div class="dm-sec-head"><span>Notes</span></div>
+        <textarea id="dm-notes" rows="6" style="width:100%">${escapeHtml(state.notes||'')}</textarea>
       </div>`;
   }
   if(tab==='tools'){
-    body += `
-      <div class="dm-grid3">
-        <div class="dm-section">
-          <div class="dm-sec-head"><span>Quick d20</span><span class="count">1</span></div>
-          <button class="dm-title-btn" onclick="quickD20()">Roll d20</button>
-          <div id="dm-last-roll" class="dm-detail" style="margin-top:8px">—</div>
+    body += `<div class="dm-grid3">
+      <div class="dm-section">
+        <div class="dm-sec-head"><span>Quick d20</span></div>
+        <button class="dm-title-btn" onclick="quickD20()">Roll d20</button>
+        <div id="dm-last-roll" class="dm-detail" style="margin-top:8px">—</div>
+      </div>
+      <div class="dm-section">
+        <div class="dm-sec-head"><span>Jump</span></div>
+        <button class="dm-title-btn" onclick="nav('board')">Board</button>
+        <button class="dm-title-btn" onclick="nav('gallery')">Gallery</button>
+        <button class="dm-title-btn" onclick="nav('dice')">Dice</button>
+      </div>
+      <div class="dm-section">
+        <div class="dm-sec-head"><span>Selected</span></div>
+        <div class="dm-detail">
+          ${state.selected
+            ? state.selected.kind.toUpperCase()+' — '+escapeHtml((state.tokens[state.selected.kind]||[]).find(x=>x.id===state.selected.id)?.name||'')
+            : 'Nothing selected.'}
         </div>
-        <div class="dm-section">
-          <div class="dm-sec-head"><span>Jump</span><span class="count">nav</span></div>
-          <button class="dm-title-btn" onclick="nav('board')">Board</button>
-          <button class="dm-title-btn" onclick="nav('gallery')">Gallery</button>
-          <button class="dm-title-btn" onclick="nav('dice')">Dice</button>
-        </div>
-        <div class="dm-section">
-          <div class="dm-sec-head"><span>Selected</span><span class="count">${state.selected?1:0}</span></div>
-          <div class="dm-detail">${state.selected ? `${state.selected.kind.toUpperCase()} — ${escapeHtml((state.tokens[state.selected.kind]||[]).find(x=>x.id===state.selected.id)?.name||'')}` : 'Nothing selected.'}</div>
-        </div>
-      </div>`;
+      </div>
+    </div>`;
   }
 
-  panel.innerHTML = `
+  panel.innerHTML=`
     <div class="dm-head">
       <h3>DM Panel</h3>
-      <div class="dm-controls">
-        <button class="btn tiny" onclick="minimizeDmPanel()">Close</button>
-      </div>
+      <div><button class="btn tiny" onclick="minimizeDmPanel()">Close</button></div>
     </div>
     ${tabsHtml}
     ${body}
   `;
 
-  // hook notes sync
-  const notesEl = document.getElementById('dm-notes');
+  const notesEl=document.getElementById('dm-notes');
   if(notesEl){
-    notesEl.addEventListener('input', ()=>{ state.notes = notesEl.value; save(); const n = document.getElementById('notes'); if(n) n.value = state.notes; }, {passive:true});
+    notesEl.addEventListener('input', ()=>{
+      state.notes=notesEl.value; save();
+      const n=document.getElementById('notes');
+      if(n) n.value=state.notes;
+    });
   }
 }
 
-// Quick actions
+// ===== Quick rolls used by Party A/D and Tools =====
 function quickD20(){
-  const v = 1 + Math.floor(Math.random()*20);
-  const box = document.getElementById('dm-last-roll');
-  if(box) box.textContent = `d20: ${v}`;
-  alert(`d20: ${v}`);
+  const v=1+Math.floor(Math.random()*20);
+  const box=document.getElementById('dm-last-roll');
+  if(box) box.textContent=`d20: ${v}`;
 }
 function quickAdv(){
-  const a = 1 + Math.floor(Math.random()*20);
-  const b = 1 + Math.floor(Math.random()*20);
-  alert(`Advantage: ${a} vs ${b} ⇒ ${Math.max(a,b)}`);
+  const a=1+Math.floor(Math.random()*20);
+  const b=1+Math.floor(Math.random()*20);
+  const box=document.getElementById('dm-last-roll');
+  if(box) box.textContent=`Advantage: ${a} vs ${b} ⇒ ${Math.max(a,b)}`;
 }
 function quickDis(){
-  const a = 1 + Math.floor(Math.random()*20);
-  const b = 1 + Math.floor(Math.random()*20);
-  alert(`Disadvantage: ${a} vs ${b} ⇒ ${Math.min(a,b)}`);
+  const a=1+Math.floor(Math.random()*20);
+  const b=1+Math.floor(Math.random()*20);
+  const box=document.getElementById('dm-last-roll');
+  if(box) box.textContent=`Disadvantage: ${a} vs ${b} ⇒ ${Math.min(a,b)}`;
 }
 
-// selection from panel → board mark
-function selectFromPanel(kind,id){
-  state.selected = {kind,id}; save();
-  if(state.route!=='board') nav('board'); else renderBoard();
-  renderDmPanel();
-}
-
-// ===== Dice (existing) =====
-const dice = ['d4','d6','d8','d10','d12','d20'];
-let selectedDice = [];
+// ===== Dice =====
+const dice=['d4','d6','d8','d10','d12','d20'];
+let selectedDice=[];
 function renderDiceButtons(){
-  const row = document.getElementById('dice-buttons');
+  const row=document.getElementById('dice-buttons');
   if(!row) return;
-  row.innerHTML = dice.map(s=>`
+  row.innerHTML=dice.map(s=>`
     <button class="die-btn" onclick="addDie('${s}')">
       <span class="die-icon">${polyIcon(s)}</span>${s.toUpperCase()}
-    </button>
-  `).join('');
+    </button>`).join('');
 }
 function addDie(s){ selectedDice.push(s); updateDiceSelection(); shakeOutput(); }
 function clearDice(){ selectedDice=[]; updateDiceSelection(); document.getElementById('dice-output').innerHTML=''; }
 function updateDiceSelection(){
-  const el = document.getElementById('dice-selection');
+  const el=document.getElementById('dice-selection');
   if(!el) return;
-  el.textContent = selectedDice.length ? selectedDice.join(' + ') : 'No dice selected';
+  el.textContent= selectedDice.length? selectedDice.join(' + '):'No dice selected';
 }
 function polyIcon(s){
-  const map = { d4:3, d6:4, d8:6, d10:7, d12:8, d20:10 };
-  const sides = map[s]||6;
+  const map={d4:3,d6:4,d8:6,d10:7,d12:8,d20:10};
+  const sides=map[s]||6;
   return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <polygon points="${regularPoly(12,12,9,sides)}" stroke="currentColor" stroke-width="2" fill="none" />
+    <polygon points="${regularPoly(12,12,9,sides)}" stroke="currentColor" stroke-width="2" fill="none"/>
   </svg>`;
 }
 function regularPoly(cx,cy,r,n){
   const pts=[];
   for(let i=0;i<n;i++){
-    const a = (Math.PI*2*(i/n)) - Math.PI/2;
+    const a=(Math.PI*2*(i/n))-Math.PI/2;
     pts.push((cx+r*Math.cos(a)).toFixed(1)+','+(cy+r*Math.sin(a)).toFixed(1));
   }
   return pts.join(' ');
 }
 function rollAll(){
   if(!selectedDice.length) return;
-  const rolls = selectedDice.map(tag=>roll(tag));
-  const total = rolls.reduce((a,b)=>a+b,0);
-  const out = document.getElementById('dice-output');
-  out.innerHTML = `
-    <div class="roll-card">
-      <div class="roll-total">Total: ${total}</div>
-      <div class="roll-breakdown">${selectedDice.map((s,i)=>`${s} [${rolls[i]}]`).join(' + ')}</div>
-    </div>`;
+  const rolls=selectedDice.map(tag=>roll(tag));
+  const total=rolls.reduce((a,b)=>a+b,0);
+  const out=document.getElementById('dice-output');
+  out.innerHTML=`<div class="roll-card">
+    <div class="roll-total">Total: ${total}</div>
+    <div class="roll-breakdown">${selectedDice.map((s,i)=>`${s} [${rolls[i]}]`).join(' + ')}</div>
+  </div>`;
   selectedDice=[]; updateDiceSelection();
 }
 function roll(tag){
-  const n = parseInt(tag.replace('d',''),10)||6;
-  return 1 + Math.floor(Math.random()*n);
+  const n=parseInt(tag.replace('d',''),10)||6;
+  return 1+Math.floor(Math.random()*n);
 }
 function shakeOutput(){
-  const out = document.getElementById('dice-output');
+  const out=document.getElementById('dice-output');
   out.classList.remove('shake'); void out.offsetWidth; out.classList.add('shake');
 }
 
 // ===== Utilities =====
-function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 // ===== Initial render =====
 function render(){
-  // highlight nav
-  const ids = ['home','board','gallery','chars','npcs','enemies','dice','notes','save'];
+  const ids=['home','board','gallery','chars','npcs','enemies','dice','notes','save'];
   ids.forEach(id=>{
-    const b = document.getElementById('nav-'+id);
+    const b=document.getElementById('nav-'+id);
     if(b) b.classList.toggle('active', state.route===id);
   });
 
@@ -457,9 +434,9 @@ function render(){
   updateDmFab();
   renderDmPanel();
 
-  // sync Notes page
-  const notes = document.getElementById('notes');
-  if(notes) notes.value = state.notes || '';
+  // Sync Notes page textarea
+  const notes=document.getElementById('notes');
+  if(notes) notes.value=state.notes||'';
 }
 
 // boot
