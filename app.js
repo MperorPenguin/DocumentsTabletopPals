@@ -1,3 +1,7 @@
+// ===== Config: fixed grid =====
+const GRID_COLS = 26;
+const GRID_ROWS = 26;
+
 // ===== State =====
 const state = load() || {
   route: 'home',
@@ -12,7 +16,7 @@ const state = load() || {
       {id:'n1', name:'Elder Bran', cls:'NPC', hp:[6,6], pos:[7,6]},
     ],
     enemy: [
-      {id:'e1', name:'Skeleton A', cls:'Enemy', hp:[13,13], pos:[23,8]},
+      {id:'e1', name:'Skeleton A', cls:'Enemy', hp:[13,13], pos:[23,1]},
     ]
   },
   selected: null,
@@ -20,8 +24,15 @@ const state = load() || {
   ui: { dmOpen:false, dmTab:'party' }
 };
 
+// ===== Sync channel (for pop-out viewer) =====
+const chan = new BroadcastChannel('board-sync');
+function broadcastState(){ chan.postMessage({type:'state', payload:state}); }
+
 // ===== Persistence =====
-function save(){ localStorage.setItem('tp_state', JSON.stringify(state)); }
+function save(){
+  localStorage.setItem('tp_state', JSON.stringify(state));
+  broadcastState();
+}
 function load(){ try{ return JSON.parse(localStorage.getItem('tp_state')); }catch(e){ return null; } }
 
 // ===== Routing =====
@@ -38,16 +49,36 @@ function nav(route){
   render();
 }
 
-// ===== Board =====
+// ===== Board sizing (fit screen, fixed 26x26) =====
 const boardEl = () => document.getElementById('board');
+
+function fitBoard(){
+  const el = boardEl(); if(!el) return;
+  // Available width = parent content width; available height = viewport minus rough UI space
+  const parent = el.parentElement || document.body;
+  const availW = Math.max(240, parent.clientWidth - 2);      // padding safe
+  const availH = Math.max(240, window.innerHeight * 0.82);   // leave room for top bar
+  // Choose the largest square that fits both directions but is an exact multiple of GRID size
+  const maxSquare = Math.floor(Math.min(availW, availH));
+  const cell = Math.max(18, Math.floor(maxSquare / Math.max(GRID_COLS, GRID_ROWS)));
+  const boardSize = cell * Math.max(GRID_COLS, GRID_ROWS);
+
+  el.style.setProperty('--cell', cell + 'px');
+  el.style.setProperty('--boardSize', boardSize + 'px');
+}
+
+window.addEventListener('resize', ()=>{ fitBoard(); renderBoard(); });
+document.addEventListener('fullscreenchange', ()=>{ fitBoard(); renderBoard(); });
+
+// ===== Board events =====
 function cellsz(){
   const cs = getComputedStyle(boardEl()).getPropertyValue('--cell').trim();
   return parseInt(cs.replace('px','')) || 42;
 }
 function boardClick(ev){
   const rect = boardEl().getBoundingClientRect();
-  const x = Math.floor((ev.clientX - rect.left) / cellsz());
-  const y = Math.floor((ev.clientY - rect.top)  / cellsz());
+  const x = Math.max(0, Math.min(GRID_COLS-1, Math.floor((ev.clientX - rect.left) / cellsz())));
+  const y = Math.max(0, Math.min(GRID_ROWS-1, Math.floor((ev.clientY - rect.top)  / cellsz())));
   if(!state.selected) return;
   const list = state.tokens[state.selected.kind];
   const t = list.find(z=>z.id===state.selected.id);
@@ -59,9 +90,10 @@ function selectTokenDom(kind,id){
   state.selected = {kind,id}; save(); renderBoard();
 }
 
+// ===== Render Board (DM page) =====
 function renderBoard(){
-  const el = boardEl();
-  if(!el) return;
+  const el = boardEl(); if(!el) return;
+  fitBoard();
 
   el.style.backgroundImage = state.boardBg
     ? `url("${state.boardBg}")`
@@ -70,34 +102,33 @@ function renderBoard(){
   const size = cellsz();
   el.innerHTML = '';
 
-  // Fullscreen toggle button (overlay)
-  const btn = document.createElement('button');
-  btn.className = 'board-full-btn';
-  btn.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M9 3H5a2 2 0 0 0-2 2v4M15 3h4a2 2 0 0 1 2 2v4M9 21H5a2 2 0 0 1-2-2v-4M15 21h4a2 2 0 0 0 2-2v-4"/>
-    </svg>
-    <span id="fs-label">${isFullscreen()? 'Exit' : 'Full'}</span>
+  // Overlay controls (Fullscreen + Pop-out + Modal)
+  const ctrls = document.createElement('div');
+  ctrls.className = 'board-controls';
+  ctrls.innerHTML = `
+    <button class="board-ctrl" onclick="toggleBoardFullscreen()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 3H5a2 2 0 0 0-2 2v4M15 3h4a2 2 0 0 1 2 2v4M9 21H5a2 2 0 0 1-2-2v-4M15 21h4a2 2 0 0 0 2-2v-4"/>
+      </svg>
+      <span id="fs-label">${isFullscreen()? 'Exit' : 'Full'}</span>
+    </button>
+    <button class="board-ctrl" onclick="openBoardViewer()">Pop‑out</button>
+    <button class="board-ctrl" onclick="openGalleryModal()">Gallery</button>
   `;
-  btn.onclick = toggleBoardFullscreen;
-  el.appendChild(btn);
+  el.appendChild(ctrls);
 
   // Tokens
   ['pc','npc','enemy'].forEach(kind=>{
     (state.tokens[kind] || []).forEach(t=>{
       const tok = document.createElement('div');
       tok.className = `token ${kind}` + (state.selected && state.selected.id===t.id && state.selected.kind===kind ? ' selected':'');
-      tok.dataset.id = t.id;
-      tok.dataset.kind = kind;
-      tok.title = t.name;
+      tok.dataset.id = t.id; tok.dataset.kind = kind; tok.title = t.name;
       tok.style.left = (t.pos[0]*size + 2) + 'px';
       tok.style.top  = (t.pos[1]*size + 2) + 'px';
       tok.style.width = (size-6) + 'px';
       tok.style.height= (size-6) + 'px';
       tok.onclick = (e)=>{ e.stopPropagation(); selectTokenDom(kind,t.id); };
-      const img = document.createElement('img');
-      img.loading='lazy';
-      img.src = `assets/class_icons/${t.cls}.svg`;
+      const img = document.createElement('img'); img.loading='lazy'; img.src = `assets/class_icons/${t.cls}.svg`;
       tok.appendChild(img);
       el.appendChild(tok);
     });
@@ -107,24 +138,86 @@ function renderBoard(){
   updateDmFab();
 }
 
-// Fullscreen helpers (Board)
-function isFullscreen(){
-  return document.fullscreenElement === boardEl();
-}
+// ===== Fullscreen helpers =====
+function isFullscreen(){ return document.fullscreenElement === boardEl(); }
 function toggleBoardFullscreen(){
-  const el = boardEl();
-  if(!el) return;
-  if(!document.fullscreenElement){
-    el.requestFullscreen?.();
-  }else{
-    document.exitFullscreen?.();
-  }
+  const el = boardEl(); if(!el) return;
+  if(!document.fullscreenElement){ el.requestFullscreen?.(); }
+  else { document.exitFullscreen?.(); }
 }
 document.addEventListener('fullscreenchange', ()=>{
-  // Update button label when user exits with ESC, etc.
   const label = document.getElementById('fs-label');
   if(label) label.textContent = isFullscreen()? 'Exit' : 'Full';
 });
+
+// ===== Pop-out Viewer (second window) =====
+let viewerWin = null;
+function openBoardViewer(){
+  // If already open, focus it
+  if(viewerWin && !viewerWin.closed){ viewerWin.focus(); broadcastState(); return; }
+
+  viewerWin = window.open('', 'BoardViewer', 'width=900,height=900');
+  if(!viewerWin) return;
+
+  const html = `
+<!doctype html><html><head><meta charset="utf-8"><title>Board Viewer</title>
+<style>
+  :root{ --cell: 42px; --boardSize: 546px; }
+  html,body{ height:100%; margin:0; background:#0f1115; color:#e6e9f2; font:14px system-ui,Segoe UI,Roboto,Arial }
+  .board{ position:relative; width:var(--boardSize); height:var(--boardSize); margin:20px auto;
+    border:1px solid #23283a; border-radius:12px; overflow:hidden; background:#0f141f; background-size:cover; background-position:center; }
+  .board::after{ content:""; position:absolute; inset:0;
+     background-image:linear-gradient(to right,rgba(255,255,255,.06) 1px,transparent 1px),
+                      linear-gradient(to bottom,rgba(255,255,255,.06) 1px,transparent 1px);
+     background-size: var(--cell) var(--cell); pointer-events:none; }
+  .token{ position:absolute; border-radius:6px; border:2px solid rgba(255,255,255,.25); display:flex; align-items:center; justify-content:center; overflow:hidden; background:#0f1115 }
+  .token img{ width:100%; height:100%; object-fit:contain; }
+  .pc{ background:#0ea5e9aa } .npc{ background:#22c55eaa } .enemy{ background:#ef4444aa }
+</style>
+</head><body>
+  <div id="viewerBoard" class="board"></div>
+<script>
+  const GRID_COLS=${GRID_COLS}, GRID_ROWS=${GRID_ROWS};
+  const chan = new BroadcastChannel('board-sync');
+  chan.onmessage = (e)=>{ if(!e?.data) return; if(e.data.type==='state'){ window.__STATE = e.data.payload; renderViewer(); } };
+  window.addEventListener('resize', fit);
+  function fit(){
+    const el = document.getElementById('viewerBoard');
+    const avail = Math.min(document.body.clientWidth-40, window.innerHeight-40);
+    const cell = Math.max(14, Math.floor(avail / Math.max(GRID_COLS, GRID_ROWS)));
+    const size = cell * Math.max(GRID_COLS, GRID_ROWS);
+    el.style.setProperty('--cell', cell+'px');
+    el.style.setProperty('--boardSize', size+'px');
+  }
+  function renderViewer(){
+    const s = window.__STATE; if(!s) return;
+    const el = document.getElementById('viewerBoard'); if(!el) return;
+    fit();
+    el.style.backgroundImage = s.boardBg ? 'url(\"'+s.boardBg+'\")' : 'linear-gradient(#1b2436,#0f1524)';
+    const cell = parseInt(getComputedStyle(el).getPropertyValue('--cell'))||42;
+    el.innerHTML = '';
+    ['pc','npc','enemy'].forEach(kind=>{
+      (s.tokens[kind]||[]).forEach(t=>{
+        const d = document.createElement('div');
+        d.className = 'token '+kind;
+        d.style.left = (t.pos[0]*cell + 2) + 'px';
+        d.style.top  = (t.pos[1]*cell + 2) + 'px';
+        d.style.width = (cell-6) + 'px';
+        d.style.height= (cell-6) + 'px';
+        const img = document.createElement('img'); img.src='assets/class_icons/'+t.cls+'.svg'; img.loading='lazy';
+        d.appendChild(img); el.appendChild(d);
+      });
+    });
+  }
+  // Ask for state immediately
+  chan.postMessage({type:'ping'});
+</script></body></html>`;
+  viewerWin.document.open(); viewerWin.document.write(html); viewerWin.document.close();
+
+  // Reply to ping requests from viewer and broadcast immediately
+  chan.onmessage = (e)=>{ if(e?.data?.type==='ping'){ broadcastState(); } };
+  broadcastState();
+}
 
 // ===== Map Strip (Board) =====
 function renderMapStrip(){
@@ -142,17 +235,14 @@ function renderMapStrip(){
     card.className = 'map-thumb';
     card.title = g.name;
     card.onclick = ()=>{ state.boardBg = g.dataUrl; save(); renderBoard(); };
-    const img = document.createElement('img');
-    img.src = g.dataUrl;
-    const label = document.createElement('div');
-    label.className='label';
-    label.textContent = g.name;
+    const img = document.createElement('img'); img.src = g.dataUrl;
+    const label = document.createElement('div'); label.className='label'; label.textContent = g.name;
     card.appendChild(img); card.appendChild(label);
     strip.appendChild(card);
   });
 }
 
-// ===== Gallery =====
+// ===== Gallery (page + modal) =====
 function addGalleryFiles(files){
   if(!files || !files.length) return;
   const list = Array.from(files);
@@ -171,37 +261,20 @@ function addGalleryFiles(files){
     if(ext==='svg') reader.readAsText(f); else reader.readAsDataURL(f);
   });
 }
-function galleryDrop(ev){
-  ev.preventDefault();
-  const files = ev.dataTransfer.files;
-  addGalleryFiles(files);
-}
-function clearEmptyGallery(){
-  state.gallery = state.gallery.filter(g=>g && g.dataUrl);
-  save(); renderGallery();
-}
+function galleryDrop(ev){ ev.preventDefault(); const files = ev.dataTransfer.files; addGalleryFiles(files); }
+function clearEmptyGallery(){ state.gallery = state.gallery.filter(g=>g && g.dataUrl); save(); renderGallery(); }
 function useOnBoard(id){
-  const g = state.gallery.find(x=>x.id===id);
-  if(!g) return;
-  state.boardBg = g.dataUrl;
-  save();
-  nav('board');
+  const g = state.gallery.find(x=>x.id===id); if(!g) return;
+  state.boardBg = g.dataUrl; save(); nav('board');
 }
 function deleteMap(id){
   state.gallery = state.gallery.filter(x=>x.id!==id);
-  if(state.boardBg){
-    const stillExists = state.gallery.some(x=>x.dataUrl===state.boardBg);
-    if(!stillExists) state.boardBg = null;
-  }
+  if(state.boardBg && !state.gallery.some(x=>x.dataUrl===state.boardBg)) state.boardBg = null;
   save(); renderGallery(); renderMapStrip(); renderBoard();
 }
 function renderGallery(){
-  const grid = document.getElementById('gallery-grid');
-  if(!grid) return;
-  if(!state.gallery.length){
-    grid.innerHTML = `<div class="small">No maps yet. Upload PNG/JPEG/SVG above.</div>`;
-    return;
-  }
+  const grid = document.getElementById('gallery-grid'); if(!grid) return;
+  if(!state.gallery.length){ grid.innerHTML = `<div class="small">No maps yet. Upload PNG/JPEG/SVG above.</div>`; return; }
   grid.innerHTML = state.gallery.map(g=>`
     <div class="gallery-card">
       <div class="thumb">${thumbImg(g)}</div>
@@ -212,17 +285,41 @@ function renderGallery(){
           <button class="btn tiny" onclick="deleteMap('${g.id}')">Delete</button>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 function thumbImg(g){
   if(g.ext==='svg' && !g.dataUrl.startsWith('data:image')){
     const svg = encodeURIComponent(g.dataUrl);
     return `<img src="data:image/svg+xml;utf8,${svg}">`;
-  }else{
-    return `<img src="${g.dataUrl}">`;
-  }
+  }else{ return `<img src="${g.dataUrl}">`; }
 }
+
+// ===== Gallery Modal (reinstated) =====
+function openGalleryModal(){
+  const modal = document.getElementById('gallery-modal');
+  const grid  = document.getElementById('gallery-modal-grid');
+  if(!modal||!grid) return;
+  grid.innerHTML = state.gallery.length
+    ? state.gallery.map(g=>`
+        <div class="gallery-card">
+          <div class="thumb">${thumbImg(g)}</div>
+          <div class="meta">
+            <div class="name" title="${escapeHtml(g.name)}">${escapeHtml(g.name)}</div>
+            <div class="row">
+              <button class="btn tiny" onclick="setMapAndClose('${g.id}')">Set Map</button>
+              <button class="btn tiny" onclick="deleteMap('${g.id}')">Delete</button>
+            </div>
+          </div>
+        </div>`).join('')
+    : `<div class="small">No maps yet. Go to Gallery to add some.</div>`;
+  modal.classList.add('show');
+}
+function setMapAndClose(id){
+  const g = state.gallery.find(x=>x.id===id);
+  if(g){ state.boardBg = g.dataUrl; save(); renderBoard(); }
+  closeGalleryModal();
+}
+function closeGalleryModal(){ const modal = document.getElementById('gallery-modal'); if(modal) modal.classList.remove('show'); }
 
 // ===== DM Panel =====
 function maximizeDmPanel(){ state.ui.dmOpen = true; save(); renderDmPanel(); updateDmFab(); }
@@ -252,10 +349,7 @@ function tokenCardWithAdv(kind,t){
       <div class="dm-card ${sel?'selected':''}" onclick="selectFromPanel('${kind}','${t.id}')">
         <div class="avatar"><img src="assets/class_icons/${t.cls}.svg" alt=""></div>
         <div class="name">${escapeHtml(t.name)}</div>
-        <div class="badges">
-          <span class="badge">${escapeHtml(t.cls)}</span>
-          <span class="badge">HP ${t.hp[0]}/${t.hp[1]}</span>
-        </div>
+        <div class="badges"><span class="badge">${escapeHtml(t.cls)}</span><span class="badge">HP ${t.hp[0]}/${t.hp[1]}</span></div>
       </div>
       <div class="dm-actions">
         <button class="dm-title-btn short adv" title="Advantage" onclick="quickAdvFor('${kind}','${t.id}')">A</button>
@@ -270,13 +364,8 @@ function selectFromPanel(kind,id){
 }
 
 function renderDmPanel(){
-  const panel=document.getElementById('dm-panel');
-  if(!panel) return;
-
-  if(!state.ui.dmOpen){
-    panel.classList.add('hidden');
-    return;
-  }
+  const panel=document.getElementById('dm-panel'); if(!panel) return;
+  if(!state.ui.dmOpen){ panel.classList.add('hidden'); return; }
   panel.classList.remove('hidden');
 
   const pcs = state.tokens.pc||[];
@@ -294,34 +383,25 @@ function renderDmPanel(){
 
   let body='';
   if(tab==='party'){
-    body += `<div class="dm-grid3">
-      ${pcs.map(p=>tokenCardWithAdv('pc',p)).join('')||'<div class="small">No PCs yet.</div>'}
-    </div>`;
+    body += `<div class="dm-grid3">${pcs.map(p=>tokenCardWithAdv('pc',p)).join('')||'<div class="small">No PCs yet.</div>'}</div>`;
   }
   if(tab==='npcs'){
-    body += `<div class="dm-grid3">
-      ${npcs.map(n=>tokenCardWithAdv('npc',n)).join('')||'<div class="small">No NPCs yet.</div>'}
-    </div>`;
+    body += `<div class="dm-grid3">${npcs.map(n=>tokenCardWithAdv('npc',n)).join('')||'<div class="small">No NPCs yet.</div>'}</div>`;
   }
   if(tab==='enemies'){
-    body += `<div class="dm-grid3">
-      ${enemies.map(e=>tokenCardWithAdv('enemy',e)).join('')||'<div class="small">No Enemies yet.</div>'}
-    </div>`;
+    body += `<div class="dm-grid3">${enemies.map(e=>tokenCardWithAdv('enemy',e)).join('')||'<div class="small">No Enemies yet.</div>'}</div>`;
   }
   if(tab==='scene'){
     body += `
       <div class="dm-section">
         <div class="dm-sec-head"><span>Scene Controls</span></div>
         <div class="dm-grid3">
-          <button class="dm-title-btn" onclick="nav('gallery')">Open Gallery</button>
+          <button class="dm-title-btn" onclick="openGalleryModal()">Open Gallery</button>
           <button class="dm-title-btn" onclick="state.boardBg=null; save(); renderBoard()">Clear Map</button>
           <button class="dm-title-btn" onclick="nav('board')">Go to Board</button>
         </div>
-        <div class="dm-detail" style="margin-top:10px">
-          Current map: ${state.boardBg ? 'Loaded' : 'None'}.
-        </div>
+        <div class="dm-detail" style="margin-top:10px">Current map: ${state.boardBg ? 'Loaded' : 'None'}.</div>
       </div>
-
       <div class="dm-section" style="margin-top:10px">
         <div class="dm-sec-head"><span>Notes</span></div>
         <textarea id="dm-notes" rows="6" style="width:100%">${escapeHtml(state.notes||'')}</textarea>
@@ -356,60 +436,49 @@ function renderDmPanel(){
   if(notesEl){
     notesEl.addEventListener('input', ()=>{
       state.notes=notesEl.value; save();
-      const n=document.getElementById('notes');
-      if(n) n.value=state.notes;
+      const n=document.getElementById('notes'); if(n) n.value=state.notes;
     });
   }
 }
 
-// ===== Floating toast =====
-function showToast(title,msg){
-  let t=document.querySelector('.dm-toast');
-  if(t) t.remove();
+// ===== Toasts with DM instruction =====
+function showToast(title,msg,hint){
+  let t=document.querySelector('.dm-toast'); if(t) t.remove();
   const div=document.createElement('div');
   div.className='dm-toast fade';
   div.innerHTML=`
     <div class="close" onclick="this.parentElement.remove()">×</div>
     <h4>${escapeHtml(title)}</h4>
     <div>${escapeHtml(msg)}</div>
+    ${hint ? `<div class="hint">${escapeHtml(hint)}</div>` : ``}
   `;
   document.body.appendChild(div);
 }
 
-// ===== Quick rolls used by A/D and Tools =====
+// ===== Quick rolls =====
 function quickD20(){
   const v=1+Math.floor(Math.random()*20);
-  const box=document.getElementById('dm-last-roll');
-  if(box) box.textContent=`d20: ${v}`;
-  showToast('Quick d20', `→ ${v}`);
+  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`d20: ${v}`;
+  showToast('Quick d20', `→ ${v}`, 'Roll 1d20; apply modifiers as usual.');
 }
 function quickAdvFor(kind,id){
-  const a=1+Math.floor(Math.random()*20);
-  const b=1+Math.floor(Math.random()*20);
-  const res=Math.max(a,b);
-  const list=state.tokens[kind]||[];
-  const name=(list.find(x=>x.id===id)?.name)||kind.toUpperCase();
-  const box=document.getElementById('dm-last-roll');
-  if(box) box.textContent=`Advantage: ${a} vs ${b} ⇒ ${res}`;
-  showToast(name, `Advantage → ${res} (${a} vs ${b})`);
+  const a=1+Math.floor(Math.random()*20), b=1+Math.floor(Math.random()*20), res=Math.max(a,b);
+  const list=state.tokens[kind]||[]; const name=(list.find(x=>x.id===id)?.name)||kind.toUpperCase();
+  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`Advantage: ${a} vs ${b} ⇒ ${res}`;
+  showToast(name, `Advantage → ${res} (${a} vs ${b})`, 'Instruction: roll 2d20, keep highest; then add relevant modifiers.');
 }
 function quickDisFor(kind,id){
-  const a=1+Math.floor(Math.random()*20);
-  const b=1+Math.floor(Math.random()*20);
-  const res=Math.min(a,b);
-  const list=state.tokens[kind]||[];
-  const name=(list.find(x=>x.id===id)?.name)||kind.toUpperCase();
-  const box=document.getElementById('dm-last-roll');
-  if(box) box.textContent=`Disadvantage: ${a} vs ${b} ⇒ ${res}`;
-  showToast(name, `Disadvantage → ${res} (${a} vs ${b})`);
+  const a=1+Math.floor(Math.random()*20), b=1+Math.floor(Math.random()*20), res=Math.min(a,b);
+  const list=state.tokens[kind]||[]; const name=(list.find(x=>x.id===id)?.name)||kind.toUpperCase();
+  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`Disadvantage: ${a} vs ${b} ⇒ ${res}`;
+  showToast(name, `Disadvantage → ${res} (${a} vs ${b})`, 'Instruction: roll 2d20, keep lowest; then add relevant modifiers.');
 }
 
 // ===== Dice =====
 const dice=['d4','d6','d8','d10','d12','d20'];
 let selectedDice=[];
 function renderDiceButtons(){
-  const row=document.getElementById('dice-buttons');
-  if(!row) return;
+  const row=document.getElementById('dice-buttons'); if(!row) return;
   row.innerHTML=dice.map(s=>`
     <button class="die-btn" onclick="addDie('${s}')">
       <span class="die-icon">${polyIcon(s)}</span>${s.toUpperCase()}
@@ -418,8 +487,7 @@ function renderDiceButtons(){
 function addDie(s){ selectedDice.push(s); updateDiceSelection(); shakeOutput(); }
 function clearDice(){ selectedDice=[]; updateDiceSelection(); document.getElementById('dice-output').innerHTML=''; }
 function updateDiceSelection(){
-  const el=document.getElementById('dice-selection');
-  if(!el) return;
+  const el=document.getElementById('dice-selection'); if(!el) return;
   el.textContent= selectedDice.length? selectedDice.join(' + '):'No dice selected';
 }
 function polyIcon(s){
@@ -448,14 +516,8 @@ function rollAll(){
   </div>`;
   selectedDice=[]; updateDiceSelection();
 }
-function roll(tag){
-  const n=parseInt(tag.replace('d',''),10)||6;
-  return 1+Math.floor(Math.random()*n);
-}
-function shakeOutput(){
-  const out=document.getElementById('dice-output');
-  out.classList.remove('shake'); void out.offsetWidth; out.classList.add('shake');
-}
+function roll(tag){ const n=parseInt(tag.replace('d',''),10)||6; return 1+Math.floor(Math.random()*n); }
+function shakeOutput(){ const out=document.getElementById('dice-output'); out.classList.remove('shake'); void out.offsetWidth; out.classList.add('shake'); }
 
 // ===== Utilities =====
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -477,11 +539,24 @@ function render(){
   renderDmPanel();
 
   // Sync Notes page textarea
-  const notes=document.getElementById('notes');
-  if(notes) notes.value=state.notes||'';
+  const notes=document.getElementById('notes'); if(notes) notes.value=state.notes||'';
 }
 
 // boot
 document.addEventListener('DOMContentLoaded', ()=>{
   nav(state.route||'home');
+  fitBoard();
 });
+
+// ===== Expose some fns to window (inline HTML calls) =====
+window.boardClick = boardClick;
+window.nav = nav;
+window.openGalleryModal = openGalleryModal;
+window.closeGalleryModal = closeGalleryModal;
+window.setMapAndClose = setMapAndClose;
+window.openBoardViewer = openBoardViewer;
+window.toggleBoardFullscreen = toggleBoardFullscreen;
+window.quickD20 = quickD20;
+window.quickAdvFor = quickAdvFor;
+window.quickDisFor = quickDisFor;
+window.selectFromPanel = selectFromPanel;
