@@ -269,3 +269,8 @@ function render(){
 document.addEventListener('DOMContentLoaded', ()=>{
   nav(state.route||'home');
 });
+// Ensure tabs re-enable after uploads or interactions
+function resetTabs(){
+  const tabs = document.querySelectorAll('.nav button');
+  tabs.forEach(tab => tab.disabled = false);
+}
