@@ -64,7 +64,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:10px;
   box-shadow:0 14px 30px rgba(0,0,0,.5); backdrop-filter: blur(6px);
 }
-.dm-panel *{overflow-wrap:anywhere; word-break:break-word;}
+.dm-panel *{overflow-wrap:anywhere; word-break:normal;}
 .dm-panel h3{margin:0 0 8px;font-size:14px;letter-spacing:.2px;border-bottom:1px solid var(--border);padding-bottom:6px}
 .dm-section{margin-top:10px;background:#0f1115;border:1px solid var(--border);border-radius:12px;padding:10px}
 .dm-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:6px}
@@ -96,41 +96,19 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   transition:transform .12s, box-shadow .15s, border-color .15s; cursor:pointer; min-width:0;
 }
 .dm-card.selected{ border-color:var(--accent); background: color-mix(in srgb, var(--accent) 14%, #0f1422); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset; }
-.dm-card .name{ font-weight:800; font-size:12.5px; line-height:1.2; letter-spacing:.15px; text-align:center; }
+.dm-card .name{ font-weight:800; font-size:12.5px; line-height:1.2; letter-spacing:.15px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;}
 .dm-card .avatar{ width:52px; height:52px; border-radius:10px; border:1px solid var(--border); background:#0b1020; display:flex; align-items:center; justify-content:center; overflow:hidden; }
 .dm-card .avatar img{ width:40px; height:40px; object-fit:contain; display:block }
 .badges{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center }
 .badge{ font-size:10.5px; padding:3px 8px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#dbe1ee }
 
-/* A/D containers + title buttons (full width, wrap safe) */
+/* A/D containers + title buttons (full width, wrap safe, no line breaks) */
 .dm-adv, .dm-dis{ background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:8px; overflow:hidden; }
 .dm-title-btn{
-
-  appearance:none;
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  border-radius:999px;
-  border:1px solid transparent;
-  padding:8px 12px;
-  font-size:9px;
-  font-weight:500;
-  cursor:pointer;
-  user-select:none;
-  transition:.15s;
-  width:100%;
-  justify-content:center;
-  text-align:center;
-
-  /* 🔑 fixes for line breaks */
-  white-space: nowrap;       /* force all text on one line */
-  overflow: hidden;          /* prevent overflow if too long */
-  text-overflow: ellipsis;   /* add … if it doesn’t fit */
-}
-
   appearance:none; display:inline-flex; align-items:center; gap:8px; border-radius:999px; border:1px solid transparent;
-  padding:8px 12px; font-size:9px; font-weight:500; cursor:pointer; user-select:none; transition:.15s;
-  width:100%; justify-content:center; text-align:center; white-space:normal; line-height:1.2; overflow-wrap:anywhere;
+  padding:8px 12px; font-size:11px; font-weight:700; cursor:pointer; user-select:none; transition:.15s;
+  width:100%; justify-content:center; text-align:center;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;  /* keep label on one line, clip with … if needed */
 }
 .dm-title-btn .dot{ width:8px; height:8px; border-radius:50%; background:#fff2 }
 .dm-title-btn:hover{ filter:brightness(1.05); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
@@ -170,8 +148,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   50%{ transform:translateX(0) rotate(0) }
 }
 
-/* Mobile */
+/* Mobile tweaks */
 @media (max-width: 768px){
   .dm-panel{ left:12px; right:12px; bottom:12px; width:auto; }
   .dm-grid3{ grid-template-columns: repeat(3, 1fr); }
+  .dm-title-btn{ font-size:10px; } /* slightly smaller pill text on small screens */
 }
