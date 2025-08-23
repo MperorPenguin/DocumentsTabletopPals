@@ -40,11 +40,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .panel.tile{cursor:pointer;transition: transform .15s, box-shadow .15s, border-color .15s, background-color .15s;outline: none;}
 .panel.tile:hover,.panel.tile:focus-visible{border-color: var(--accent);box-shadow: 0 8px 28px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset;transform: translateY(-2px);background: color-mix(in srgb, var(--accent) 10%, var(--panel));}
 
-/* Board */
+/* ========= Board ========= */
 .board{
   position:relative;
-  width:100%;
-  aspect-ratio: 1/1;   /* square scalable */
+  /* Fit the screen: never wider than container, never taller than 90vh. Stays perfectly square. */
+  width: min(100%, 90vh);
+  aspect-ratio: 1/1;
   border:1px solid var(--border);
   border-radius:12px;
   overflow:hidden;
@@ -52,6 +53,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   background-size:cover;
   background-position:center;
   --cell: 42px;
+  margin-inline:auto; /* center */
 }
 .board::after{
   content:"";position:absolute;inset:0;
@@ -64,6 +66,28 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .token.npc{background:#22c55eaa}
 .token.enemy{background:#ef4444aa}
 .token.selected{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 65%, transparent) inset, 0 0 0 2px var(--accent)}
+
+/* Fullscreen overlay button (top-right on board) */
+.board-full-btn{
+  position:absolute; top:8px; right:8px; z-index:5;
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 8px; border-radius:10px;
+  background:#0f1115cc; border:1px solid var(--border); color:#e6e9f2;
+  cursor:pointer; transition:.15s;
+  backdrop-filter: blur(4px);
+}
+.board-full-btn:hover{ border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%, transparent) inset }
+.board-full-btn svg{ width:16px; height:16px }
+
+/* Fullscreen rules */
+:fullscreen .board,
+.board:fullscreen{
+  width:100vw; height:100vh; aspect-ratio:auto; border-radius:0;
+}
+:fullscreen .board::after,
+.board:fullscreen::after{
+  background-image:linear-gradient(to right,rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(to bottom,rgba(255,255,255,.06) 1px,transparent 1px);
+}
 
 /* Map strip */
 .map-strip{
@@ -94,7 +118,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .gallery-card .row{ display:flex; gap:8px }
 
 /* =========================
-   DM Panel (restored + themed buttons)
+   DM Panel (compact A/D + toast)
    ========================= */
 .dm-panel{
   position:fixed; right:16px; bottom:16px; width:420px; max-height:74vh; overflow:auto; z-index:1000;
@@ -129,19 +153,48 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .badges{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center }
 .badge{ font-size:10.5px; padding:3px 8px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#dbe1ee }
 
-/* Advantage/Disadvantage */
-.dm-adv,.dm-dis{ background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:8px; overflow:hidden; }
+/* Advantage/Disadvantage - compact buttons */
 .dm-title-btn{
   appearance:none; display:inline-flex; align-items:center; gap:8px; border-radius:999px; border:1px solid var(--border);
   padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer; user-select:none; transition:.15s;
   width:100%; justify-content:center; text-align:center; background:var(--panel); color:var(--ink);
 }
 .dm-title-btn:hover{ background:color-mix(in srgb, var(--accent) 20%, var(--panel)); }
+.dm-title-btn.short{ padding:4px 6px; font-size:11px; width:auto; min-width:32px; }
 .dm-title-btn.adv{ background:#065f46; color:#d1fae5; border-color:#0b7a5b }
 .dm-title-btn.dis{ background:#7f1d1d; color:#fee2e2; border-color:#9b2222 }
 
-/* Detail box */
-.dm-detail{ margin-top:8px;border:1px solid var(--border);background:#111623;color:#dbe1ee;border-radius:8px;padding:10px;font-size:13px }
+/* Make the A/D row compact within character box */
+.dm-character-box > .dm-actions{ display:flex; gap:6px; margin-top:6px; }
+
+/* Detail boxes always readable */
+.dm-detail{
+  margin-top:8px;border:1px solid var(--border);background:#111623;color:#dbe1ee;border-radius:8px;padding:10px;font-size:13px;
+  white-space:normal; overflow-wrap:anywhere; word-break:break-word;
+}
+
+/* Toast (floating results) */
+.dm-toast {
+  position:fixed;
+  right:20px;
+  bottom:90px; /* above FAB/panel */
+  background:#0f1422;
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:10px 14px;
+  max-width:280px;
+  color:#e6e9f2;
+  box-shadow:0 8px 20px rgba(0,0,0,.5);
+  z-index:1200;
+}
+.dm-toast h4{ margin:0 0 6px; font-size:13px; font-weight:700; color:var(--accent); }
+.dm-toast .close{ position:absolute; top:6px; right:8px; cursor:pointer; font-weight:700; color:#aab3c5; }
+.dm-toast.fade{ animation:fadeIn .25s ease-out; }
+@keyframes fadeIn{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)} }
+
+/* Tidy vertical stacks of buttons inside sections (e.g., Jump) */
+.dm-section .dm-title-btn{ display:block; margin-bottom:6px; }
+.dm-section .dm-title-btn:last-child{ margin-bottom:0; }
 
 /* FAB */
 .dm-fab{ position: fixed; right:16px; bottom:16px; z-index:1001; display:inline-flex; align-items:center; gap:8px; background: var(--panel); color: var(--ink); border:1px solid var(--border); border-radius:999px; padding:8px 12px; box-shadow:0 10px 24px rgba(0,0,0,.45); cursor:pointer; transition:.15s }
@@ -164,7 +217,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 
 /* Mobile */
 @media (max-width: 768px){
-  .board{ height:60vh; aspect-ratio:auto; }
+  .board{ width: min(100%, 82vh); } /* keep a little room for UI on phones */
   .dm-panel{ left:12px; right:12px; bottom:12px; width:auto; }
   .dm-grid3{ grid-template-columns: repeat(2, 1fr); }
 }

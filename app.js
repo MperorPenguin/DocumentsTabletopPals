@@ -12,7 +12,7 @@ const state = load() || {
       {id:'n1', name:'Elder Bran', cls:'NPC', hp:[6,6], pos:[7,6]},
     ],
     enemy: [
-      {id:'e1', name:'Skeleton A', cls:'Enemy', hp:[13,13], pos:[8,4]},
+      {id:'e1', name:'Skeleton A', cls:'Enemy', hp:[13,13], pos:[23,8]},
     ]
   },
   selected: null,
@@ -58,9 +58,11 @@ function boardClick(ev){
 function selectTokenDom(kind,id){
   state.selected = {kind,id}; save(); renderBoard();
 }
+
 function renderBoard(){
   const el = boardEl();
   if(!el) return;
+
   el.style.backgroundImage = state.boardBg
     ? `url("${state.boardBg}")`
     : 'linear-gradient(#1b2436,#0f1524)';
@@ -68,6 +70,19 @@ function renderBoard(){
   const size = cellsz();
   el.innerHTML = '';
 
+  // Fullscreen toggle button (overlay)
+  const btn = document.createElement('button');
+  btn.className = 'board-full-btn';
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M9 3H5a2 2 0 0 0-2 2v4M15 3h4a2 2 0 0 1 2 2v4M9 21H5a2 2 0 0 1-2-2v-4M15 21h4a2 2 0 0 0 2-2v-4"/>
+    </svg>
+    <span id="fs-label">${isFullscreen()? 'Exit' : 'Full'}</span>
+  `;
+  btn.onclick = toggleBoardFullscreen;
+  el.appendChild(btn);
+
+  // Tokens
   ['pc','npc','enemy'].forEach(kind=>{
     (state.tokens[kind] || []).forEach(t=>{
       const tok = document.createElement('div');
@@ -91,6 +106,25 @@ function renderBoard(){
   renderMapStrip();
   updateDmFab();
 }
+
+// Fullscreen helpers (Board)
+function isFullscreen(){
+  return document.fullscreenElement === boardEl();
+}
+function toggleBoardFullscreen(){
+  const el = boardEl();
+  if(!el) return;
+  if(!document.fullscreenElement){
+    el.requestFullscreen?.();
+  }else{
+    document.exitFullscreen?.();
+  }
+}
+document.addEventListener('fullscreenchange', ()=>{
+  // Update button label when user exits with ESC, etc.
+  const label = document.getElementById('fs-label');
+  if(label) label.textContent = isFullscreen()? 'Exit' : 'Full';
+});
 
 // ===== Map Strip (Board) =====
 function renderMapStrip(){
@@ -223,15 +257,9 @@ function tokenCardWithAdv(kind,t){
           <span class="badge">HP ${t.hp[0]}/${t.hp[1]}</span>
         </div>
       </div>
-      <div class="dm-grid3" style="margin-top:6px">
-        <div class="dm-adv">
-          <button class="dm-title-btn adv" onclick="quickAdv()">Advantage</button>
-          <div class="dm-detail">Roll 2d20, highest</div>
-        </div>
-        <div class="dm-dis">
-          <button class="dm-title-btn dis" onclick="quickDis()">Disadvantage</button>
-          <div class="dm-detail">Roll 2d20, lowest</div>
-        </div>
+      <div class="dm-actions">
+        <button class="dm-title-btn short adv" title="Advantage" onclick="quickAdvFor('${kind}','${t.id}')">A</button>
+        <button class="dm-title-btn short dis" title="Disadvantage" onclick="quickDisFor('${kind}','${t.id}')">D</button>
       </div>
     </div>`;
 }
@@ -240,6 +268,7 @@ function selectFromPanel(kind,id){
   renderDmPanel();
   if(state.route!=='board') nav('board'); else renderBoard();
 }
+
 function renderDmPanel(){
   const panel=document.getElementById('dm-panel');
   if(!panel) return;
@@ -265,7 +294,6 @@ function renderDmPanel(){
 
   let body='';
   if(tab==='party'){
-    // No "Players count" header; grid wraps naturally for >3 players
     body += `<div class="dm-grid3">
       ${pcs.map(p=>tokenCardWithAdv('pc',p)).join('')||'<div class="small">No PCs yet.</div>'}
     </div>`;
@@ -281,7 +309,6 @@ function renderDmPanel(){
     </div>`;
   }
   if(tab==='scene'){
-    // A/D removed from Scene; only controls + notes remain
     body += `
       <div class="dm-section">
         <div class="dm-sec-head"><span>Scene Controls</span></div>
@@ -313,14 +340,6 @@ function renderDmPanel(){
         <button class="dm-title-btn" onclick="nav('gallery')">Gallery</button>
         <button class="dm-title-btn" onclick="nav('dice')">Dice</button>
       </div>
-      <div class="dm-section">
-        <div class="dm-sec-head"><span>Selected</span></div>
-        <div class="dm-detail">
-          ${state.selected
-            ? state.selected.kind.toUpperCase()+' — '+escapeHtml((state.tokens[state.selected.kind]||[]).find(x=>x.id===state.selected.id)?.name||'')
-            : 'Nothing selected.'}
-        </div>
-      </div>
     </div>`;
   }
 
@@ -343,23 +362,46 @@ function renderDmPanel(){
   }
 }
 
-// ===== Quick rolls used by Party A/D and Tools =====
+// ===== Floating toast =====
+function showToast(title,msg){
+  let t=document.querySelector('.dm-toast');
+  if(t) t.remove();
+  const div=document.createElement('div');
+  div.className='dm-toast fade';
+  div.innerHTML=`
+    <div class="close" onclick="this.parentElement.remove()">×</div>
+    <h4>${escapeHtml(title)}</h4>
+    <div>${escapeHtml(msg)}</div>
+  `;
+  document.body.appendChild(div);
+}
+
+// ===== Quick rolls used by A/D and Tools =====
 function quickD20(){
   const v=1+Math.floor(Math.random()*20);
   const box=document.getElementById('dm-last-roll');
   if(box) box.textContent=`d20: ${v}`;
+  showToast('Quick d20', `→ ${v}`);
 }
-function quickAdv(){
+function quickAdvFor(kind,id){
   const a=1+Math.floor(Math.random()*20);
   const b=1+Math.floor(Math.random()*20);
+  const res=Math.max(a,b);
+  const list=state.tokens[kind]||[];
+  const name=(list.find(x=>x.id===id)?.name)||kind.toUpperCase();
   const box=document.getElementById('dm-last-roll');
-  if(box) box.textContent=`Advantage: ${a} vs ${b} ⇒ ${Math.max(a,b)}`;
+  if(box) box.textContent=`Advantage: ${a} vs ${b} ⇒ ${res}`;
+  showToast(name, `Advantage → ${res} (${a} vs ${b})`);
 }
-function quickDis(){
+function quickDisFor(kind,id){
   const a=1+Math.floor(Math.random()*20);
   const b=1+Math.floor(Math.random()*20);
+  const res=Math.min(a,b);
+  const list=state.tokens[kind]||[];
+  const name=(list.find(x=>x.id===id)?.name)||kind.toUpperCase();
   const box=document.getElementById('dm-last-roll');
-  if(box) box.textContent=`Disadvantage: ${a} vs ${b} ⇒ ${Math.min(a,b)}`;
+  if(box) box.textContent=`Disadvantage: ${a} vs ${b} ⇒ ${res}`;
+  showToast(name, `Disadvantage → ${res} (${a} vs ${b})`);
 }
 
 // ===== Dice =====
