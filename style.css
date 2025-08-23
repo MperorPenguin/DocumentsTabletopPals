@@ -64,7 +64,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:10px;
   box-shadow:0 14px 30px rgba(0,0,0,.5); backdrop-filter: blur(6px);
 }
-.dm-panel *{overflow-wrap:anywhere; word-break:normal;}
+.dm-panel *{overflow-wrap:anywhere; word-break:break-word;}
 .dm-panel h3{margin:0 0 8px;font-size:14px;letter-spacing:.2px;border-bottom:1px solid var(--border);padding-bottom:6px}
 .dm-section{margin-top:10px;background:#0f1115;border:1px solid var(--border);border-radius:12px;padding:10px}
 .dm-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:6px}
@@ -102,13 +102,27 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .badges{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center }
 .badge{ font-size:10.5px; padding:3px 8px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#dbe1ee }
 
-/* A/D containers + title buttons (full width, wrap safe, no line breaks) */
+/* A/D containers + title buttons (full width, safe text) */
 .dm-adv, .dm-dis{ background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:8px; overflow:hidden; }
 .dm-title-btn{
-  appearance:none; display:inline-flex; align-items:center; gap:8px; border-radius:999px; border:1px solid transparent;
-  padding:8px 12px; font-size:11px; font-weight:700; cursor:pointer; user-select:none; transition:.15s;
-  width:100%; justify-content:center; text-align:center;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;  /* keep label on one line, clip with … if needed */
+  appearance:none;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border-radius:999px;
+  border:1px solid transparent;
+  padding:8px 12px;
+  font-size:11px;
+  font-weight:700;
+  cursor:pointer;
+  user-select:none;
+  transition:.15s;
+  width:100%;
+  justify-content:center;
+  text-align:center;
+  white-space:nowrap;       /* keep text on one line */
+  overflow:hidden;          /* clip if too long */
+  text-overflow:ellipsis;   /* add … if clipped */
 }
 .dm-title-btn .dot{ width:8px; height:8px; border-radius:50%; background:#fff2 }
 .dm-title-btn:hover{ filter:brightness(1.05); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
@@ -148,9 +162,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   50%{ transform:translateX(0) rotate(0) }
 }
 
-/* Mobile tweaks */
+/* Mobile */
 @media (max-width: 768px){
   .dm-panel{ left:12px; right:12px; bottom:12px; width:auto; }
   .dm-grid3{ grid-template-columns: repeat(3, 1fr); }
-  .dm-title-btn{ font-size:10px; } /* slightly smaller pill text on small screens */
+  .dm-title-btn{ font-size:10px; }
 }
