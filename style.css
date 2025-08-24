@@ -46,8 +46,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   background-size:cover;
   background-position:center;
   margin-inline:auto;
-
-  /* never overflow the viewport on phones */
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 140px);
 }
@@ -66,14 +64,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .token.selected{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 65%, transparent) inset, 0 0 0 2px var(--accent)}
 
 /* Control bar ABOVE the map */
-.board-control-wrap{
-  display:flex;
-  justify-content:flex-end;
-  margin-top:6px;
-}
-.board-control-bar{
-  display:flex; gap:6px; flex-wrap:wrap;
-}
+.board-control-wrap{ display:flex; justify-content:flex-end; margin-top:6px; }
+.board-control-bar{ display:flex; gap:6px; flex-wrap:wrap; }
 .board-ctrl{
   display:inline-flex; align-items:center; gap:6px;
   padding:6px 8px; border-radius:10px;
@@ -173,17 +165,14 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .badges{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center }
 .badge{ font-size:10.5px; padding:3px 8px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#dbe1ee }
 
-/* Advantage/Disadvantage buttons */
+/* Buttons */
 .dm-title-btn{
   appearance:none; display:inline-flex; align-items:center; gap:8px; border-radius:999px; border:1px solid var(--border);
   padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer; user-select:none; transition:.15s;
   width:100%; justify-content:center; text-align:center; background:var(--panel); color:var(--ink);
 }
 .dm-title-btn:hover{ background:color-mix(in srgb, var(--accent) 20%, var(--panel)); }
-.dm-title-btn.short{
-  display:inline-flex; align-items:center; justify-content:center;
-  padding:6px; min-width:34px; height:32px; line-height:1;
-}
+.dm-title-btn.short{ display:inline-flex; align-items:center; justify-content:center; padding:6px; min-width:34px; height:32px; line-height:1; }
 .dm-title-btn.adv{ background:#065f46; color:#d1fae5; border-color:#0b7a5b }
 .dm-title-btn.dis{ background:#7f1d1d; color:#fee2e2; border-color:#9b2222 }
 .dm-character-box > .dm-actions{ display:flex; gap:6px; margin-top:6px; justify-content:center; align-items:center; }
@@ -194,7 +183,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   white-space:normal; overflow-wrap:anywhere; word-break:break-word;
 }
 
-/* Toast (floating results + hint) */
+/* Toast */
 .dm-toast {
   position:fixed; right:20px; bottom:90px; background:#0f1422; border:1px solid var(--border);
   border-radius:10px; padding:10px 14px; max-width:320px; color:#e6e9f2;
@@ -206,7 +195,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 @keyframes fadeIn{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)} }
 .dm-toast.fade{ animation:fadeIn .25s ease-out; }
 
-/* Tidy vertical stacks in sections */
+/* Stacks in sections */
 .dm-section .dm-title-btn{ display:block; margin-bottom:6px; }
 .dm-section .dm-title-btn:last-child{ margin-bottom:0; }
 

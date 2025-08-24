@@ -72,13 +72,12 @@
     <section id="view-gallery" class="hidden">
       <h2>Gallery</h2>
 
-      <!-- Robust uploader -->
+      <!-- Auto-uploader -->
       <div class="panel">
         <div class="uploader">
           <input id="gallery-input" type="file" accept=".png,.jpg,.jpeg,.svg" multiple hidden />
           <div class="uploader-row">
             <button class="btn" onclick="triggerFilePicker()">Select files</button>
-            <button id="upload-btn" class="btn" onclick="commitPendingFiles()" disabled>Upload to Gallery</button>
             <button class="btn" onclick="clearPending()" id="clear-pending-btn" disabled>Clear Selection</button>
           </div>
           <div id="pending-list" class="pending-list small"></div>
@@ -115,7 +114,7 @@
       </div>
     </section>
 
-    <!-- Placeholders for routes referenced by nav (kept hidden / unused directly) -->
+    <!-- Placeholders (not directly used) -->
     <section id="view-chars"   class="hidden"></section>
     <section id="view-npcs"    class="hidden"></section>
     <section id="view-enemies" class="hidden"></section>
@@ -143,15 +142,17 @@
         <h3>Choose a Map</h3>
         <button class="modal-close" onclick="closeGalleryModal()">Close</button>
       </div>
+
+      <!-- Auto-uploader inside modal -->
       <div class="uploader modal-uploader">
         <input id="gallery-input-modal" type="file" accept=".png,.jpg,.jpeg,.svg" multiple hidden />
         <div class="uploader-row">
           <button class="btn" onclick="triggerFilePicker(true)">Select files</button>
-          <button id="upload-btn-modal" class="btn" onclick="commitPendingFiles(true)" disabled>Upload to Gallery</button>
           <button class="btn" onclick="clearPending(true)" id="clear-pending-btn-modal" disabled>Clear Selection</button>
         </div>
         <div id="pending-list-modal" class="pending-list small"></div>
       </div>
+
       <div id="gallery-modal-grid" class="modal-grid"></div>
     </div>
   </div>

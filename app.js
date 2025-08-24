@@ -22,7 +22,7 @@ const state = load() || {
   selected: null,
   notes: '',
   ui: { dmOpen:false, dmTab:'party' },
-  pendingFiles: [] // queue for robust upload
+  pendingFiles: [] // kept for display of chips; auto-upload still uses it briefly
 };
 
 // ===== Live Sync Channel (for Pop‑out viewer) =====
@@ -33,25 +33,15 @@ function broadcastState(){ chan.postMessage({type:'state', payload:state}); }
 function save(){ localStorage.setItem('tp_state', JSON.stringify(state)); broadcastState(); }
 function load(){ try{ return JSON.parse(localStorage.getItem('tp_state')); }catch(e){ return null; } }
 
-// Prevent the browser from navigating away on accidental drops
+// Prevent accidental navigate on drag/drop
 window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop',     e => e.preventDefault());
 
-// ===== Routing =====
-function clearOverlays(){
-  // Close any open modal safely
-  try{ closeGalleryModal(); }catch(_){}
-  document.querySelectorAll('.modal.show').forEach(m=>m.classList.remove('show'));
-  document.body.style.pointerEvents = 'auto';
-}
-function safeNav(route){
-  clearOverlays();
-  nav(route);
-}
+// ===== Routing & overlays =====
+function closeAllOverlays(){ closeGalleryModal(); }
+function safeNav(route){ closeAllOverlays(); nav(route); }
 function nav(route){
-  // auto-close modals when navigating
-  clearOverlays();
-
+  closeAllOverlays();
   state.route = route; save();
   const views = ['home','board','gallery','chars','npcs','enemies','dice','notes','save'];
   views.forEach(v=>{
@@ -69,23 +59,15 @@ const boardEl = () => document.getElementById('board');
 
 function fitBoard(){
   const el = boardEl(); if(!el) return;
-
-  // Real viewport on mobile when available
   const vpH = Math.min(window.innerHeight, (window.visualViewport?.height || window.innerHeight));
   const vpW = Math.min(window.innerWidth,  (window.visualViewport?.width  || window.innerWidth));
-
-  // Breathing room for header/footers
-  const SAFE_H_PAD = 140;
-  const SAFE_W_PAD = 24;
-
+  const SAFE_H_PAD = 140, SAFE_W_PAD = 24;
   const availH = Math.max(240, vpH - SAFE_H_PAD);
   const availW = Math.max(240, vpW - SAFE_W_PAD);
   const maxSquare = Math.floor(Math.min(availW, availH));
-
   const GRID = Math.max(GRID_COLS, GRID_ROWS);
   const cell = Math.max(16, Math.floor(maxSquare / GRID));
   const boardSize = cell * GRID;
-
   el.style.setProperty('--cell', cell + 'px');
   el.style.setProperty('--boardSize', boardSize + 'px');
 }
@@ -112,7 +94,7 @@ function selectTokenDom(kind,id){
   state.selected = {kind,id}; save(); renderBoard();
 }
 
-// ===== Board render (DM page) =====
+// ===== Board render =====
 function renderBoard(){
   const el = boardEl(); if(!el) return;
   fitBoard();
@@ -124,7 +106,6 @@ function renderBoard(){
   const size = cellsz();
   el.innerHTML = '';
 
-  // Tokens
   ['pc','npc','enemy'].forEach(kind=>{
     (state.tokens[kind] || []).forEach(t=>{
       const tok = document.createElement('div');
@@ -149,18 +130,16 @@ function renderBoard(){
   updateDmFab();
 }
 
-// ===== Fullscreen =====
+// ===== Fullscreen & Viewer =====
 function toggleBoardFullscreen(){
   const el = boardEl(); if(!el) return;
   if(!document.fullscreenElement){ el.requestFullscreen?.(); }
   else { document.exitFullscreen?.(); }
 }
 
-// ===== Pop‑out viewer (sync via BroadcastChannel) =====
 let viewerWin = null;
 function openBoardViewer(){
   if(viewerWin && !viewerWin.closed){ viewerWin.focus(); broadcastState(); return; }
-
   viewerWin = window.open('', 'BoardViewer', 'width=900,height=900');
   if(!viewerWin) return;
 
@@ -222,12 +201,11 @@ function openBoardViewer(){
 </script></body></html>`;
   viewerWin.document.open(); viewerWin.document.write(html); viewerWin.document.close();
 
-  // Answer pings from the viewer
   chan.onmessage = (e)=>{ if(e?.data?.type==='ping'){ broadcastState(); } };
   broadcastState();
 }
 
-// ===== Map Strip (Board) =====
+// ===== Map Strip =====
 function renderMapStrip(){
   const strip = document.getElementById('map-strip');
   if(!strip) return;
@@ -250,26 +228,56 @@ function renderMapStrip(){
   });
 }
 
-// ===== Robust Gallery Uploader =====
+// ===== AUTO‑UPLOADER =====
 function triggerFilePicker(inModal=false){
   const inp = document.getElementById(inModal ? 'gallery-input-modal' : 'gallery-input');
   if(inp){ inp.value = ''; inp.click(); }
 }
+
+// When files are chosen -> immediately add to gallery
 function onInputChanged(files, inModal=false){
-  // Queue, don’t upload yet
   const arr = Array.from(files || []);
   if(!arr.length) return;
+
+  // keep chips for UX (optional), but upload immediately
   state.pendingFiles.push(...arr);
   renderPending(inModal);
+
+  addGalleryFiles(arr, ()=>{
+    state.pendingFiles = [];
+    renderPending(false); renderPending(true);
+    renderGallery(); renderMapStrip();
+    if(inModal){ openGalleryModal(); } // refresh modal grid if open
+    showToast('Gallery', `Added ${arr.length} file${arr.length>1?'s':''} to your maps.`, 'Click a card’s “Use on Board” to set it as the current scene.');
+  });
 }
+
+// wire inputs
 document.getElementById('gallery-input')?.addEventListener('change', (e)=> onInputChanged(e.target.files,false));
 document.getElementById('gallery-input-modal')?.addEventListener('change', (e)=> onInputChanged(e.target.files,true));
 
+// Drop -> auto-upload
+function galleryDrop(ev){
+  ev.preventDefault();
+  const files = ev.dataTransfer.files;
+  if(files?.length){
+    const arr = Array.from(files);
+    state.pendingFiles.push(...arr);
+    renderPending(false); renderPending(true);
+    addGalleryFiles(arr, ()=>{
+      state.pendingFiles = [];
+      renderPending(false); renderPending(true);
+      renderGallery(); renderMapStrip();
+      showToast('Gallery', `Added ${arr.length} file${arr.length>1?'s':''} by drag-and-drop.`, 'Select a map to use it on the Board.');
+    });
+  }
+}
+
+// Pending chips (kept minimal; optional)
 function renderPending(inModal=false){
   const listEl = document.getElementById(inModal ? 'pending-list-modal' : 'pending-list');
-  const upBtn  = document.getElementById(inModal ? 'upload-btn-modal'   : 'upload-btn');
   const clrBtn = document.getElementById(inModal ? 'clear-pending-btn-modal' : 'clear-pending-btn');
-  if(!listEl || !upBtn || !clrBtn) return;
+  if(!listEl || !clrBtn) return;
 
   listEl.innerHTML = state.pendingFiles.length
     ? state.pendingFiles.map((f,idx)=>`
@@ -279,41 +287,18 @@ function renderPending(inModal=false){
        </span>`).join('')
     : `<span class="small">No files selected.</span>`;
 
-  upBtn.disabled = state.pendingFiles.length===0;
   clrBtn.disabled = state.pendingFiles.length===0;
 }
 function removePending(idx){
   state.pendingFiles.splice(idx,1);
-  // update both contexts if open
-  renderPending(false);
-  renderPending(true);
+  renderPending(false); renderPending(true);
 }
 function clearPending(inModal=false){
   state.pendingFiles = [];
   renderPending(false); renderPending(true);
 }
 
-// Accept drop anywhere inside the dropzone
-function galleryDrop(ev){
-  ev.preventDefault();
-  const files = ev.dataTransfer.files;
-  if(files?.length){
-    state.pendingFiles.push(...Array.from(files));
-    renderPending(false); renderPending(true);
-  }
-}
-
-function commitPendingFiles(inModal=false){
-  if(!state.pendingFiles.length) return;
-  addGalleryFiles(state.pendingFiles, ()=>{
-    // After upload succeeds
-    state.pendingFiles = [];
-    renderPending(false); renderPending(true);
-    if(inModal) openGalleryModal();
-  });
-}
-
-// Core adding function (reused by old code)
+// Core add function
 function addGalleryFiles(files, cb){
   if(!files || !files.length){ cb?.(); return; }
   const list = Array.from(files);
@@ -323,25 +308,22 @@ function addGalleryFiles(files, cb){
     if(!['png','jpg','jpeg','svg'].includes(ext)){ pending--; if(pending===0) done(); return; }
     const reader = new FileReader();
     reader.onload = (e)=>{
-      const dataUrl = e.target.result;
+      const raw = e.target.result;
       const id = 'm'+Math.random().toString(36).slice(2,8);
-      // Normalize SVG (text) to data URL for consistency
-      let finalDataUrl = dataUrl;
-      if(ext==='svg' && !String(dataUrl).startsWith('data:image')){
-        finalDataUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(String(dataUrl));
-      }
-      state.gallery.push({id, name:f.name.replace(/\.[^.]+$/,''), dataUrl: finalDataUrl, ext});
+      const baseName = f.name.replace(/\.[^.]+$/,'');
+      const dataUrl = (ext==='svg' && !String(raw).startsWith('data:image'))
+        ? 'data:image/svg+xml;utf8,' + encodeURIComponent(String(raw))
+        : raw;
+      state.gallery.push({id, name:baseName, dataUrl, ext});
       pending--;
       if(pending===0) done();
     };
     if(ext==='svg') reader.readAsText(f); else reader.readAsDataURL(f);
   });
-  function done(){
-    save(); renderGallery(); renderMapStrip(); updateDmFab(); cb?.();
-  }
+  function done(){ save(); cb?.(); }
 }
 
-// ===== Old gallery helpers (kept) =====
+// ===== Gallery view & modal =====
 function clearEmptyGallery(){ state.gallery = state.gallery.filter(g=>g && g.dataUrl); save(); renderGallery(); }
 function useOnBoard(id){
   const g = state.gallery.find(x=>x.id===id);
@@ -349,7 +331,6 @@ function useOnBoard(id){
     showToast('Gallery','That map could not be found.','Please re-upload or refresh the Gallery.');
     return;
   }
-  // set the board background and navigate safely
   state.boardBg = g.dataUrl; save();
   safeNav('board');
 }
@@ -361,7 +342,7 @@ function deleteMap(id){
 function renderGallery(){
   const grid = document.getElementById('gallery-grid'); if(!grid) return;
   if(!state.gallery.length){
-    grid.innerHTML = `<div class="small">No maps yet. Use the uploader above to add PNG/JPEG/SVG.</div>`;
+    grid.innerHTML = `<div class="small">No maps yet. Use Select files or drag & drop.</div>`;
     return;
   }
   grid.innerHTML = state.gallery.map(g=>`
@@ -386,7 +367,7 @@ function thumbImg(g){
   }
 }
 
-// ===== Gallery Modal =====
+// Modal
 function openGalleryModal(){
   const modal = document.getElementById('gallery-modal');
   const grid  = document.getElementById('gallery-modal-grid');
@@ -405,13 +386,19 @@ function openGalleryModal(){
         </div>`).join('')
     : `<div class="small">No maps yet. Use “Select files” to add some.</div>`;
   modal.classList.add('show');
+  modal.setAttribute('aria-hidden','false');
 }
 function setMapAndClose(id){
   const g = state.gallery.find(x=>x.id===id);
   if(g){ state.boardBg = g.dataUrl; save(); renderBoard(); }
   closeGalleryModal();
 }
-function closeGalleryModal(){ const modal = document.getElementById('gallery-modal'); if(modal) modal.classList.remove('show'); }
+function closeGalleryModal(){
+  const modal = document.getElementById('gallery-modal');
+  if(!modal) return;
+  modal.classList.remove('show');
+  modal.setAttribute('aria-hidden','true');
+}
 
 // ===== DM Panel =====
 function maximizeDmPanel(){ state.ui.dmOpen = true; save(); renderDmPanel(); updateDmFab(); }
@@ -533,7 +520,7 @@ function renderDmPanel(){
   }
 }
 
-// ===== Toast with short DM instructions =====
+// ===== Toast =====
 function showToast(title,msg,hint){
   let t=document.querySelector('.dm-toast'); if(t) t.remove();
   const div=document.createElement('div');
@@ -545,25 +532,6 @@ function showToast(title,msg,hint){
     ${hint ? `<div class="hint">${escapeHtml(hint)}</div>` : ``}
   `;
   document.body.appendChild(div);
-}
-
-// ===== Quick rolls =====
-function quickD20(){
-  const v=1+Math.floor(Math.random()*20);
-  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`d20: ${v}`;
-  showToast('Quick d20', `→ ${v}`, 'Roll 1d20; apply modifiers as usual.');
-}
-function quickAdvFor(kind,id){
-  const a=1+Math.floor(Math.random()*20), b=1+Math.floor(Math.random()*20), res=Math.max(a,b);
-  const list=state.tokens[kind]||[]; const name=(list.find(x=>x.id===id)?.name)||kind.toUpperCase();
-  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`Advantage: ${a} vs ${b} ⇒ ${res}`;
-  showToast(name, `Advantage → ${res} (${a} vs ${b})`, 'Instruction: roll 2d20, keep highest; then add relevant modifiers.');
-}
-function quickDisFor(kind,id){
-  const a=1+Math.floor(Math.random()*20), b=1+Math.floor(Math.random()*20), res=Math.min(a,b);
-  const list=state.tokens[kind]||[]; const name=(list.find(x=>x.id===id)?.name)||kind.toUpperCase();
-  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`Disadvantage: ${a} vs ${b} ⇒ ${res}`;
-  showToast(name, `Disadvantage → ${res} (${a} vs ${b})`, 'Instruction: roll 2d20, keep lowest; then add relevant modifiers.');
 }
 
 // ===== Dice =====
@@ -611,10 +579,9 @@ function rollAll(){
 function roll(tag){ const n=parseInt(tag.replace('d',''),10)||6; return 1+Math.floor(Math.random()*n); }
 function shakeOutput(){ const out=document.getElementById('dice-output'); out.classList.remove('shake'); void out.offsetWidth; out.classList.add('shake'); }
 
-// ===== Utils =====
+// ===== Utils & Boot =====
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-// ===== Initial render =====
 function render(){
   const ids=['home','board','gallery','chars','npcs','enemies','dice','notes','save'];
   ids.forEach(id=>{
@@ -626,15 +593,12 @@ function render(){
   if(state.route==='gallery'){ renderGallery(); }
   if(state.route==='dice'){ renderDiceButtons(); updateDiceSelection(); }
 
-  // DM UI
   updateDmFab();
   renderDmPanel();
 
-  // sync Notes page textarea
   const notes=document.getElementById('notes'); if(notes) notes.value=state.notes||'';
 }
 
-// Boot
 document.addEventListener('DOMContentLoaded', ()=>{
   nav(state.route||'home');
   fitBoard();
@@ -654,7 +618,6 @@ window.quickAdvFor=quickAdvFor;
 window.quickDisFor=quickDisFor;
 window.selectFromPanel=selectFromPanel;
 window.triggerFilePicker=triggerFilePicker;
-window.commitPendingFiles=commitPendingFiles;
 window.clearPending=clearPending;
 window.removePending=removePending;
 window.galleryDrop=galleryDrop;
