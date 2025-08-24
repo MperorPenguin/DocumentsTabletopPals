@@ -38,7 +38,20 @@ window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop',     e => e.preventDefault());
 
 // ===== Routing =====
+function clearOverlays(){
+  // Close any open modal safely
+  try{ closeGalleryModal(); }catch(_){}
+  document.querySelectorAll('.modal.show').forEach(m=>m.classList.remove('show'));
+  document.body.style.pointerEvents = 'auto';
+}
+function safeNav(route){
+  clearOverlays();
+  nav(route);
+}
 function nav(route){
+  // auto-close modals when navigating
+  clearOverlays();
+
   state.route = route; save();
   const views = ['home','board','gallery','chars','npcs','enemies','dice','notes','save'];
   views.forEach(v=>{
@@ -296,9 +309,6 @@ function commitPendingFiles(inModal=false){
     // After upload succeeds
     state.pendingFiles = [];
     renderPending(false); renderPending(true);
-    // Keep modal open for map choosing, but ensure UI remains clickable
-    // (no extra overlay is left behind since we don't add any)
-    // You can auto-open the modal grid refresh here:
     if(inModal) openGalleryModal();
   });
 }
@@ -333,7 +343,16 @@ function addGalleryFiles(files, cb){
 
 // ===== Old gallery helpers (kept) =====
 function clearEmptyGallery(){ state.gallery = state.gallery.filter(g=>g && g.dataUrl); save(); renderGallery(); }
-function useOnBoard(id){ const g = state.gallery.find(x=>x.id===id); if(!g) return; state.boardBg = g.dataUrl; save(); nav('board'); }
+function useOnBoard(id){
+  const g = state.gallery.find(x=>x.id===id);
+  if(!g){
+    showToast('Gallery','That map could not be found.','Please re-upload or refresh the Gallery.');
+    return;
+  }
+  // set the board background and navigate safely
+  state.boardBg = g.dataUrl; save();
+  safeNav('board');
+}
 function deleteMap(id){
   state.gallery = state.gallery.filter(x=>x.id!==id);
   if(state.boardBg && !state.gallery.some(x=>x.dataUrl===state.boardBg)) state.boardBg = null;
@@ -433,7 +452,7 @@ function tokenCardWithAdv(kind,t){
 function selectFromPanel(kind,id){
   state.selected = {kind,id}; save();
   renderDmPanel();
-  if(state.route!=='board') nav('board'); else renderBoard();
+  if(state.route!=='board') safeNav('board'); else renderBoard();
 }
 
 function renderDmPanel(){
@@ -471,7 +490,7 @@ function renderDmPanel(){
         <div class="dm-grid3">
           <button class="dm-title-btn" onclick="openGalleryModal()">Open Gallery</button>
           <button class="dm-title-btn" onclick="state.boardBg=null; save(); renderBoard()">Clear Map</button>
-          <button class="dm-title-btn" onclick="nav('board')">Go to Board</button>
+          <button class="dm-title-btn" onclick="safeNav('board')">Go to Board</button>
         </div>
         <div class="dm-detail" style="margin-top:10px">Current map: ${state.boardBg ? 'Loaded' : 'None'}.</div>
       </div>
@@ -489,9 +508,9 @@ function renderDmPanel(){
       </div>
       <div class="dm-section">
         <div class="dm-sec-head"><span>Jump</span></div>
-        <button class="dm-title-btn" onclick="nav('board')">Board</button>
-        <button class="dm-title-btn" onclick="nav('gallery')">Gallery</button>
-        <button class="dm-title-btn" onclick="nav('dice')">Dice</button>
+        <button class="dm-title-btn" onclick="safeNav('board')">Board</button>
+        <button class="dm-title-btn" onclick="safeNav('gallery')">Gallery</button>
+        <button class="dm-title-btn" onclick="safeNav('dice')">Dice</button>
       </div>
     </div>`;
   }
@@ -624,6 +643,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // Expose for inline handlers
 window.boardClick=boardClick;
 window.nav=nav;
+window.safeNav=safeNav;
 window.openGalleryModal=openGalleryModal;
 window.closeGalleryModal=closeGalleryModal;
 window.setMapAndClose=setMapAndClose;
@@ -638,3 +658,4 @@ window.commitPendingFiles=commitPendingFiles;
 window.clearPending=clearPending;
 window.removePending=removePending;
 window.galleryDrop=galleryDrop;
+window.useOnBoard=useOnBoard;
