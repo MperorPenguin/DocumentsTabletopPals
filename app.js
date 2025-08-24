@@ -34,6 +34,9 @@ function load(){ try{ return JSON.parse(localStorage.getItem('tp_state')); }catc
 
 // ===== Routing =====
 function nav(route){
+  // Close any modal overlay on route change to avoid blocking clicks
+  closeGalleryModal();
+
   state.route = route; save();
   const views = ['home','board','gallery','chars','npcs','enemies','dice','notes','save'];
   views.forEach(v=>{
@@ -246,23 +249,55 @@ function renderMapStrip(){
 // ===== Gallery (page + drop) =====
 function addGalleryFiles(files){
   if(!files || !files.length) return;
+
+  // Clean up any overlay/focus that could block clicks after upload
+  closeGalleryModal();
+
   const list = Array.from(files);
   let pending = list.length;
+
   list.forEach(f=>{
     const ext = (f.name.split('.').pop()||'').toLowerCase();
-    if(!['png','jpg','jpeg','svg'].includes(ext)){ pending--; return; }
+    if(!['png','jpg','jpeg','svg'].includes(ext)){ pending--; if(pending===0) postAddGalleryCleanup(); return; }
+
     const reader = new FileReader();
     reader.onload = (e)=>{
       const dataUrl = e.target.result;
       const id = 'm'+Math.random().toString(36).slice(2,8);
       state.gallery.push({id, name:f.name.replace(/\.[^.]+$/,''), dataUrl, ext});
       pending--;
-      if(pending===0){ save(); renderGallery(); renderMapStrip(); updateDmFab(); }
+      if(pending===0){
+        save(); renderGallery(); renderMapStrip(); updateDmFab();
+        postAddGalleryCleanup();
+      }
     };
     if(ext==='svg') reader.readAsText(f); else reader.readAsDataURL(f);
   });
 }
-function galleryDrop(ev){ ev.preventDefault(); const files = ev.dataTransfer.files; addGalleryFiles(files); }
+
+function postAddGalleryCleanup(){
+  // Blur the file input so it doesn't retain focus
+  const gi = document.getElementById('gallery-input');
+  if(gi) gi.value = '', gi.blur();
+
+  // Make absolutely sure no modal overlay remains visible
+  closeGalleryModal();
+}
+
+function galleryDrop(ev){
+  ev.preventDefault();
+  const files = ev.dataTransfer.files;
+  addGalleryFiles(files);
+}
+
+// Global drop handlers: allow dropping anywhere, prevent browser hijack
+window.addEventListener('dragover', (ev)=>{ ev.preventDefault(); }, false);
+window.addEventListener('drop', (ev)=>{
+  ev.preventDefault();
+  const files = ev.dataTransfer?.files;
+  if(files && files.length){ addGalleryFiles(files); }
+}, false);
+
 function clearEmptyGallery(){ state.gallery = state.gallery.filter(g=>g && g.dataUrl); save(); renderGallery(); }
 function useOnBoard(id){ const g = state.gallery.find(x=>x.id===id); if(!g) return; state.boardBg = g.dataUrl; save(); nav('board'); }
 function deleteMap(id){
@@ -273,7 +308,7 @@ function deleteMap(id){
 function renderGallery(){
   const grid = document.getElementById('gallery-grid'); if(!grid) return;
   if(!state.gallery.length){
-    grid.innerHTML = `<div class="small">No maps yet. Upload PNG/JPEG/SVG above.</div>`;
+    grid.innerHTML = `<div class="small">No maps yet. Upload PNG/JPEG/SVG above, or drop files anywhere.</div>`;
     return;
   }
   grid.innerHTML = state.gallery.map(g=>`
@@ -315,7 +350,7 @@ function openGalleryModal(){
             </div>
           </div>
         </div>`).join('')
-    : `<div class="small">No maps yet. Go to Gallery to add some.</div>`;
+    : `<div class="small">No maps yet. Go to Gallery to add some or drop files anywhere.</div>`;
   modal.classList.add('show');
 }
 function setMapAndClose(id){
@@ -323,7 +358,10 @@ function setMapAndClose(id){
   if(g){ state.boardBg = g.dataUrl; save(); renderBoard(); }
   closeGalleryModal();
 }
-function closeGalleryModal(){ const modal = document.getElementById('gallery-modal'); if(modal) modal.classList.remove('show'); }
+function closeGalleryModal(){
+  const modal = document.getElementById('gallery-modal'); 
+  if(modal) modal.classList.remove('show');
+}
 
 // ===== DM Panel =====
 function maximizeDmPanel(){ state.ui.dmOpen = true; save(); renderDmPanel(); updateDmFab(); }
@@ -565,3 +603,5 @@ window.quickD20=quickD20;
 window.quickAdvFor=quickAdvFor;
 window.quickDisFor=quickDisFor;
 window.selectFromPanel=selectFromPanel;
+window.galleryDrop=galleryDrop;
+window.addGalleryFiles=addGalleryFiles;

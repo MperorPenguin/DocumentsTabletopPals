@@ -62,7 +62,7 @@
     <section id="view-gallery" class="hidden">
       <h2>Gallery</h2>
       <div class="panel">
-        <div class="small">Upload PNG, JPEG, or SVG. Drag &amp; drop works too.</div>
+        <div class="small">Upload PNG, JPEG, or SVG. Drag &amp; drop works too (drop anywhere).</div>
         <div class="dropzone" ondragover="event.preventDefault()" ondrop="galleryDrop(event)">
           <input id="gallery-input" type="file" accept=".png,.jpg,.jpeg,.svg" multiple
                  onchange="addGalleryFiles(this.files)" />
@@ -93,7 +93,7 @@
       </div>
     </section>
 
-    <!-- Placeholders for routes referenced by nav (kept hidden / unused directly) -->
+    <!-- Placeholders for routes referenced by nav -->
     <section id="view-chars"   class="hidden"></section>
     <section id="view-npcs"    class="hidden"></section>
     <section id="view-enemies" class="hidden"></section>

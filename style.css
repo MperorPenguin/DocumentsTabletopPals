@@ -55,7 +55,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   background-position:center;
   margin-inline:auto;
 
-  /* never overflow the viewport on phones */
+  /* prevent overflow on small viewports */
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 140px);
 }
@@ -193,7 +193,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   border-radius:10px; padding:10px 14px; max-width:320px; color:#e6e9f2;
   box-shadow:0 8px 20px rgba(0,0,0,.5); z-index:1200;
 }
-.dm-toast h4{ margin:0 0 6px; font-size:13px; font-weight:700; color:var(--accent); }
+.dm-toast h4{ margin:0 0 6px; font-size:13px; font-weight:700; color:#a78bfa; }
 .dm-toast .hint{ font-size:12px; color:#cbd5e1; margin-top:6px; }
 .dm-toast .close{ position:absolute; top:6px; right:8px; cursor:pointer; font-weight:700; color:#aab3c5; }
 @keyframes fadeIn{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)} }
