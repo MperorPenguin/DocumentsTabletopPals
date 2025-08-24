@@ -21,7 +21,8 @@ const state = load() || {
   },
   selected: null,
   notes: '',
-  ui: { dmOpen:false, dmTab:'party' }
+  ui: { dmOpen:false, dmTab:'party' },
+  pendingFiles: [] // queue for robust upload
 };
 
 // ===== Live Sync Channel (for Pop‑out viewer) =====
@@ -32,11 +33,12 @@ function broadcastState(){ chan.postMessage({type:'state', payload:state}); }
 function save(){ localStorage.setItem('tp_state', JSON.stringify(state)); broadcastState(); }
 function load(){ try{ return JSON.parse(localStorage.getItem('tp_state')); }catch(e){ return null; } }
 
+// Prevent the browser from navigating away on accidental drops
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop',     e => e.preventDefault());
+
 // ===== Routing =====
 function nav(route){
-  // Close any modal overlay on route change to avoid blocking clicks
-  closeGalleryModal();
-
   state.route = route; save();
   const views = ['home','board','gallery','chars','npcs','enemies','dice','notes','save'];
   views.forEach(v=>{
@@ -109,16 +111,6 @@ function renderBoard(){
   const size = cellsz();
   el.innerHTML = '';
 
-  // Overlay controls
-  const ctrls = document.createElement('div');
-  ctrls.className = 'board-controls';
-  ctrls.innerHTML = `
-    <button class="board-ctrl" onclick="toggleBoardFullscreen()">Full</button>
-    <button class="board-ctrl" onclick="openBoardViewer()">Pop‑out</button>
-    <button class="board-ctrl" onclick="openGalleryModal()">Gallery</button>
-  `;
-  el.appendChild(ctrls);
-
   // Tokens
   ['pc','npc','enemy'].forEach(kind=>{
     (state.tokens[kind] || []).forEach(t=>{
@@ -145,7 +137,6 @@ function renderBoard(){
 }
 
 // ===== Fullscreen =====
-function isFullscreen(){ return document.fullscreenElement === boardEl(); }
 function toggleBoardFullscreen(){
   const el = boardEl(); if(!el) return;
   if(!document.fullscreenElement){ el.requestFullscreen?.(); }
@@ -246,58 +237,101 @@ function renderMapStrip(){
   });
 }
 
-// ===== Gallery (page + drop) =====
-function addGalleryFiles(files){
-  if(!files || !files.length) return;
+// ===== Robust Gallery Uploader =====
+function triggerFilePicker(inModal=false){
+  const inp = document.getElementById(inModal ? 'gallery-input-modal' : 'gallery-input');
+  if(inp){ inp.value = ''; inp.click(); }
+}
+function onInputChanged(files, inModal=false){
+  // Queue, don’t upload yet
+  const arr = Array.from(files || []);
+  if(!arr.length) return;
+  state.pendingFiles.push(...arr);
+  renderPending(inModal);
+}
+document.getElementById('gallery-input')?.addEventListener('change', (e)=> onInputChanged(e.target.files,false));
+document.getElementById('gallery-input-modal')?.addEventListener('change', (e)=> onInputChanged(e.target.files,true));
 
-  // Clean up any overlay/focus that could block clicks after upload
-  closeGalleryModal();
+function renderPending(inModal=false){
+  const listEl = document.getElementById(inModal ? 'pending-list-modal' : 'pending-list');
+  const upBtn  = document.getElementById(inModal ? 'upload-btn-modal'   : 'upload-btn');
+  const clrBtn = document.getElementById(inModal ? 'clear-pending-btn-modal' : 'clear-pending-btn');
+  if(!listEl || !upBtn || !clrBtn) return;
 
+  listEl.innerHTML = state.pendingFiles.length
+    ? state.pendingFiles.map((f,idx)=>`
+       <span class="pending-chip">
+         ${escapeHtml(f.name)} <span class="small">(${Math.round(f.size/1024)} KB)</span>
+         <span class="rm" title="Remove" onclick="removePending(${idx})">×</span>
+       </span>`).join('')
+    : `<span class="small">No files selected.</span>`;
+
+  upBtn.disabled = state.pendingFiles.length===0;
+  clrBtn.disabled = state.pendingFiles.length===0;
+}
+function removePending(idx){
+  state.pendingFiles.splice(idx,1);
+  // update both contexts if open
+  renderPending(false);
+  renderPending(true);
+}
+function clearPending(inModal=false){
+  state.pendingFiles = [];
+  renderPending(false); renderPending(true);
+}
+
+// Accept drop anywhere inside the dropzone
+function galleryDrop(ev){
+  ev.preventDefault();
+  const files = ev.dataTransfer.files;
+  if(files?.length){
+    state.pendingFiles.push(...Array.from(files));
+    renderPending(false); renderPending(true);
+  }
+}
+
+function commitPendingFiles(inModal=false){
+  if(!state.pendingFiles.length) return;
+  addGalleryFiles(state.pendingFiles, ()=>{
+    // After upload succeeds
+    state.pendingFiles = [];
+    renderPending(false); renderPending(true);
+    // Keep modal open for map choosing, but ensure UI remains clickable
+    // (no extra overlay is left behind since we don't add any)
+    // You can auto-open the modal grid refresh here:
+    if(inModal) openGalleryModal();
+  });
+}
+
+// Core adding function (reused by old code)
+function addGalleryFiles(files, cb){
+  if(!files || !files.length){ cb?.(); return; }
   const list = Array.from(files);
   let pending = list.length;
-
   list.forEach(f=>{
     const ext = (f.name.split('.').pop()||'').toLowerCase();
-    if(!['png','jpg','jpeg','svg'].includes(ext)){ pending--; if(pending===0) postAddGalleryCleanup(); return; }
-
+    if(!['png','jpg','jpeg','svg'].includes(ext)){ pending--; if(pending===0) done(); return; }
     const reader = new FileReader();
     reader.onload = (e)=>{
       const dataUrl = e.target.result;
       const id = 'm'+Math.random().toString(36).slice(2,8);
-      state.gallery.push({id, name:f.name.replace(/\.[^.]+$/,''), dataUrl, ext});
-      pending--;
-      if(pending===0){
-        save(); renderGallery(); renderMapStrip(); updateDmFab();
-        postAddGalleryCleanup();
+      // Normalize SVG (text) to data URL for consistency
+      let finalDataUrl = dataUrl;
+      if(ext==='svg' && !String(dataUrl).startsWith('data:image')){
+        finalDataUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(String(dataUrl));
       }
+      state.gallery.push({id, name:f.name.replace(/\.[^.]+$/,''), dataUrl: finalDataUrl, ext});
+      pending--;
+      if(pending===0) done();
     };
     if(ext==='svg') reader.readAsText(f); else reader.readAsDataURL(f);
   });
+  function done(){
+    save(); renderGallery(); renderMapStrip(); updateDmFab(); cb?.();
+  }
 }
 
-function postAddGalleryCleanup(){
-  // Blur the file input so it doesn't retain focus
-  const gi = document.getElementById('gallery-input');
-  if(gi) gi.value = '', gi.blur();
-
-  // Make absolutely sure no modal overlay remains visible
-  closeGalleryModal();
-}
-
-function galleryDrop(ev){
-  ev.preventDefault();
-  const files = ev.dataTransfer.files;
-  addGalleryFiles(files);
-}
-
-// Global drop handlers: allow dropping anywhere, prevent browser hijack
-window.addEventListener('dragover', (ev)=>{ ev.preventDefault(); }, false);
-window.addEventListener('drop', (ev)=>{
-  ev.preventDefault();
-  const files = ev.dataTransfer?.files;
-  if(files && files.length){ addGalleryFiles(files); }
-}, false);
-
+// ===== Old gallery helpers (kept) =====
 function clearEmptyGallery(){ state.gallery = state.gallery.filter(g=>g && g.dataUrl); save(); renderGallery(); }
 function useOnBoard(id){ const g = state.gallery.find(x=>x.id===id); if(!g) return; state.boardBg = g.dataUrl; save(); nav('board'); }
 function deleteMap(id){
@@ -308,7 +342,7 @@ function deleteMap(id){
 function renderGallery(){
   const grid = document.getElementById('gallery-grid'); if(!grid) return;
   if(!state.gallery.length){
-    grid.innerHTML = `<div class="small">No maps yet. Upload PNG/JPEG/SVG above, or drop files anywhere.</div>`;
+    grid.innerHTML = `<div class="small">No maps yet. Use the uploader above to add PNG/JPEG/SVG.</div>`;
     return;
   }
   grid.innerHTML = state.gallery.map(g=>`
@@ -333,7 +367,7 @@ function thumbImg(g){
   }
 }
 
-// ===== Gallery Modal (reinstated) =====
+// ===== Gallery Modal =====
 function openGalleryModal(){
   const modal = document.getElementById('gallery-modal');
   const grid  = document.getElementById('gallery-modal-grid');
@@ -350,7 +384,7 @@ function openGalleryModal(){
             </div>
           </div>
         </div>`).join('')
-    : `<div class="small">No maps yet. Go to Gallery to add some or drop files anywhere.</div>`;
+    : `<div class="small">No maps yet. Use “Select files” to add some.</div>`;
   modal.classList.add('show');
 }
 function setMapAndClose(id){
@@ -358,17 +392,13 @@ function setMapAndClose(id){
   if(g){ state.boardBg = g.dataUrl; save(); renderBoard(); }
   closeGalleryModal();
 }
-function closeGalleryModal(){
-  const modal = document.getElementById('gallery-modal'); 
-  if(modal) modal.classList.remove('show');
-}
+function closeGalleryModal(){ const modal = document.getElementById('gallery-modal'); if(modal) modal.classList.remove('show'); }
 
 // ===== DM Panel =====
 function maximizeDmPanel(){ state.ui.dmOpen = true; save(); renderDmPanel(); updateDmFab(); }
 function minimizeDmPanel(){ state.ui.dmOpen = false; save(); renderDmPanel(); updateDmFab(); }
 function toggleDmPanel(){ state.ui.dmOpen = !state.ui.dmOpen; save(); renderDmPanel(); updateDmFab(); }
 
-// Keyboard toggle
 document.addEventListener('keydown', (e)=>{
   if(e.shiftKey && (e.key==='D' || e.key==='d')){ e.preventDefault(); toggleDmPanel(); }
 });
@@ -603,5 +633,8 @@ window.quickD20=quickD20;
 window.quickAdvFor=quickAdvFor;
 window.quickDisFor=quickDisFor;
 window.selectFromPanel=selectFromPanel;
+window.triggerFilePicker=triggerFilePicker;
+window.commitPendingFiles=commitPendingFiles;
+window.clearPending=clearPending;
+window.removePending=removePending;
 window.galleryDrop=galleryDrop;
-window.addGalleryFiles=addGalleryFiles;

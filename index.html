@@ -51,6 +51,16 @@
     <!-- BOARD -->
     <section id="view-board" class="hidden">
       <h2>Board</h2>
+
+      <!-- control bar sits ABOVE the map, right aligned, non-overlapping -->
+      <div class="board-control-wrap">
+        <div id="board-controls" class="board-control-bar">
+          <button class="board-ctrl" onclick="toggleBoardFullscreen()">Full</button>
+          <button class="board-ctrl" onclick="openBoardViewer()">Pop‑out</button>
+          <button class="board-ctrl" onclick="openGalleryModal()">Gallery</button>
+        </div>
+      </div>
+
       <div id="board" class="board" style="margin-top:10px" onclick="boardClick(event)"></div>
       <div id="map-strip" class="map-strip" style="margin-top:10px; display:none"></div>
       <div class="small" style="margin-top:8px">
@@ -61,13 +71,25 @@
     <!-- GALLERY -->
     <section id="view-gallery" class="hidden">
       <h2>Gallery</h2>
+
+      <!-- Robust uploader -->
       <div class="panel">
-        <div class="small">Upload PNG, JPEG, or SVG. Drag &amp; drop works too (drop anywhere).</div>
-        <div class="dropzone" ondragover="event.preventDefault()" ondrop="galleryDrop(event)">
-          <input id="gallery-input" type="file" accept=".png,.jpg,.jpeg,.svg" multiple
-                 onchange="addGalleryFiles(this.files)" />
+        <div class="uploader">
+          <input id="gallery-input" type="file" accept=".png,.jpg,.jpeg,.svg" multiple hidden />
+          <div class="uploader-row">
+            <button class="btn" onclick="triggerFilePicker()">Select files</button>
+            <button id="upload-btn" class="btn" onclick="commitPendingFiles()" disabled>Upload to Gallery</button>
+            <button class="btn" onclick="clearPending()" id="clear-pending-btn" disabled>Clear Selection</button>
+          </div>
+          <div id="pending-list" class="pending-list small"></div>
+          <div class="dropzone"
+               ondragover="event.preventDefault()"
+               ondrop="galleryDrop(event)">
+            Drag &amp; drop files here (PNG/JPG/SVG)
+          </div>
         </div>
       </div>
+
       <div id="gallery-grid" class="gallery-grid"></div>
     </section>
 
@@ -93,7 +115,7 @@
       </div>
     </section>
 
-    <!-- Placeholders for routes referenced by nav -->
+    <!-- Placeholders for routes referenced by nav (kept hidden / unused directly) -->
     <section id="view-chars"   class="hidden"></section>
     <section id="view-npcs"    class="hidden"></section>
     <section id="view-enemies" class="hidden"></section>
@@ -120,6 +142,15 @@
       <div class="modal-head">
         <h3>Choose a Map</h3>
         <button class="modal-close" onclick="closeGalleryModal()">Close</button>
+      </div>
+      <div class="uploader modal-uploader">
+        <input id="gallery-input-modal" type="file" accept=".png,.jpg,.jpeg,.svg" multiple hidden />
+        <div class="uploader-row">
+          <button class="btn" onclick="triggerFilePicker(true)">Select files</button>
+          <button id="upload-btn-modal" class="btn" onclick="commitPendingFiles(true)" disabled>Upload to Gallery</button>
+          <button class="btn" onclick="clearPending(true)" id="clear-pending-btn-modal" disabled>Clear Selection</button>
+        </div>
+        <div id="pending-list-modal" class="pending-list small"></div>
       </div>
       <div id="gallery-modal-grid" class="modal-grid"></div>
     </div>

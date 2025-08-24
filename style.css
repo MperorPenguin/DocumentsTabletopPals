@@ -34,14 +34,6 @@ footer{max-width:1280px;margin:10px auto 24px;color:var(--muted);padding:0 16px}
 input,select,textarea{appearance:none;background:#111623;color:#dbe1ee;border:1px solid var(--border);border-radius:8px;padding:8px;transition:border-color .15s, box-shadow .15s}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent) inset}
 
-.grid-2{display:grid;grid-template-columns:2fr 1fr;gap:12px}
-.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-@media (max-width: 900px){ .grid-2{grid-template-columns:1fr} }
-
-/* Home tiles */
-.panel.tile{cursor:pointer;transition: transform .15s, box-shadow .15s, border-color .15s, background-color .15s;outline: none;}
-.panel.tile:hover,.panel.tile:focus-visible{border-color: var(--accent);box-shadow: 0 8px 28px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset;transform: translateY(-2px);background: color-mix(in srgb, var(--accent) 10%, var(--panel));}
-
 /* ========= Board (fixed 26x26; auto-fit) ========= */
 .board{
   position:relative;
@@ -55,7 +47,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   background-position:center;
   margin-inline:auto;
 
-  /* prevent overflow on small viewports */
+  /* never overflow the viewport on phones */
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 140px);
 }
@@ -73,18 +65,22 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .token.enemy{background:#ef4444aa}
 .token.selected{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 65%, transparent) inset, 0 0 0 2px var(--accent)}
 
-/* Overlay controls (top-right) */
-.board-controls{
-  position:absolute; top:8px; right:8px; z-index:5; display:flex; gap:6px; flex-wrap:wrap;
+/* Control bar ABOVE the map */
+.board-control-wrap{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:6px;
+}
+.board-control-bar{
+  display:flex; gap:6px; flex-wrap:wrap;
 }
 .board-ctrl{
   display:inline-flex; align-items:center; gap:6px;
   padding:6px 8px; border-radius:10px;
-  background:#0f1115cc; border:1px solid var(--border); color:#e6e9f2;
-  cursor:pointer; transition:.15s; backdrop-filter: blur(4px);
+  background:#0f1115; border:1px solid var(--border); color:#e6e9f2;
+  cursor:pointer; transition:.15s;
 }
 .board-ctrl:hover{ border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent) inset }
-.board-ctrl svg{ width:16px; height:16px }
 
 /* Fullscreen */
 :fullscreen .board, .board:fullscreen{ width:100vw; height:100vh; border-radius:0; }
@@ -117,10 +113,20 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .gallery-card .name{ font-size:12px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .gallery-card .row{ display:flex; gap:8px }
 
+/* Uploader */
+.uploader{ display:flex; flex-direction:column; gap:10px; }
+.uploader-row{ display:flex; gap:8px; flex-wrap:wrap; }
+.pending-list{ display:flex; flex-wrap:wrap; gap:6px; }
+.pending-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 8px; border-radius:999px; background:#111623; border:1px solid var(--border);
+}
+.pending-chip .rm{ cursor:pointer; opacity:.8; }
+
 /* Modal (Gallery chooser) */
-.modal{ position:fixed; inset:0; display:none; place-items:center; z-index:1100; }
-.modal.show{ display:grid; }
-.modal::before{ content:""; position:absolute; inset:0; background:rgba(0,0,0,.6); backdrop-filter: blur(3px); }
+.modal{ position:fixed; inset:0; display:none; place-items:center; z-index:1100; pointer-events:none; }
+.modal.show{ display:grid; pointer-events:auto; }
+.modal.show::before{ content:""; position:absolute; inset:0; background:rgba(0,0,0,.6); backdrop-filter: blur(3px); }
 .modal-body{
   position:relative; width:min(1000px, 92vw); max-height:82vh; overflow:auto;
   background:#0f1115; border:1px solid var(--border); border-radius:14px; padding:12px;
@@ -129,6 +135,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .modal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .modal-close{ appearance:none; background:#111623; color:#e6e9f2; border:1px solid var(--border); padding:6px 8px; border-radius:8px; cursor:pointer; }
 .modal-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:10px; }
+.modal-uploader{ margin-bottom:10px; }
 
 /* =========================
    DM Panel (compact A/D + toast)
@@ -223,6 +230,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 
 /* Mobile */
 @media (max-width: 768px){
+  .board-control-wrap{ justify-content:center; }
   .dm-panel{ left:12px; right:12px; bottom:12px; width:auto; }
   .dm-grid3{ grid-template-columns: repeat(2, 1fr); }
 }
