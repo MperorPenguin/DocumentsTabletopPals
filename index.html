@@ -2,10 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>DND Local DM Toolkit</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -29,7 +26,7 @@
 
   <main>
     <!-- HOME -->
-    <section id="view-home" class="">
+    <section id="view-home">
       <div class="panel tile" tabindex="0" onclick="nav('board')">
         <h2>Battle Board</h2>
         <div class="small">Square grid, tokens, fullscreen &amp; pop‑out.</div>
@@ -52,7 +49,7 @@
     <section id="view-board" class="hidden">
       <h2>Board</h2>
 
-      <!-- control bar sits ABOVE the map, right aligned, non-overlapping -->
+      <!-- control bar ABOVE the map -->
       <div class="board-control-wrap">
         <div id="board-controls" class="board-control-bar">
           <button class="board-ctrl" onclick="toggleBoardFullscreen()">Full</button>
@@ -75,7 +72,8 @@
       <!-- Auto-uploader -->
       <div class="panel">
         <div class="uploader">
-          <input id="gallery-input" type="file" accept=".png,.jpg,.jpeg,.svg" multiple hidden />
+          <!-- hidden input (page) -->
+          <input id="gallery-input" type="file" accept=".png,.jpg,.jpeg,.svg,.webp" multiple hidden />
           <div class="uploader-row">
             <button class="btn" onclick="triggerFilePicker()">Select files</button>
             <button class="btn" onclick="clearPending()" id="clear-pending-btn" disabled>Clear Selection</button>
@@ -84,7 +82,7 @@
           <div class="dropzone"
                ondragover="event.preventDefault()"
                ondrop="galleryDrop(event)">
-            Drag &amp; drop files here (PNG/JPG/SVG)
+            Drag &amp; drop files here (PNG/JPG/SVG/WEBP)
           </div>
         </div>
       </div>
@@ -114,7 +112,7 @@
       </div>
     </section>
 
-    <!-- Placeholders (not directly used) -->
+    <!-- Placeholders -->
     <section id="view-chars"   class="hidden"></section>
     <section id="view-npcs"    class="hidden"></section>
     <section id="view-enemies" class="hidden"></section>
@@ -128,7 +126,7 @@
   <!-- DM Panel -->
   <div id="dm-panel" class="dm-panel hidden"></div>
 
-  <!-- DM FAB (toggle) -->
+  <!-- DM FAB -->
   <button id="dm-fab" class="dm-fab" onclick="maximizeDmPanel()">
     <span class="dm-fab-dot"></span>
     <span class="dm-fab-label">DM Panel</span>
@@ -144,8 +142,9 @@
       </div>
 
       <!-- Auto-uploader inside modal -->
+      <!-- hidden input (modal) -->
       <div class="uploader modal-uploader">
-        <input id="gallery-input-modal" type="file" accept=".png,.jpg,.jpeg,.svg" multiple hidden />
+        <input id="gallery-input-modal" type="file" accept=".png,.jpg,.jpeg,.svg,.webp" multiple hidden />
         <div class="uploader-row">
           <button class="btn" onclick="triggerFilePicker(true)">Select files</button>
           <button class="btn" onclick="clearPending(true)" id="clear-pending-btn-modal" disabled>Clear Selection</button>
