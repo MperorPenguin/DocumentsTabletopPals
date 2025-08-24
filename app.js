@@ -1,3 +1,5 @@
+/* DMToolkit v1.0.0 | app.js | build: 2025-08-24 */
+
 // ===== Fixed Grid =====
 const GRID_COLS = 26;
 const GRID_ROWS = 26;
@@ -22,7 +24,7 @@ const state = load() || {
   selected: null,
   notes: '',
   ui: { dmOpen:false, dmTab:'party' },
-  pendingFiles: [] // used for chips; auto-upload still happens immediately
+  pendingFiles: [] // for chips; upload is immediate on selection
 };
 
 // ===== Live Sync Channel (for Pop‑out viewer) =====
@@ -41,17 +43,21 @@ window.addEventListener('drop',     e => e.preventDefault());
 function closeAllOverlays(){ closeGalleryModal(); }
 function safeNav(route){ closeAllOverlays(); nav(route); }
 function nav(route){
-  closeAllOverlays();
-  state.route = route; save();
-  const views = ['home','board','gallery','chars','npcs','enemies','dice','notes','save'];
-  views.forEach(v=>{
-    const main = document.getElementById('view-'+v);
-    const btn  = document.getElementById('nav-'+v);
-    if(!main||!btn) return;
-    if(v===route){ main.classList.remove('hidden'); btn.classList.add('active'); }
-    else{ main.classList.add('hidden'); btn.classList.remove('active'); }
-  });
-  render();
+  try{
+    closeAllOverlays();
+    state.route = route; save();
+    const views = ['home','board','gallery','chars','npcs','enemies','dice','notes','save'];
+    views.forEach(v=>{
+      const main = document.getElementById('view-'+v);
+      const btn  = document.getElementById('nav-'+v);
+      if(!main||!btn) return;
+      if(v===route){ main.classList.remove('hidden'); btn.classList.add('active'); }
+      else{ main.classList.add('hidden'); btn.classList.remove('active'); }
+    });
+    render();
+  }catch(err){
+    console.error('nav error', err);
+  }
 }
 
 // ===== Board sizing (fit screen, 26x26) =====
@@ -80,7 +86,8 @@ function cellsz(){
   return parseInt(cs.replace('px','')) || 42;
 }
 function boardClick(ev){
-  const rect = boardEl().getBoundingClientRect();
+  const el = boardEl(); if(!el) return;
+  const rect = el.getBoundingClientRect();
   const x = Math.max(0, Math.min(GRID_COLS-1, Math.floor((ev.clientX - rect.left) / cellsz())));
   const y = Math.max(0, Math.min(GRID_ROWS-1, Math.floor((ev.clientY - rect.top)  / cellsz())));
   if(!state.selected) return;
@@ -230,7 +237,7 @@ function renderMapStrip(){
 
 // ===== AUTO‑UPLOADER (robust) =====
 
-// Delegated change listeners (works for both page & modal inputs, even if modal toggles)
+// Delegated change listeners (handles page & modal inputs even if modal reopens)
 document.addEventListener('change', (e)=>{
   const el = e.target;
   if(!(el instanceof HTMLInputElement)) return;
@@ -239,30 +246,26 @@ document.addEventListener('change', (e)=>{
 });
 
 function wireUploadInputs(){
-  // In case the DOM was re-rendered by the browser, ensure inputs exist and are clean
   const pageInput  = document.getElementById('gallery-input');
   const modalInput = document.getElementById('gallery-input-modal');
   if(pageInput)  pageInput.setAttribute('accept','.png,.jpg,.jpeg,.svg,.webp');
   if(modalInput) modalInput.setAttribute('accept','.png,.jpg,.jpeg,.svg,.webp');
 }
 function triggerFilePicker(inModal=false){
-  // Ensure inputs are available (and for modal, ensure modal is open)
   if(inModal){
-    const mInput = document.getElementById('gallery-input-modal');
+    let mInput = document.getElementById('gallery-input-modal');
     if(!mInput){
-      // Open modal, then click after a tick
       openGalleryModal();
-      setTimeout(()=>{ document.getElementById('gallery-input-modal')?.click(); }, 0);
+      setTimeout(()=>{ mInput = document.getElementById('gallery-input-modal'); mInput && (mInput.value='', mInput.click()); }, 0);
       return;
     }
     mInput.value = '';
     mInput.click();
   }else{
-    const pInput = document.getElementById('gallery-input');
+    let pInput = document.getElementById('gallery-input');
     if(!pInput){
-      // As a fallback (shouldn’t happen), go to Gallery then try again
       nav('gallery');
-      setTimeout(()=>{ document.getElementById('gallery-input')?.click(); }, 0);
+      setTimeout(()=>{ pInput = document.getElementById('gallery-input'); pInput && (pInput.value='', pInput.click()); }, 0);
       return;
     }
     pInput.value = '';
@@ -284,11 +287,8 @@ function onInputChanged(files, inModal=false){
     renderPending(false); renderPending(true);
     renderGallery(); renderMapStrip();
     if(inModal){
-      // If modal open, refresh its grid without closing
       const modal = document.getElementById('gallery-modal');
-      if(modal && modal.classList.contains('show')) {
-        populateGalleryModalGrid();
-      }
+      if(modal && modal.classList.contains('show')) populateGalleryModalGrid();
     }
     showToast('Gallery', `Added ${arr.length} file${arr.length>1?'s':''}.`, 'Tip: Click “Use on Board” to set the scene immediately.');
   });
@@ -306,7 +306,7 @@ function galleryDrop(ev){
       state.pendingFiles = [];
       renderPending(false); renderPending(true);
       renderGallery(); renderMapStrip();
-      showToast('Gallery', `Added ${arr.length} file${arr.length>1?'s':''} by drag‑drop.`, 'Use a map card’s “Use on Board” action to apply it.');
+      showToast('Gallery', `Added ${arr.length} file${arr.length>1?'s':''} by drag‑drop.`, 'Use “Use on Board” to apply it.');
     });
   }
 }
@@ -365,10 +365,7 @@ function addGalleryFiles(files, cb){
 function clearEmptyGallery(){ state.gallery = state.gallery.filter(g=>g && g.dataUrl); save(); renderGallery(); }
 function useOnBoard(id){
   const g = state.gallery.find(x=>x.id===id);
-  if(!g){
-    showToast('Gallery','That map could not be found.','Please re-upload or refresh the Gallery.');
-    return;
-  }
+  if(!g){ showToast('Gallery','That map could not be found.','Please re-upload or refresh the Gallery.'); return; }
   state.boardBg = g.dataUrl; save();
   safeNav('board');
 }
@@ -580,7 +577,7 @@ function showToast(title,msg,hint){
 function quickD20(){
   const v=1+Math.floor(Math.random()*20);
   const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`d20: ${v}`;
-  showToast('Quick d20', `→ ${v}`, 'Roll 1d20; apply modifiers as usual.');
+  showToast('Quick d20', `→ ${v}`, 'Instruction: roll 1d20; apply modifiers as usual.');
 }
 function quickAdvFor(kind,id){
   const a=1+Math.floor(Math.random()*20), b=1+Math.floor(Math.random()*20), res=Math.max(a,b);
@@ -644,4 +641,43 @@ function shakeOutput(){ const out=document.getElementById('dice-output'); out.cl
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 function render(){
-  const ids=['home','board','gallery','chars','npcs
+  // sync nav active states already handled by nav()
+  if(state.route==='board'){ renderBoard(); }
+  if(state.route==='gallery'){ renderGallery(); }
+  if(state.route==='dice'){ renderDiceButtons(); updateDiceSelection(); }
+  const notes=document.getElementById('notes'); if(notes) notes.value=state.notes||'';
+  updateDmFab();
+  renderDmPanel();
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  try{
+    wireUploadInputs();
+    nav(state.route || 'home'); // nav will call render()
+    fitBoard();
+  }catch(err){
+    console.error('boot error', err);
+  }
+});
+
+// ===== Expose for inline handlers =====
+window.boardClick=boardClick;
+window.nav=nav;
+window.safeNav=safeNav;
+window.openGalleryModal=openGalleryModal;
+window.closeGalleryModal=closeGalleryModal;
+window.setMapAndClose=setMapAndClose;
+window.openBoardViewer=openBoardViewer;
+window.toggleBoardFullscreen=toggleBoardFullscreen;
+window.selectFromPanel=selectFromPanel;
+window.quickD20=quickD20;
+window.quickAdvFor=quickAdvFor;
+window.quickDisFor=quickDisFor;
+window.maximizeDmPanel=maximizeDmPanel;
+window.minimizeDmPanel=minimizeDmPanel;
+window.setDmTab=setDmTab;
+window.triggerFilePicker=triggerFilePicker;
+window.clearPending=clearPending;
+window.removePending=removePending;
+window.galleryDrop=galleryDrop;
+window.useOnBoard=useOnBoard;
