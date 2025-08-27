@@ -1,0 +1,5 @@
+[
+  { "id": "m1", "name": "Dungeon A",   "src": "assets/maps/dungeon_a.svg" },
+  { "id": "m2", "name": "Forest Night","src": "assets/maps/forest_night.png" },
+  { "id": "m3", "name": "Cavern",      "src": "assets/maps/cavern.svg" }
+]

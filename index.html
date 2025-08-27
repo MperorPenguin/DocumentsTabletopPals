@@ -1,3 +1,4 @@
+<!-- DMToolkit v2.1.0 | index.html -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,7 +7,7 @@
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   />
-  <title>DND Local DM Toolkit</title>
+  <title>DM Toolkit</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -20,7 +21,6 @@
       <div class="nav">
         <button id="nav-home"   onclick="nav('home')">Home</button>
         <button id="nav-board"  onclick="nav('board')">Board</button>
-        <button id="nav-gallery"onclick="nav('gallery')">Gallery</button>
         <button id="nav-dice"   onclick="nav('dice')">Dice</button>
         <button id="nav-notes"  onclick="nav('notes')">Notes</button>
       </div>
@@ -32,19 +32,15 @@
     <section id="view-home">
       <div class="panel tile" tabindex="0" onclick="nav('board')">
         <h2>Battle Board</h2>
-        <div class="small">Square grid, tokens, fullscreen &amp; pop‑out.</div>
-      </div>
-      <div class="panel tile" tabindex="0" onclick="nav('gallery')">
-        <h2>Map Gallery</h2>
-        <div class="small">Upload maps and set as scene.</div>
+        <div class="small">26×26 grid, tokens, fullscreen &amp; pop-out. Maps from <code>assets/maps/index.json</code> (PNG/SVG).</div>
       </div>
       <div class="panel tile" tabindex="0" onclick="nav('dice')">
         <h2>Dice</h2>
-        <div class="small">Quick multi‑die rolling panel.</div>
+        <div class="small">Quick multi-die rolling.</div>
       </div>
       <div class="panel tile" tabindex="0" onclick="nav('notes')">
         <h2>Notes</h2>
-        <div class="small">Campaign/session notes synced with DM panel.</div>
+        <div class="small">Campaign/session notes.</div>
       </div>
     </section>
 
@@ -55,42 +51,22 @@
       <!-- control bar ABOVE the map, right aligned -->
       <div class="board-control-wrap">
         <div id="board-controls" class="board-control-bar">
+          <button class="board-ctrl" onclick="prevMap()">Prev</button>
+          <button class="board-ctrl" onclick="nextMap()">Next</button>
           <button class="board-ctrl" onclick="toggleBoardFullscreen()">Full</button>
-          <button class="board-ctrl" onclick="openBoardViewer()">Pop‑out</button>
-          <button class="board-ctrl" onclick="openGalleryModal()">Gallery</button>
+          <button class="board-ctrl" onclick="openBoardViewer()">Pop-out</button>
+          <button class="board-ctrl" onclick="reloadMaps()">Reload Maps</button>
         </div>
       </div>
 
       <div id="board" class="board" style="margin-top:10px" onclick="boardClick(event)"></div>
+
+      <!-- Map thumbnails (from index.json) -->
       <div id="map-strip" class="map-strip" style="margin-top:10px; display:none"></div>
+
       <div class="small" style="margin-top:8px">
         Tip: Click a token to select it, then click a grid cell to move. Press <b>Shift+D</b> to toggle the DM Panel.
       </div>
-    </section>
-
-    <!-- GALLERY -->
-    <section id="view-gallery" class="hidden">
-      <h2>Gallery</h2>
-
-      <!-- Auto-uploader -->
-      <div class="panel">
-        <div class="uploader">
-          <!-- hidden input (page) -->
-          <input id="gallery-input" type="file" accept=".png,.jpg,.jpeg,.svg,.webp" multiple hidden />
-          <div class="uploader-row">
-            <button class="btn" onclick="triggerFilePicker()">Select files</button>
-            <button class="btn" onclick="clearPending()" id="clear-pending-btn" disabled>Clear Selection</button>
-          </div>
-          <div id="pending-list" class="pending-list small"></div>
-          <div class="dropzone"
-               ondragover="event.preventDefault()"
-               ondrop="galleryDrop(event)">
-            Drag &amp; drop files here (PNG/JPG/SVG/WEBP)
-          </div>
-        </div>
-      </div>
-
-      <div id="gallery-grid" class="gallery-grid"></div>
     </section>
 
     <!-- DICE -->
@@ -98,32 +74,26 @@
       <h2>Dice</h2>
       <div class="panel">
         <div id="dice-buttons" class="dice-row"></div>
-        <div style="margin-top:10px; display:flex; gap:8px; align-items:center">
+        <div style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
           <div id="dice-selection" class="small">No dice selected</div>
-          <button class="btn tiny" onclick="rollAll()">Roll</button>
-          <button class="btn tiny" onclick="clearDice()">Clear</button>
+          <button class="btn btn-xl" onclick="rollAll()">Roll</button>
+          <button class="btn btn-xl" onclick="clearDice()">Clear</button>
         </div>
-        <div id="dice-output" class="roll-output" style="margin-top:10px"></div>
+        <div id="dice-output" class="roll-output" style="margin-top:12px"></div>
       </div>
     </section>
 
-    <!-- NOTES -->
+    <!-- NOTES (page) -->
     <section id="view-notes" class="hidden">
       <h2>Notes</h2>
       <div class="panel">
         <textarea id="notes" rows="12" style="width:100%"></textarea>
       </div>
     </section>
-
-    <!-- Placeholders -->
-    <section id="view-chars"   class="hidden"></section>
-    <section id="view-npcs"    class="hidden"></section>
-    <section id="view-enemies" class="hidden"></section>
-    <section id="view-save"    class="hidden"></section>
   </main>
 
   <footer>
-    <div class="small">Local, offline‑friendly DM toolkit. Saves to your browser storage.</div>
+    <div class="small">Local, offline-friendly DM toolkit. Maps loaded from <code>assets/maps/index.json</code> (PNG/SVG).</div>
   </footer>
 
   <!-- DM Panel -->
@@ -135,29 +105,6 @@
     <span class="dm-fab-label">DM Panel</span>
     <span id="dm-fab-count" class="dm-fab-count">0</span>
   </button>
-
-  <!-- Gallery Modal -->
-  <div id="gallery-modal" class="modal" aria-hidden="true">
-    <div class="modal-body">
-      <div class="modal-head">
-        <h3>Choose a Map</h3>
-        <button class="modal-close" onclick="closeGalleryModal()">Close</button>
-      </div>
-
-      <!-- Auto-uploader inside modal -->
-      <!-- hidden input (modal) -->
-      <div class="uploader modal-uploader">
-        <input id="gallery-input-modal" type="file" accept=".png,.jpg,.jpeg,.svg,.webp" multiple hidden />
-        <div class="uploader-row">
-          <button class="btn" onclick="triggerFilePicker(true)">Select files</button>
-          <button class="btn" onclick="clearPending(true)" id="clear-pending-btn-modal" disabled>Clear Selection</button>
-        </div>
-        <div id="pending-list-modal" class="pending-list small"></div>
-      </div>
-
-      <div id="gallery-modal-grid" class="modal-grid"></div>
-    </div>
-  </div>
 
   <script src="app.js"></script>
 </body>

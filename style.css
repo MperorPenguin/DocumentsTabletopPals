@@ -1,9 +1,10 @@
+/* DMToolkit v2.1.0 | style.css */
 :root{
   --bg:#0f1115; --panel:#141824; --muted:#aab3c5; --ink:#e9ecf1; --border:#23283a; --hover:#1a2030;
   --yellow:#FFD166; --teal:#14B8A6; --red:#EF4444; --blue:#60A5FA; --purple:#A78BFA;
   --accent: var(--purple);
-  --cell: 42px;          /* JS sets based on screen (26x26) */
-  --boardSize: 546px;    /* JS sets exact multiple of 26 */
+  --cell: 42px;            /* JS sets based on screen (26x26) */
+  --boardSize: 546px;      /* JS sets exact multiple of 26 */
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -33,6 +34,11 @@ footer{max-width:1280px;margin:10px auto 24px;color:var(--muted);padding:0 16px}
 .btn:hover{filter:brightness(1.08);border-color:var(--accent)}
 .btn.active{background:color-mix(in srgb, var(--accent) 18%, transparent);border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset;color:#fff}
 .btn.tiny{ padding:4px 8px; font-size:11px; }
+
+/* Extra-large buttons for touch */
+.btn-xl{ padding:10px 16px; border-radius:12px; font-size:16px; }
+
+/* Inputs */
 input,select,textarea{appearance:none;background:#111623;color:#dbe1ee;border:1px solid var(--border);border-radius:8px;padding:8px;transition:border-color .15s, box-shadow .15s}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent) inset}
 
@@ -70,9 +76,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .board-control-bar{ display:flex; gap:6px; flex-wrap:wrap; }
 .board-ctrl{
   display:inline-flex; align-items:center; gap:6px;
-  padding:6px 8px; border-radius:10px;
+  padding:8px 10px; border-radius:12px;
   background:#0f1115; border:1px solid var(--border); color:#e6e9f2;
-  cursor:pointer; transition:.15s;
+  cursor:pointer; transition:.15s; font-size:14px;
 }
 .board-ctrl:hover{ border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent) inset }
 
@@ -86,7 +92,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 }
 .map-strip::-webkit-scrollbar{ display:none; }
 .map-thumb{
-  flex:0 0 auto; width:120px; height:80px; border:1px solid var(--border); border-radius:8px; overflow:hidden;
+  flex:0 0 auto; width:140px; height:94px; border:1px solid var(--border); border-radius:8px; overflow:hidden;
   background:#0b1020; cursor:pointer; position:relative; display:flex; align-items:center; justify-content:center;
   transition:.15s;
 }
@@ -97,45 +103,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   background:#0f1115cc; padding:2px 6px; border-radius:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 
-/* Gallery */
-.dropzone{margin-top:10px; padding:16px; text-align:center; border:1px dashed var(--border); border-radius:10px; background:#0f1115;}
-.gallery-grid{margin-top:12px;display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:12px;}
-.gallery-card{background:#0f141f; border:1px solid var(--border); border-radius:12px; overflow:hidden;display:flex; flex-direction:column; min-width:0;}
-.gallery-card .thumb{ width:100%; aspect-ratio: 16/9; background:#0b1020; overflow:hidden }
-.gallery-card .thumb img{ width:100%; height:100%; object-fit:cover; display:block }
-.gallery-card .meta{ padding:8px; display:flex; gap:8px; align-items:center; justify-content:space-between }
-.gallery-card .name{ font-size:12px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.gallery-card .row{ display:flex; gap:8px }
-
-/* Uploader */
-.uploader{ display:flex; flex-direction:column; gap:10px; }
-.uploader-row{ display:flex; gap:8px; flex-wrap:wrap; }
-.pending-list{ display:flex; flex-wrap:wrap; gap:6px; }
-.pending-chip{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:4px 8px; border-radius:999px; background:#111623; border:1px solid var(--border);
-}
-.pending-chip .rm{ cursor:pointer; opacity:.8; }
-
-/* Modal (Gallery chooser) */
-.modal{ position:fixed; inset:0; display:none; place-items:center; z-index:1100; pointer-events:none; }
-.modal.show{ display:grid; pointer-events:auto; }
-.modal.show::before{ content:""; position:absolute; inset:0; background:rgba(0,0,0,.6); backdrop-filter: blur(3px); }
-.modal-body{
-  position:relative; width:min(1000px, 92vw); max-height:82vh; overflow:auto;
-  background:#0f1115; border:1px solid var(--border); border-radius:14px; padding:12px;
-  box-shadow:0 18px 36px rgba(0,0,0,.55);
-}
-.modal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
-.modal-close{ appearance:none; background:#111623; color:#e6e9f2; border:1px solid var(--border); padding:6px 8px; border-radius:8px; cursor:pointer; }
-.modal-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:10px; }
-.modal-uploader{ margin-bottom:10px; }
-
 /* =========================
-   DM Panel (compact A/D + toast)
+   DM Panel
    ========================= */
 .dm-panel{
-  position:fixed; right:16px; bottom:16px; width:420px; max-height:74vh; overflow:auto; z-index:1000;
+  position:fixed; right:16px; bottom:16px; width:440px; max-height:78vh; overflow:auto; z-index:1000;
   background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:10px;
   box-shadow:0 14px 30px rgba(0,0,0,.5); backdrop-filter: blur(6px);
 }
@@ -146,12 +118,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 
 /* Tabs */
 .dm-tabs{ display:flex; gap:6px; margin:6px 0 8px 0; }
-.dm-tab{ flex:1; text-align:center; padding:6px 8px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#cbd5e1; cursor:pointer; transition:.15s }
+.dm-tab{ flex:1; text-align:center; padding:8px 10px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#cbd5e1; cursor:pointer; transition:.15s; font-weight:700 }
 .dm-tab:hover{ border-color:var(--accent) }
 .dm-tab.active{ background:color-mix(in srgb, var(--accent) 18%, transparent); border-color:var(--accent); color:#fff }
-
-/* Section heads */
-.dm-sec-head{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:8px;font-weight:700;font-size:12px;border:1px solid var(--border);margin-bottom:8px}
 
 /* Grid & Cards */
 .dm-grid3{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; align-items:stretch; grid-auto-rows:1fr; }
@@ -167,39 +136,31 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .badges{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center }
 .badge{ font-size:10.5px; padding:3px 8px; border-radius:999px; border:1px solid var(--border); background:#0f1115; color:#dbe1ee }
 
-/* Buttons */
-.dm-title-btn{
-  appearance:none; display:inline-flex; align-items:center; gap:8px; border-radius:999px; border:1px solid var(--border);
+/* Buttons in DM cards */
+.dm-title-btn{ appearance:none; display:inline-flex; align-items:center; gap:8px; border-radius:999px; border:1px solid var(--border);
   padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer; user-select:none; transition:.15s;
-  width:100%; justify-content:center; text-align:center; background:var(--panel); color:var(--ink);
-}
+  width:100%; justify-content:center; text-align:center; background:var(--panel); color:var(--ink); }
 .dm-title-btn:hover{ background:color-mix(in srgb, var(--accent) 20%, var(--panel)); }
-.dm-title-btn.short{ display:inline-flex; align-items:center; justify-content:center; padding:6px; min-width:34px; height:32px; line-height:1; }
+.dm-title-btn.short{ display:inline-flex; align-items:center; justify-content:center; padding:6px; min-width:34px; height:34px; line-height:1; }
+.dm-title-btn.big{ padding:14px 16px; font-size:16px; border-radius:12px; }
 .dm-title-btn.adv{ background:#065f46; color:#d1fae5; border-color:#0b7a5b }
 .dm-title-btn.dis{ background:#7f1d1d; color:#fee2e2; border-color:#9b2222 }
 .dm-character-box > .dm-actions{ display:flex; gap:6px; margin-top:6px; justify-content:center; align-items:center; }
 
-/* Detail */
-.dm-detail{
-  margin-top:8px;border:1px solid var(--border);background:#111623;color:#dbe1ee;border-radius:8px;padding:10px;font-size:13px;
-  white-space:normal; overflow-wrap:anywhere; word-break:break-word;
-}
+/* Environment selector */
+.env-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:8px; }
+.env-pill{ padding:8px 12px; border:1px solid var(--border); border-radius:999px; background:#0f1115; color:#dbe1ee; cursor:pointer; text-align:center; font-weight:700; transition:.15s }
+.env-pill:hover{ border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
+.env-pill.active{ background:color-mix(in srgb, var(--accent) 18%, transparent); border-color:var(--accent); color:#fff }
 
-/* Toast */
-.dm-toast {
-  position:fixed; right:20px; bottom:90px; background:#0f1422; border:1px solid var(--border);
-  border-radius:10px; padding:10px 14px; max-width:320px; color:#e6e9f2;
-  box-shadow:0 8px 20px rgba(0,0,0,.5); z-index:1200;
-}
+/* Detail & Toasts */
+.dm-detail{ margin-top:8px;border:1px solid var(--border);background:#111623;color:#dbe1ee;border-radius:8px;padding:10px;font-size:13px; white-space:normal; overflow-wrap:anywhere; word-break:break-word; }
+.dm-toast { position:fixed; right:20px; bottom:90px; background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:10px 14px; max-width:320px; color:#e6e9f2; box-shadow:0 8px 20px rgba(0,0,0,.5); z-index:1200; }
 .dm-toast h4{ margin:0 0 6px; font-size:13px; font-weight:700; color:#a78bfa; }
 .dm-toast .hint{ font-size:12px; color:#cbd5e1; margin-top:6px; }
 .dm-toast .close{ position:absolute; top:6px; right:8px; cursor:pointer; font-weight:700; color:#aab3c5; }
 @keyframes fadeIn{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)} }
 .dm-toast.fade{ animation:fadeIn .25s ease-out; }
-
-/* Stacks in sections */
-.dm-section .dm-title-btn{ display:block; margin-bottom:6px; }
-.dm-section .dm-title-btn:last-child{ margin-bottom:0; }
 
 /* FAB */
 .dm-fab{ position: fixed; right:16px; bottom:16px; z-index:1001; display:inline-flex; align-items:center; gap:8px; background: var(--panel); color: var(--ink); border:1px solid var(--border); border-radius:999px; padding:8px 12px; box-shadow:0 10px 24px rgba(0,0,0,.45); cursor:pointer; transition:.15s }
@@ -209,19 +170,25 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .dm-fab-label{ font-weight:600 }
 .dm-fab-count{ font-size:12px; color:#cbd5e1; background:#0f1115; border:1px solid var(--border); padding:2px 6px; border-radius:999px }
 
-/* Dice */
-.dice-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px }
-.die-btn{ display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:12px; background:#132034; border:1px solid var(--border); cursor:pointer; color:#dbe1ee; transition:.15s; user-select:none; }
+/* Dice (page) */
+.dice-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:10px }
+.die-btn{
+  display:inline-flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px;
+  background:#132034; border:1px solid var(--border); cursor:pointer; color:#dbe1ee; transition:.15s; user-select:none;
+  font-size:16px;
+}
 .die-btn:hover{ border-color: var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
-.die-icon{ width:24px; height:24px; display:inline-block; }
+.die-icon{ width:26px; height:26px; display:inline-block; }
 .roll-output{ min-height:80px; }
 .roll-card{ border-radius:12px; border:1px solid var(--border); background:#0f1422; padding:12px; animation: pop .25s ease-out }
-.roll-total{ font-weight:800; font-size:18px; margin-bottom:6px }
-.roll-breakdown{ font-size:12px; color:#cbd5e1 }
+.roll-total{ font-weight:800; font-size:20px; margin-bottom:6px }
+.roll-breakdown{ font-size:13px; color:#cbd5e1 }
 
-/* Mobile */
+/* Mobile tweaks */
 @media (max-width: 768px){
   .board-control-wrap{ justify-content:center; }
   .dm-panel{ left:12px; right:12px; bottom:12px; width:auto; }
   .dm-grid3{ grid-template-columns: repeat(2, 1fr); }
+  .die-btn{ font-size:18px; padding:14px 16px; }
+  .btn-xl{ font-size:18px; padding:12px 18px; }
 }
