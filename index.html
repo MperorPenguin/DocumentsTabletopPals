@@ -100,6 +100,20 @@
     <span id="dm-fab-count" class="dm-fab-count">0</span>
   </button>
 
+  <!-- Safe fallback shim: if user clicks before app.js is ready, store the route -->
+  <script>
+    window.nav = window.nav || function(route){ window.__pendingNav = route; };
+  </script>
+
+  <!-- Make sure this tag is NOT type="module" so globals (nav, maximizeDmPanel, etc.) are exported -->
   <script src="app.js"></script>
+
+  <!-- After app.js loads, apply any pending nav -->
+  <script>
+    if (window.__pendingNav && typeof window.nav === 'function') {
+      window.nav(window.__pendingNav);
+      window.__pendingNav = null;
+    }
+  </script>
 </body>
 </html>
