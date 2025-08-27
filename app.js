@@ -464,10 +464,39 @@ function renderDiceButtons(){
     </button>`).join('');
 }
 function addDie(s){ selectedDice.push(s); updateDiceSelection(); shakeOutput(); }
-function clearDice(){ selectedDice=[]; updateDiceSelection(); document.getElementById('dice-output').innerHTML=''; }
+function clearDice(){
+  selectedDice=[]; updateDiceSelection();
+  const out=document.getElementById('dice-output');
+  out.innerHTML = `
+    <div class="roll-card">
+      <div class="dice-hero">${bigDiceSvg()}</div>
+      <div class="roll-status">Select dice and tap Roll</div>
+    </div>
+  `;
+}
 function updateDiceSelection(){
   const el=document.getElementById('dice-selection'); if(!el) return;
   el.textContent= selectedDice.length? selectedDice.join(' + '):'No dice selected';
+}
+function bigDiceSvg(){
+  // A stylized d20 that matches the app theme (uses currentColor + subtle gradient)
+  return `
+  <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+    <defs>
+      <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"  stop-color="#2a3760"/>
+        <stop offset="100%" stop-color="#121a2e"/>
+      </linearGradient>
+    </defs>
+    <polygon points="32,4 53,10 60,31 50,52 32,60 14,52 4,31 11,10"
+      fill="url(#g1)" stroke="currentColor" stroke-width="2" />
+    <polygon points="32,4 53,10 32,32 11,10"
+      fill="none" stroke="currentColor" stroke-opacity=".5" />
+    <polygon points="32,60 50,52 32,32 14,52"
+      fill="none" stroke="currentColor" stroke-opacity=".5" />
+    <polygon points="4,31 32,32 60,31"
+      fill="none" stroke="currentColor" stroke-opacity=".45" />
+  </svg>`;
 }
 function polyIcon(s){
   const map={d4:3,d6:4,d8:6,d10:7,d12:8,d20:10};
@@ -486,14 +515,31 @@ function regularPoly(cx,cy,r,n){
 }
 function rollAll(){
   if(!selectedDice.length) return;
-  const rolls=selectedDice.map(tag=>roll(tag));
-  const total=rolls.reduce((a,b)=>a+b,0);
-  const out=document.getElementById('dice-output');
-  out.innerHTML=`<div class="roll-card">
-    <div class="roll-total">Total: ${total}</div>
-    <div class="roll-breakdown">${selectedDice.map((s,i)=>`${s} [${rolls[i]}]`).join(' + ')}</div>
-  </div>`;
-  selectedDice=[]; updateDiceSelection();
+
+  const out = document.getElementById('dice-output');
+  // Show a rolling state with animated dice
+  out.innerHTML = `
+    <div class="roll-card rolling">
+      <div class="dice-hero">${bigDiceSvg()}</div>
+      <div class="roll-status">Rolling…</div>
+    </div>
+  `;
+
+  // Small delay for animation, then reveal the result
+  setTimeout(()=>{
+    const rolls = selectedDice.map(tag=>roll(tag));
+    const total = rolls.reduce((a,b)=>a+b,0);
+    out.innerHTML = `
+      <div class="roll-card">
+        <div class="dice-hero">${bigDiceSvg()}</div>
+        <div class="roll-total">Total: ${total}</div>
+        <div class="roll-breakdown">${selectedDice.map((s,i)=>`${s} [${rolls[i]}]`).join(' + ')}</div>
+      </div>
+    `;
+    selectedDice=[]; updateDiceSelection();
+  }, 900);
+}
+
 }
 function roll(tag){ const n=parseInt(tag.replace('d',''),10)||6; return 1+Math.floor(Math.random()*n); }
 function shakeOutput(){ const out=document.getElementById('dice-output'); out.classList.remove('shake'); void out.offsetWidth; out.classList.add('shake'); }

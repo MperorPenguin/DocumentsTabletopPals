@@ -165,13 +165,44 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 /* Dice (page) */
 .dice-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:10px }
 .die-btn{
-  display:inline-flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px;
-  background:#132034; border:1px solid var(--border); cursor:pointer; color:#dbe1ee; transition:.15s; user-select:none;
-  font-size:16px;
+  display:inline-flex; align-items:center; gap:10px; padding:12px 14px; border-radius:14px;
+  background:linear-gradient(180deg,#141e33,#0f1726); border:1px solid var(--border);
+  cursor:pointer; color:#e6e9f2; transition:.15s; user-select:none;
+  font-size:16px; box-shadow:0 4px 14px rgba(0,0,0,.35);
 }
-.die-btn:hover{ border-color: var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
+.die-btn:hover{
+  border-color: var(--accent);
+  box-shadow:0 8px 20px rgba(0,0,0,.45), 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset;
+  transform: translateY(-1px);
+}
+
 .die-icon{ width:26px; height:26px; display:inline-block; }
 .roll-output{ min-height:80px; }
+/* Dice hero + rolling animation */
+.dice-hero{
+  display:flex; align-items:center; justify-content:center;
+  margin:8px 0;
+}
+.dice-hero svg{
+  width:68px; height:68px; display:block;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,.45));
+}
+.rolling .dice-hero svg{ animation: tumble .9s ease-in-out forwards; }
+@keyframes tumble{
+  0%   { transform: rotate(0deg) scale(0.95); opacity:.7 }
+  60%  { transform: rotate(220deg) scale(1.05); opacity:1 }
+  100% { transform: rotate(360deg) scale(1.0); opacity:1 }
+}
+
+.roll-card{
+  border-radius:14px; border:1px solid var(--border);
+  background:linear-gradient(180deg,#0f1422,#0b1020);
+  padding:14px;
+}
+.roll-total{ font-weight:800; font-size:22px; margin-bottom:6px; letter-spacing:.2px }
+.roll-breakdown{ font-size:13px; color:#cbd5e1 }
+.roll-status{ font-size:13px; color:#aab3c5; text-align:center; margin-top:6px }
+
 .roll-card{ border-radius:12px; border:1px solid var(--border); background:#0f1422; padding:12px; animation: pop .25s ease-out }
 .roll-total{ font-weight:800; font-size:20px; margin-bottom:6px }
 .roll-breakdown{ font-size:13px; color:#cbd5e1 }
