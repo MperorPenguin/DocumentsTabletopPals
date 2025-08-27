@@ -100,12 +100,31 @@
     <span id="dm-fab-count" class="dm-fab-count">0</span>
   </button>
 
-  <!-- Shim so clicks before app.js is ready don't error -->
+    <!-- Rescue nav: works even if app.js fails to load -->
   <script>
-    window.nav = window.nav || function(route){ window.__pendingNav = route; };
+    (function(){
+      function navRescue(route){
+        var views = ['home','board','dice','notes'];
+        for (var i=0;i<views.length;i++){
+          var v = views[i];
+          var main = document.getElementById('view-'+v);
+          var btn  = document.getElementById('nav-'+v);
+          if(!main || !btn) continue;
+          if(v===route){ main.classList.remove('hidden'); btn.classList.add('active'); }
+          else{ main.classList.add('hidden'); btn.classList.remove('active'); }
+        }
+      }
+      // If app.js hasn't defined nav yet, use the rescue one.
+      window.nav = window.nav || navRescue;
+    })();
   </script>
+
+  <!-- Load the main app (classic script, NOT type="module") -->
   <script src="app.js"></script>
+
+  <!-- After app.js loads, apply any early clicks (and log status) -->
   <script>
+    console.log('[boot] app.js loaded?', !!window.renderBoard);
     if (window.__pendingNav && typeof window.nav === 'function') {
       window.nav(window.__pendingNav);
       window.__pendingNav = null;
