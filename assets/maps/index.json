@@ -1,7 +1,7 @@
 [
   {
     "id": "m1",
-    "name": "Dungeon",
-    "src": "assets/maps/dungeon.png"
+    "name": "World globe",
+    "src": "assets/maps/world_globe.png"
   }
 ]
