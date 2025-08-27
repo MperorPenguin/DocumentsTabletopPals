@@ -1,4 +1,4 @@
-/* DMToolkit v2.1.0 | app.js (JSON maps; PNG + SVG supported; cleaned DM panel) */
+/* DMToolkit v2.2.0 | app.js (toast lifecycle, DM map selector, compact quick dice) */
 
 const GRID_COLS = 26;
 const GRID_ROWS = 26;
@@ -7,60 +7,29 @@ const GRID_ROWS = 26;
 let MAPS = []; // replaced by JSON at runtime
 const TRY_FETCH_JSON_INDEX = true;
 
-// Simple environment rules by class name (demo rules; tweak as desired)
+// Simple environment rules (with traits)
 const ENVIRONMENTS = ['Forest','Cavern','Open Field','Urban','Swamp','Desert'];
-
-/**
- * Trait-aware rules:
- *  - advIfClass / disIfClass: apply by character class string
- *  - advIfTrait / disIfTrait: apply if token has any of these traits
- * You can freely edit this mapping to match your table rules.
- */
 const ENV_RULES = {
-  'Forest': {
-    advIfClass: ['Rogue'],
-    disIfTrait: ['Heavy Armor'],
-    advIfTrait: ['Stealthy']
-  },
-  'Cavern': {
-    advIfTrait: ['Darkvision','Burrower','Undead'],
-    disIfTrait: ['Stealthy']
-  },
-  'Open Field': {
-    advIfTrait: ['Mounted'],
-    disIfTrait: ['Stealthy']   // harder to hide
-  },
-  'Urban': {
-    advIfTrait: ['Stealthy'],
-    disIfClass: ['Enemy']      // e.g., city watch pressure
-  },
-  'Swamp': {
-    advIfTrait: ['Amphibious'],
-    disIfTrait: ['Heavy Armor']
-  },
-  'Desert': {
-    advIfTrait: ['Survivalist'],
-    disIfTrait: ['Heavy Armor']
-  }
+  Forest: {  advIfClass:['Rogue'],  disIfTrait:['Heavy Armor'], advIfTrait:['Stealthy'] },
+  Cavern: {  advIfTrait:['Darkvision','Burrower','Undead'], disIfTrait:['Stealthy'] },
+  'Open Field': { advIfTrait:['Mounted'], disIfTrait:['Stealthy'] },
+  Urban: {   advIfTrait:['Stealthy'], disIfClass:['Enemy'] },
+  Swamp: {   advIfTrait:['Amphibious'], disIfTrait:['Heavy Armor'] },
+  Desert: {  advIfTrait:['Survivalist'], disIfTrait:['Heavy Armor'] }
 };
 
 // State
 const state = load() || {
   route: 'home',
   boardBg: null,
-   tokens: {
+  tokens: {
     pc: [
       {id:'p1', name:'Aria',   cls:'Rogue',   traits:['Stealthy','Light Armor'], hp:[10,10], pos:[2,3]},
       {id:'p2', name:'Bronn',  cls:'Fighter', traits:['Heavy Armor','Brute'],     hp:[13,13], pos:[4,4]},
     ],
-    npc: [
-      {id:'n1', name:'Elder Bran', cls:'NPC', traits:['Civilian'], hp:[6,6], pos:[7,6]}
-    ],
-    enemy: [
-      {id:'e1', name:'Skeleton A', cls:'Enemy', traits:['Undead','Darkvision'], hp:[13,13], pos:[23,1]}
-    ]
+    npc: [{id:'n1', name:'Elder Bran', cls:'NPC', traits:['Civilian'], hp:[6,6], pos:[7,6]}],
+    enemy: [{id:'e1', name:'Skeleton A', cls:'Enemy', traits:['Undead','Darkvision'], hp:[13,13], pos:[23,1]}]
   },
-
   selected: null,
   notes: '',
   ui: { dmOpen:false, dmTab:'party', environment:null },
@@ -72,8 +41,8 @@ const chan = new BroadcastChannel('board-sync');
 function broadcastState(){ chan.postMessage({type:'state', payload:state}); }
 
 // Persistence
-function save(){ localStorage.setItem('tp_state_v2p1', JSON.stringify(state)); broadcastState(); }
-function load(){ try{ return JSON.parse(localStorage.getItem('tp_state_v2p1')); }catch(e){ return null; } }
+function save(){ localStorage.setItem('tp_state_v22', JSON.stringify(state)); broadcastState(); }
+function load(){ try{ return JSON.parse(localStorage.getItem('tp_state_v22')); }catch(e){ return null; } }
 
 // Prevent default drag behavior
 window.addEventListener('dragover', e => e.preventDefault());
@@ -156,7 +125,6 @@ function renderBoard(){
       tok.appendChild(img); el.appendChild(tok);
     });
   });
-  renderMapStrip();
   updateDmFab();
 }
 
@@ -232,60 +200,20 @@ function openBoardViewer(){
   broadcastState();
 }
 
-// Map strip
-function renderMapStrip(){
-  const strip = document.getElementById('map-strip');
-  if(!strip) return;
-  const maps = MAPS;
-  if(!maps.length){
-    strip.style.display='none'; strip.innerHTML = ''; return;
-  }
-  strip.style.display='flex';
-  strip.innerHTML = '';
-  maps.forEach((g,idx)=>{
-    const card = document.createElement('div');
-    card.className = 'map-thumb'; card.title = g.name || g.src;
-    card.onclick = ()=>{ setMapByIndex(idx); };
-    const img = document.createElement('img'); img.src = g.src;
-    const label = document.createElement('div'); label.className='label'; label.textContent = g.name || (g.src.split('/').pop());
-    card.appendChild(img); card.appendChild(label);
-    strip.appendChild(card);
-  });
+// =========== DM Panel ===========
+
+function maximizeDmPanel(){
+  state.ui.dmOpen = true; save(); renderDmPanel(); updateDmFab();
 }
-
-function setMapByIndex(idx){
-  if(!MAPS[idx]) return;
-  state.mapIndex = idx;
-  state.boardBg  = MAPS[idx].src;
-  save(); renderBoard();
+function minimizeDmPanel(){
+  state.ui.dmOpen = false; save(); renderDmPanel(); updateDmFab();
+  // Also close any toasts when panel is closed
+  closeAllToasts();
 }
-
-function nextMap(){ if(!MAPS.length) return; setMapByIndex((state.mapIndex+1)%MAPS.length); }
-function prevMap(){ if(!MAPS.length) return; setMapByIndex((state.mapIndex-1+MAPS.length)%MAPS.length); }
-
-async function reloadMaps(){
-  if(!TRY_FETCH_JSON_INDEX){ renderMapStrip(); return; }
-  try{
-    const res = await fetch('assets/maps/index.json', {cache:'no-store'});
-    if(!res.ok) throw new Error('index.json not found');
-    const list = await res.json();
-    if(Array.isArray(list)){
-      MAPS = list;
-      state.mapIndex = 0;
-      state.boardBg = MAPS[0]?.src || null;
-      save();
-    }
-  }catch(e){
-    console.warn('No index.json found or error reading it. Using empty list.', e);
-  }finally{
-    renderMapStrip(); renderBoard();
-  }
+function toggleDmPanel(){
+  state.ui.dmOpen = !state.ui.dmOpen; save(); renderDmPanel(); updateDmFab();
+  if(!state.ui.dmOpen) closeAllToasts();
 }
-
-// DM Panel
-function maximizeDmPanel(){ state.ui.dmOpen = true; save(); renderDmPanel(); updateDmFab(); }
-function minimizeDmPanel(){ state.ui.dmOpen = false; save(); renderDmPanel(); updateDmFab(); }
-function toggleDmPanel(){ state.ui.dmOpen = !state.ui.dmOpen; save(); renderDmPanel(); updateDmFab(); }
 document.addEventListener('keydown', (e)=>{ if(e.shiftKey && (e.key==='D'||e.key==='d')){ e.preventDefault(); toggleDmPanel(); } });
 
 function updateDmFab(){
@@ -307,11 +235,11 @@ function tokenCard(kind,t){
       <div class="dm-card ${sel?'selected':''}" onclick="selectFromPanel('${kind}','${t.id}')">
         <div class="avatar"><img src="assets/class_icons/${t.cls}.svg" alt=""></div>
         <div class="name">${escapeHtml(t.name)}</div>
-       <div class="badges">
-  <span class="badge">${escapeHtml(t.cls)}</span>
-  <span class="badge">HP ${t.hp[0]}/${t.hp[1]}</span>
-  ${(Array.isArray(t.traits)?t.traits:[]).map(x=>`<span class="badge">${escapeHtml(x)}</span>`).join('')}
-</div>
+        <div class="badges">
+          <span class="badge">${escapeHtml(t.cls)}</span>
+          <span class="badge">HP ${t.hp[0]}/${t.hp[1]}</span>
+          ${(Array.isArray(t.traits)?t.traits:[]).map(x=>`<span class="badge">${escapeHtml(x)}</span>`).join('')}
+        </div>
       </div>
       <div class="dm-actions">
         <button class="dm-title-btn short adv" title="Advantage" onclick="quickAdvFor('${kind}','${t.id}')">A</button>
@@ -401,6 +329,20 @@ function renderDmPanel(){
   if(tab==='tools'){
     const env = state.ui.environment;
     const effects = computeEnvironmentEffects();
+
+    // Map selector (buttons from MAPS)
+    const mapButtons = (MAPS||[]).map((m,i)=>`
+      <button class="map-pill ${state.mapIndex===i?'active':''}" onclick="setMapByIndex(${i})">${escapeHtml(m.name || (m.src.split('/').pop()))}</button>
+    `).join('');
+
+    const quickRow = `
+      <div class="quick-dice-row">
+        ${['d4','d6','d8','d10','d12','d20'].map(s=>`
+          <button class="quick-die-btn" onclick="rollQuick('${s}')">
+            <span class="die-icon">${polyIcon(s)}</span>${s.toUpperCase()}
+          </button>`).join('')}
+      </div>`;
+
     body+=`
       <div class="dm-section">
         <div class="dm-sec-head"><span>Environment / Terrain</span></div>
@@ -414,9 +356,26 @@ function renderDmPanel(){
       </div>
 
       <div class="dm-section" style="margin-top:10px">
-        <div class="dm-sec-head"><span>Quick d20</span></div>
-        <button class="dm-title-btn big" onclick="quickD20()">Roll d20</button>
-        <div id="dm-last-roll" class="dm-detail" style="margin-top:8px">—</div>
+        <div class="dm-sec-head"><span>Maps</span></div>
+        <div class="map-list">
+          ${mapButtons || '<div class="small">No maps yet. Add PNG/SVG files and rebuild assets/maps/index.json.</div>'}
+        </div>
+        <div class="dm-detail" style="margin-top:8px">
+          Current map: ${state.boardBg ? escapeHtml(MAPS[state.mapIndex]?.name || MAPS[state.mapIndex]?.src || 'Loaded') : 'None'}
+          <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn tiny" onclick="clearMap()">Clear Map</button>
+            <button class="btn tiny" onclick="reloadMaps()">Reload Maps</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="dm-section" style="margin-top:10px">
+        <div class="dm-sec-head"><span>Quick Dice</span></div>
+        ${quickRow}
+        <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+          <button class="dm-title-btn big" onclick="quickD20()">Roll d20</button>
+          <div id="dm-last-roll" class="dm-detail" style="flex:1">—</div>
+        </div>
       </div>`;
   }
 
@@ -438,9 +397,16 @@ function renderDmPanel(){
   }
 }
 
+function clearMap(){ state.boardBg=null; save(); renderBoard(); }
+
 // Rolls & Toast
+let activeToast = null;
+function closeAllToasts(){
+  document.querySelectorAll('.dm-toast').forEach(t=>t.remove());
+  activeToast = null;
+}
 function showToast(title,msg,hint){
-  let t=document.querySelector('.dm-toast'); if(t) t.remove();
+  closeAllToasts();
   const div=document.createElement('div');
   div.className='dm-toast fade';
   div.innerHTML=`
@@ -450,23 +416,42 @@ function showToast(title,msg,hint){
     ${hint ? `<div class="hint">${escapeHtml(hint)}</div>` : ``}
   `;
   document.body.appendChild(div);
+  activeToast = div;
+  // Auto-dismiss after 4.5s
+  setTimeout(()=>{ if(div===activeToast){ div.remove(); activeToast=null; } }, 4500);
 }
+// Click outside toast → dismiss
+document.addEventListener('click', (e)=>{
+  if(!activeToast) return;
+  const insideToast = activeToast.contains(e.target);
+  const insidePanel = document.getElementById('dm-panel')?.contains(e.target);
+  if(!insideToast && !insidePanel){ closeAllToasts(); }
+});
+
 function quickD20(){
   const v=1+Math.floor(Math.random()*20);
-  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`d20: ${v}`;
+  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`d20 → ${v}`;
   showToast('Quick d20', `→ ${v}`, 'Instruction: roll 1d20; apply modifiers as usual.');
 }
 function quickAdvFor(kind,id){
   const a=1+Math.floor(Math.random()*20), b=1+Math.floor(Math.random()*20), res=Math.max(a,b);
   const list=state.tokens[kind]||[]; const name=(list.find(x=>x.id===id)?.name)||kind.toUpperCase();
-  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`Advantage: ${a} vs ${b} ⇒ ${res}`;
+  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`Adv: ${a} vs ${b} ⇒ ${res}`;
   showToast(name, `Advantage → ${res} (${a} vs ${b})`, 'Instruction: roll 2d20, keep highest; then add relevant modifiers.');
 }
 function quickDisFor(kind,id){
   const a=1+Math.floor(Math.random()*20), b=1+Math.floor(Math.random()*20), res=Math.min(a,b);
   const list=state.tokens[kind]||[]; const name=(list.find(x=>x.id===id)?.name)||kind.toUpperCase();
-  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`Disadvantage: ${a} vs ${b} ⇒ ${res}`;
+  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`Dis: ${a} vs ${b} ⇒ ${res}`;
   showToast(name, `Disadvantage → ${res} (${a} vs ${b})`, 'Instruction: roll 2d20, keep lowest; then add relevant modifiers.');
+}
+
+// Quick dice inside DM Tools
+function rollQuick(tag){
+  const n=parseInt(tag.replace('d',''),10)||6;
+  const v=1+Math.floor(Math.random()*n);
+  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`${tag.toUpperCase()} → ${v}`;
+  showToast('Quick Dice', `${tag.toUpperCase()} → ${v}`, 'Instruction: roll the selected die; apply modifiers as needed.');
 }
 
 // Dice (page)
@@ -533,6 +518,37 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   }catch(err){ console.error('boot error', err); }
 });
 
+// Map loading (index.json)
+function setMapByIndex(idx){
+  if(!MAPS[idx]) return;
+  state.mapIndex = idx;
+  state.boardBg  = MAPS[idx].src;
+  save(); renderBoard(); renderDmPanel();
+}
+function nextMap(){ if(!MAPS.length) return; setMapByIndex((state.mapIndex+1)%MAPS.length); }
+function prevMap(){ if(!MAPS.length) return; setMapByIndex((state.mapIndex-1+MAPS.length)%MAPS.length); }
+async function reloadMaps(){
+  if(!TRY_FETCH_JSON_INDEX){ return; }
+  try{
+    const res = await fetch('assets/maps/index.json', {cache:'no-store'});
+    if(!res.ok) throw new Error('index.json not found');
+    const list = await res.json();
+    if(Array.isArray(list)){
+      MAPS = list;
+      // Preserve current selection if possible
+      const cur = state.boardBg;
+      const found = MAPS.findIndex(m => m.src === cur);
+      state.mapIndex = found >= 0 ? found : 0;
+      if(!cur && MAPS[0]) state.boardBg = MAPS[0].src;
+      save();
+    }
+  }catch(e){
+    console.warn('No index.json found or error reading it.', e);
+  }finally{
+    renderDmPanel(); renderBoard();
+  }
+}
+
 // Expose
 window.boardClick=boardClick;
 window.nav=nav;
@@ -549,3 +565,6 @@ window.prevMap=prevMap;
 window.nextMap=nextMap;
 window.reloadMaps=reloadMaps;
 window.setEnvironment=setEnvironment;
+window.setMapByIndex=setMapByIndex;
+window.clearMap=clearMap;
+window.rollQuick=rollQuick;

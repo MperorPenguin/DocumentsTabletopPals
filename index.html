@@ -1,4 +1,4 @@
-<!-- DMToolkit v2.1.0 | index.html -->
+<!-- DMToolkit v2.2.0 | index.html -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -30,15 +30,15 @@
   <main>
     <!-- HOME -->
     <section id="view-home">
-      <div class="panel tile" tabindex="0" onclick="nav('board')">
+      <div class="panel tile tile-home-board" tabindex="0" onclick="nav('board')">
         <h2>Battle Board</h2>
         <div class="small">26×26 grid, tokens, fullscreen &amp; pop-out. Maps from <code>assets/maps/index.json</code> (PNG/SVG).</div>
       </div>
-      <div class="panel tile" tabindex="0" onclick="nav('dice')">
+      <div class="panel tile tile-home-dice" tabindex="0" onclick="nav('dice')">
         <h2>Dice</h2>
         <div class="small">Quick multi-die rolling.</div>
       </div>
-      <div class="panel tile" tabindex="0" onclick="nav('notes')">
+      <div class="panel tile tile-home-notes" tabindex="0" onclick="nav('notes')">
         <h2>Notes</h2>
         <div class="small">Campaign/session notes.</div>
       </div>
@@ -51,18 +51,12 @@
       <!-- control bar ABOVE the map, right aligned -->
       <div class="board-control-wrap">
         <div id="board-controls" class="board-control-bar">
-          <button class="board-ctrl" onclick="prevMap()">Prev</button>
-          <button class="board-ctrl" onclick="nextMap()">Next</button>
           <button class="board-ctrl" onclick="toggleBoardFullscreen()">Full</button>
           <button class="board-ctrl" onclick="openBoardViewer()">Pop-out</button>
-          <button class="board-ctrl" onclick="reloadMaps()">Reload Maps</button>
         </div>
       </div>
 
       <div id="board" class="board" style="margin-top:10px" onclick="boardClick(event)"></div>
-
-      <!-- Map thumbnails (from index.json) -->
-      <div id="map-strip" class="map-strip" style="margin-top:10px; display:none"></div>
 
       <div class="small" style="margin-top:8px">
         Tip: Click a token to select it, then click a grid cell to move. Press <b>Shift+D</b> to toggle the DM Panel.

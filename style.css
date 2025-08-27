@@ -1,4 +1,4 @@
-/* DMToolkit v2.1.0 | style.css */
+/* DMToolkit v2.2.0 | style.css */
 :root{
   --bg:#0f1115; --panel:#141824; --muted:#aab3c5; --ink:#e9ecf1; --border:#23283a; --hover:#1a2030;
   --yellow:#FFD166; --teal:#14B8A6; --red:#EF4444; --blue:#60A5FA; --purple:#A78BFA;
@@ -29,7 +29,11 @@ footer{max-width:1280px;margin:10px auto 24px;color:var(--muted);padding:0 16px}
 /* Panels & buttons */
 .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:12px}
 .panel.tile{cursor:pointer;transition: transform .15s, box-shadow .15s, border-color .15s, background-color .15s;outline: none;}
-.panel.tile:hover,.panel.tile:focus-visible{border-color: var(--accent);box-shadow: 0 8px 28px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset;transform: translateY(-2px);background: color-mix(in srgb, var(--accent) 10%, var(--panel));}
+/* Individual hover/active colors per home tile */
+.tile-home-board:hover,.tile-home-board:focus-visible{border-color: var(--blue);box-shadow: 0 8px 28px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--blue) 35%, transparent) inset;transform: translateY(-2px);background: color-mix(in srgb, var(--blue) 12%, var(--panel));}
+.tile-home-dice:hover,.tile-home-dice:focus-visible{border-color: var(--yellow);box-shadow: 0 8px 28px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--yellow) 35%, transparent) inset;transform: translateY(-2px);background: color-mix(in srgb, var(--yellow) 12%, var(--panel));}
+.tile-home-notes:hover,.tile-home-notes:focus-visible{border-color: var(--teal);box-shadow: 0 8px 28px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--teal) 35%, transparent) inset;transform: translateY(-2px);background: color-mix(in srgb, var(--teal) 12%, var(--panel));}
+
 .btn{appearance:none;background:var(--hover);border:1px solid var(--border);color:#e6e9f2;padding:8px 12px;border-radius:10px;cursor:pointer;transition:.15s}
 .btn:hover{filter:brightness(1.08);border-color:var(--accent)}
 .btn.active{background:color-mix(in srgb, var(--accent) 18%, transparent);border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset;color:#fff}
@@ -85,29 +89,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 /* Fullscreen */
 :fullscreen .board, .board:fullscreen{ width:100vw; height:100vh; border-radius:0; }
 
-/* Map strip */
-.map-strip{
-  display:flex; gap:10px; overflow:auto; -ms-overflow-style:none; scrollbar-width:none;
-  background:#0f1115; border:1px solid var(--border); border-radius:10px; padding:8px;
-}
-.map-strip::-webkit-scrollbar{ display:none; }
-.map-thumb{
-  flex:0 0 auto; width:140px; height:94px; border:1px solid var(--border); border-radius:8px; overflow:hidden;
-  background:#0b1020; cursor:pointer; position:relative; display:flex; align-items:center; justify-content:center;
-  transition:.15s;
-}
-.map-thumb img{ width:100%; height:100%; object-fit:cover; display:block }
-.map-thumb:hover{ border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent) inset }
-.map-thumb .label{
-  position:absolute; left:6px; bottom:6px; right:6px; font-size:11px; color:#e6e9f2;
-  background:#0f1115cc; padding:2px 6px; border-radius:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-
 /* =========================
    DM Panel
    ========================= */
 .dm-panel{
-  position:fixed; right:16px; bottom:16px; width:440px; max-height:78vh; overflow:auto; z-index:1000;
+  position:fixed; right:16px; bottom:16px; width:460px; max-height:78vh; overflow:auto; z-index:1000;
   background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:10px;
   box-shadow:0 14px 30px rgba(0,0,0,.5); backdrop-filter: blur(6px);
 }
@@ -153,6 +139,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .env-pill:hover{ border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
 .env-pill.active{ background:color-mix(in srgb, var(--accent) 18%, transparent); border-color:var(--accent); color:#fff }
 
+/* Map selector list */
+.map-list{ display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px; }
+.map-pill{ padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#0f1115; color:#dbe1ee; cursor:pointer; text-align:center; font-weight:700; transition:.15s; }
+.map-pill:hover{ border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
+.map-pill.active{ background:color-mix(in srgb, var(--accent) 20%, transparent); border-color:var(--accent); color:#fff }
+
 /* Detail & Toasts */
 .dm-detail{ margin-top:8px;border:1px solid var(--border);background:#111623;color:#dbe1ee;border-radius:8px;padding:10px;font-size:13px; white-space:normal; overflow-wrap:anywhere; word-break:break-word; }
 .dm-toast { position:fixed; right:20px; bottom:90px; background:#0f1422; border:1px solid var(--border); border-radius:10px; padding:10px 14px; max-width:320px; color:#e6e9f2; box-shadow:0 8px 20px rgba(0,0,0,.5); z-index:1200; }
@@ -183,6 +175,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .roll-card{ border-radius:12px; border:1px solid var(--border); background:#0f1422; padding:12px; animation: pop .25s ease-out }
 .roll-total{ font-weight:800; font-size:20px; margin-bottom:6px }
 .roll-breakdown{ font-size:13px; color:#cbd5e1 }
+
+/* Quick dice row (in DM panel Tools) */
+.quick-dice-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px }
+.quick-die-btn{
+  display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:12px;
+  background:#132034; border:1px solid var(--border); cursor:pointer; color:#dbe1ee; transition:.15s; user-select:none;
+  font-size:14px;
+}
+.quick-die-btn:hover{ border-color: var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
 
 /* Mobile tweaks */
 @media (max-width: 768px){
