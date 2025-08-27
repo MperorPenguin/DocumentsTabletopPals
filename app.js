@@ -1,38 +1,30 @@
-/* DMToolkit v2.2.1 | app.js (stable build)
-   - 26x26 auto-fit board, fullscreen & pop-out viewer
-   - Maps loaded from assets/maps/index.json (PNG/SVG)
+/* DMToolkit v2.3.0 | app.js (stable)
+   - 26x26 responsive board; fullscreen & safe pop-out viewer
+   - Maps via assets/maps/index.json (PNG/SVG)
    - DM Panel: Party/NPCs/Enemies/Notes/Tools
-   - Tools: Environment (trait-aware), Map selector, Quick Dice (incl. d20)
-   - Toasts: top-right, auto-dismiss, close on outside click & when DM panel closes
-   - Dice page: animated “rolling” reveal + big themed SVG
+   - Tools: Environment (trait-aware), Map selector, Quick Dice (compact)
+   - Toasts: top-right, auto-dismiss, close on panel close/outside click
+   - Dice page: animated “rolling” reveal + themed d20
 */
 
-/* =========================
-   Grid & Maps
-   ========================= */
+/* ========= Grid & Maps ========= */
 const GRID_COLS = 26;
-const GRID_ROWS = 26;
-
-// Maps list is loaded from assets/maps/index.json
-let MAPS = []; // replaced by JSON at runtime
+const GRID_ROWS  = 26;
+let MAPS = []; // loaded from assets/maps/index.json
 const TRY_FETCH_JSON_INDEX = true;
 
-/* =========================
-   Environments (trait-aware)
-   ========================= */
+/* ========= Environments (trait-aware) ========= */
 const ENVIRONMENTS = ['Forest','Cavern','Open Field','Urban','Swamp','Desert'];
 const ENV_RULES = {
-  Forest:     { advIfClass:['Rogue'],                    disIfTrait:['Heavy Armor'], advIfTrait:['Stealthy'] },
-  Cavern:     { advIfTrait:['Darkvision','Burrower','Undead'], disIfTrait:['Stealthy'] },
-  'Open Field': { advIfTrait:['Mounted'],                disIfTrait:['Stealthy'] },
-  Urban:      { advIfTrait:['Stealthy'],                 disIfClass:['Enemy'] },
-  Swamp:      { advIfTrait:['Amphibious'],               disIfTrait:['Heavy Armor'] },
-  Desert:     { advIfTrait:['Survivalist'],              disIfTrait:['Heavy Armor'] }
+  Forest:      { advIfClass:['Rogue'],                    disIfTrait:['Heavy Armor'], advIfTrait:['Stealthy'] },
+  Cavern:      { advIfTrait:['Darkvision','Burrower','Undead'], disIfTrait:['Stealthy'] },
+  'Open Field':{ advIfTrait:['Mounted'],                  disIfTrait:['Stealthy'] },
+  Urban:       { advIfTrait:['Stealthy'],                 disIfClass:['Enemy'] },
+  Swamp:       { advIfTrait:['Amphibious'],               disIfTrait:['Heavy Armor'] },
+  Desert:      { advIfTrait:['Survivalist'],              disIfTrait:['Heavy Armor'] }
 };
 
-/* =========================
-   State & persistence
-   ========================= */
+/* ========= State & persistence ========= */
 const state = load() || {
   route: 'home',
   boardBg: null,
@@ -50,21 +42,14 @@ const state = load() || {
   mapIndex: 0
 };
 
-function save(){ localStorage.setItem('tp_state_v22_1', JSON.stringify(state)); broadcastState(); }
-function load(){ try{ return JSON.parse(localStorage.getItem('tp_state_v22_1')); }catch(e){ return null; } }
+function save(){ localStorage.setItem('tp_state_v23', JSON.stringify(state)); broadcastState(); }
+function load(){ try{ return JSON.parse(localStorage.getItem('tp_state_v23')); }catch(e){ return null; } }
 
-/* =========================
-   Cross-window viewer sync
-   ========================= */
+/* ========= Cross-window sync ========= */
 const chan = new BroadcastChannel('board-sync');
 function broadcastState(){ chan.postMessage({type:'state', payload:state}); }
 
-/* =========================
-   Global page wiring
-   ========================= */
-window.addEventListener('dragover', e => e.preventDefault());
-window.addEventListener('drop',     e => e.preventDefault());
-
+/* ========= Routing ========= */
 function nav(route){
   state.route = route; save();
   const views = ['home','board','dice','notes'];
@@ -78,9 +63,7 @@ function nav(route){
   render();
 }
 
-/* =========================
-   Board sizing/fit
-   ========================= */
+/* ========= Board size/fit ========= */
 const boardEl = () => document.getElementById('board');
 
 function fitBoard(){
@@ -105,9 +88,10 @@ function cellsz(){
   return parseInt(cs.replace('px','')) || 42;
 }
 
-/* =========================
-   Board interactions
-   ========================= */
+/* ========= Board interactions ========= */
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop',     e => e.preventDefault());
+
 function boardClick(ev){
   const el = boardEl(); if(!el) return;
   const rect = el.getBoundingClientRect();
@@ -125,9 +109,7 @@ function selectTokenDom(kind,id){
   state.selected = {kind,id}; save(); renderBoard();
 }
 
-/* =========================
-   Board rendering
-   ========================= */
+/* ========= Board render ========= */
 function renderBoard(){
   const el = boardEl(); if(!el) return;
   fitBoard();
@@ -152,15 +134,20 @@ function renderBoard(){
   updateDmFab();
 }
 
-/* =========================
-   Fullscreen & pop-out
-   ========================= */
+/* ========= Fullscreen & Pop-out ========= */
+function toggleBoardFullscreen(){
+  const el = boardEl(); if(!el) return;
+  if(!document.fullscreenElement){ el.requestFullscreen?.(); }
+  else { document.exitFullscreen?.(); }
+}
+
+let viewerWin = null;
 function openBoardViewer(){
   if(viewerWin && !viewerWin.closed){ viewerWin.focus(); broadcastState(); return; }
   viewerWin = window.open('', 'BoardViewer', 'width=900,height=900');
   if(!viewerWin) return;
 
-  // Build HTML without template literals, escape </script> to avoid parser confusion.
+  // Safe concatenated HTML (no nested template literals)
   var html = '<!doctype html><html><head><meta charset="utf-8"><title>Board Viewer</title>'+
   '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'+
   '<style>'+
@@ -226,9 +213,7 @@ function openBoardViewer(){
   broadcastState();
 }
 
-/* =========================
-   DM Panel
-   ========================= */
+/* ========= DM Panel ========= */
 function maximizeDmPanel(){
   state.ui.dmOpen = true; save(); renderDmPanel(); updateDmFab();
 }
@@ -355,11 +340,9 @@ function renderDmPanel(){
   if(tab==='tools'){
     const env = state.ui.environment;
     const effects = computeEnvironmentEffects();
-
     const mapButtons = (MAPS||[]).map((m,i)=>`
       <button class="map-pill ${state.mapIndex===i?'active':''}" onclick="setMapByIndex(${i})">${escapeHtml(m.name || (m.src.split('/').pop()))}</button>
     `).join('');
-
     const quickRow = `
       <div class="quick-dice-row">
         ${['d4','d6','d8','d10','d12','d20'].map(s=>`
@@ -424,9 +407,7 @@ function renderDmPanel(){
 
 function clearMap(){ state.boardBg=null; save(); renderBoard(); }
 
-/* =========================
-   Toasts (top-right)
-   ========================= */
+/* ========= Toasts ========= */
 let activeToast = null;
 function closeAllToasts(){
   document.querySelectorAll('.dm-toast').forEach(t=>t.remove());
@@ -453,9 +434,7 @@ document.addEventListener('click', (e)=>{
   if(!insideToast && !insidePanel){ closeAllToasts(); }
 });
 
-/* =========================
-   Quick dice (DM Tools) + d20 helper
-   ========================= */
+/* ========= Quick dice (DM Tools) ========= */
 function quickD20(){
   const v=1+Math.floor(Math.random()*20);
   const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`d20 → ${v}`;
@@ -480,9 +459,7 @@ function rollQuick(tag){
   showToast('Quick Dice', `${tag.toUpperCase()} → ${v}`, 'Instruction: roll the selected die; apply modifiers as needed.');
 }
 
-/* =========================
-   Dice page
-   ========================= */
+/* ========= Dice page ========= */
 const dice=['d4','d6','d8','d10','d12','d20']; let selectedDice=[];
 
 function renderDiceButtons(){
@@ -570,10 +547,9 @@ function regularPoly(cx,cy,r,n){
     pts.push((cx+r*Math.cos(a)).toFixed(1)+','+(cy+r*Math.sin(a)).toFixed(1));
   }
   return pts.join(' ');
+}
 
-/* =========================
-   Utils & boot
-   ========================= */
+/* ========= Utils & boot ========= */
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 function render(){
@@ -590,14 +566,11 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     fitBoard();
     await reloadMaps();
     if(!state.boardBg && (MAPS[0]?.src)) setMapByIndex(0);
-    // Prime dice output nicely on first load
-    clearDice();
+    clearDice(); // prime dice panel
   }catch(err){ console.error('boot error', err); }
 });
 
-/* =========================
-   Map loading (index.json)
-   ========================= */
+/* ========= Map loading ========= */
 function setMapByIndex(idx){
   if(!MAPS[idx]) return;
   state.mapIndex = idx;
@@ -627,9 +600,7 @@ async function reloadMaps(){
   }
 }
 
-/* =========================
-   Expose globals for HTML
-   ========================= */
+/* ========= Export globals ========= */
 window.boardClick=boardClick;
 window.nav=nav;
 window.openBoardViewer=openBoardViewer;

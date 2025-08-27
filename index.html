@@ -1,4 +1,4 @@
-<!-- DMToolkit v2.2.0 | index.html -->
+<!-- DMToolkit v2.3.0 | index.html -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -40,7 +40,7 @@
       </div>
       <div class="panel tile tile-home-notes" tabindex="0" onclick="nav('notes')">
         <h2>Notes</h2>
-        <div class="small">Campaign/session notes.</div>
+        <div class="small">Session / campaign notes.</div>
       </div>
     </section>
 
@@ -48,7 +48,7 @@
     <section id="view-board" class="hidden">
       <h2>Board</h2>
 
-      <!-- control bar ABOVE the map, right aligned -->
+      <!-- controls ABOVE the map (only Full + Pop-out) -->
       <div class="board-control-wrap">
         <div id="board-controls" class="board-control-bar">
           <button class="board-ctrl" onclick="toggleBoardFullscreen()">Full</button>
@@ -77,7 +77,7 @@
       </div>
     </section>
 
-    <!-- NOTES (page) -->
+    <!-- NOTES -->
     <section id="view-notes" class="hidden">
       <h2>Notes</h2>
       <div class="panel">
@@ -100,15 +100,11 @@
     <span id="dm-fab-count" class="dm-fab-count">0</span>
   </button>
 
-  <!-- Safe fallback shim: if user clicks before app.js is ready, store the route -->
+  <!-- Shim so clicks before app.js is ready don't error -->
   <script>
     window.nav = window.nav || function(route){ window.__pendingNav = route; };
   </script>
-
-  <!-- Make sure this tag is NOT type="module" so globals (nav, maximizeDmPanel, etc.) are exported -->
   <script src="app.js"></script>
-
-  <!-- After app.js loads, apply any pending nav -->
   <script>
     if (window.__pendingNav && typeof window.nav === 'function') {
       window.nav(window.__pendingNav);

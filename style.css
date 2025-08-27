@@ -1,10 +1,10 @@
-/* DMToolkit v2.2.0 | style.css */
+/* DMToolkit v2.3.0 | style.css */
 :root{
   --bg:#0f1115; --panel:#141824; --muted:#aab3c5; --ink:#e9ecf1; --border:#23283a; --hover:#1a2030;
   --yellow:#FFD166; --teal:#14B8A6; --red:#EF4444; --blue:#60A5FA; --purple:#A78BFA;
   --accent: var(--purple);
-  --cell: 42px;            /* JS sets based on screen (26x26) */
-  --boardSize: 546px;      /* JS sets exact multiple of 26 */
+  --cell: 42px;        /* JS will set based on screen */
+  --boardSize: 546px;  /* JS will set to 26 * --cell */
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -26,10 +26,10 @@ h1,h2,h3{margin:0 0 8px}
 main{max-width:1280px;margin:0 auto;padding:16px}
 footer{max-width:1280px;margin:10px auto 24px;color:var(--muted);padding:0 16px}
 
-/* Panels & buttons */
+/* Panels & tiles */
 .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:12px}
 .panel.tile{cursor:pointer;transition: transform .15s, box-shadow .15s, border-color .15s, background-color .15s;outline: none;}
-/* Individual hover/active colors per home tile */
+/* distinct hover/active color per home tile */
 .tile-home-board:hover,.tile-home-board:focus-visible{border-color: var(--blue);box-shadow: 0 8px 28px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--blue) 35%, transparent) inset;transform: translateY(-2px);background: color-mix(in srgb, var(--blue) 12%, var(--panel));}
 .tile-home-dice:hover,.tile-home-dice:focus-visible{border-color: var(--yellow);box-shadow: 0 8px 28px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--yellow) 35%, transparent) inset;transform: translateY(-2px);background: color-mix(in srgb, var(--yellow) 12%, var(--panel));}
 .tile-home-notes:hover,.tile-home-notes:focus-visible{border-color: var(--teal);box-shadow: 0 8px 28px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--teal) 35%, transparent) inset;transform: translateY(-2px);background: color-mix(in srgb, var(--teal) 12%, var(--panel));}
@@ -38,15 +38,13 @@ footer{max-width:1280px;margin:10px auto 24px;color:var(--muted);padding:0 16px}
 .btn:hover{filter:brightness(1.08);border-color:var(--accent)}
 .btn.active{background:color-mix(in srgb, var(--accent) 18%, transparent);border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent) inset;color:#fff}
 .btn.tiny{ padding:4px 8px; font-size:11px; }
-
-/* Extra-large buttons for touch */
 .btn-xl{ padding:10px 16px; border-radius:12px; font-size:16px; }
 
 /* Inputs */
 input,select,textarea{appearance:none;background:#111623;color:#dbe1ee;border:1px solid var(--border);border-radius:8px;padding:8px;transition:border-color .15s, box-shadow .15s}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent) inset}
 
-/* ========= Board (fixed 26x26; auto-fit) ========= */
+/* ===== Board (fixed 26x26, responsive fit) ===== */
 .board{
   position:relative;
   width: var(--boardSize);
@@ -75,7 +73,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .token.enemy{background:#ef4444aa}
 .token.selected{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 65%, transparent) inset, 0 0 0 2px var(--accent)}
 
-/* Control bar ABOVE the map */
+/* Board controls */
 .board-control-wrap{ display:flex; justify-content:flex-end; margin-top:6px; }
 .board-control-bar{ display:flex; gap:6px; flex-wrap:wrap; }
 .board-ctrl{
@@ -175,9 +173,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   box-shadow:0 8px 20px rgba(0,0,0,.45), 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset;
   transform: translateY(-1px);
 }
-
 .die-icon{ width:26px; height:26px; display:inline-block; }
 .roll-output{ min-height:80px; }
+
 /* Dice hero + rolling animation */
 .dice-hero{
   display:flex; align-items:center; justify-content:center;
@@ -203,12 +201,16 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .roll-breakdown{ font-size:13px; color:#cbd5e1 }
 .roll-status{ font-size:13px; color:#aab3c5; text-align:center; margin-top:6px }
 
-.roll-card{ border-radius:12px; border:1px solid var(--border); background:#0f1422; padding:12px; animation: pop .25s ease-out }
-.roll-total{ font-weight:800; font-size:20px; margin-bottom:6px }
-.roll-breakdown{ font-size:13px; color:#cbd5e1 }
+/* Quick dice row (DM Tools) */
+.quick-dice-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px }
+.quick-die-btn{
+  display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:12px;
+  background:#132034; border:1px solid var(--border); cursor:pointer; color:#dbe1ee; transition:.15s; user-select:none;
+  font-size:14px;
+}
+.quick-die-btn:hover{ border-color: var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
 
-/* Quick dice row (in DM panel Tools) */
-/* Quick dice action bar in DM Tools – roomy and wraps on small screens */
+/* Quick dice result bar */
 .dm-quick-bar{
   display:flex;
   gap:8px;
@@ -216,27 +218,17 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
   flex-wrap:wrap;
   margin-top:8px;
 }
-.dm-quick-bar .dm-title-btn.big{
-  flex:0 0 auto;
-}
+.dm-quick-bar .dm-title-btn.big{ flex:0 0 auto; }
 #dm-last-roll{
-  flex:1 1 260px;        /* allows it to take full width when wrapping */
-  min-height:44px;       /* enough height for legible text */
+  flex:1 1 260px;
+  min-height:44px;
   display:flex;
-  align-items:center;    /* vertically center the text */
+  align-items:center;
   line-height:1.3;
-  /* wrapping is already handled by .dm-detail, but we ensure it here too */
   white-space:normal;
   overflow-wrap:anywhere;
   word-break:normal;
 }
-
-.quick-die-btn{
-  display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:12px;
-  background:#132034; border:1px solid var(--border); cursor:pointer; color:#dbe1ee; transition:.15s; user-select:none;
-  font-size:14px;
-}
-.quick-die-btn:hover{ border-color: var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) inset }
 
 /* Mobile tweaks */
 @media (max-width: 768px){
