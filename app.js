@@ -372,10 +372,10 @@ function renderDmPanel(){
       <div class="dm-section" style="margin-top:10px">
         <div class="dm-sec-head"><span>Quick Dice</span></div>
         ${quickRow}
-        <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
-          <button class="dm-title-btn big" onclick="quickD20()">Roll d20</button>
-          <div id="dm-last-roll" class="dm-detail" style="flex:1">—</div>
-        </div>
+        <div class="dm-quick-bar">
+  <button class="dm-title-btn big" onclick="quickD20()">Roll d20</button>
+  <div id="dm-last-roll" class="dm-detail">—</div>
+</div>
       </div>`;
   }
 
