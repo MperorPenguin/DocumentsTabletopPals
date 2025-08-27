@@ -9,27 +9,58 @@ const TRY_FETCH_JSON_INDEX = true;
 
 // Simple environment rules by class name (demo rules; tweak as desired)
 const ENVIRONMENTS = ['Forest','Cavern','Open Field','Urban','Swamp','Desert'];
+
+/**
+ * Trait-aware rules:
+ *  - advIfClass / disIfClass: apply by character class string
+ *  - advIfTrait / disIfTrait: apply if token has any of these traits
+ * You can freely edit this mapping to match your table rules.
+ */
 const ENV_RULES = {
-  'Forest':     { adv:['Rogue'],    dis:['Enemy']     },
-  'Cavern':     { adv:['Enemy'],    dis:['Rogue']     },
-  'Open Field': { adv:['Fighter'],  dis:[]            },
-  'Urban':      { adv:['Rogue'],    dis:['Enemy']     },
-  'Swamp':      { adv:[],           dis:['Fighter']   },
-  'Desert':     { adv:[],           dis:['Rogue']     }
+  'Forest': {
+    advIfClass: ['Rogue'],
+    disIfTrait: ['Heavy Armor'],
+    advIfTrait: ['Stealthy']
+  },
+  'Cavern': {
+    advIfTrait: ['Darkvision','Burrower','Undead'],
+    disIfTrait: ['Stealthy']
+  },
+  'Open Field': {
+    advIfTrait: ['Mounted'],
+    disIfTrait: ['Stealthy']   // harder to hide
+  },
+  'Urban': {
+    advIfTrait: ['Stealthy'],
+    disIfClass: ['Enemy']      // e.g., city watch pressure
+  },
+  'Swamp': {
+    advIfTrait: ['Amphibious'],
+    disIfTrait: ['Heavy Armor']
+  },
+  'Desert': {
+    advIfTrait: ['Survivalist'],
+    disIfTrait: ['Heavy Armor']
+  }
 };
 
 // State
 const state = load() || {
   route: 'home',
   boardBg: null,
-  tokens: {
+   tokens: {
     pc: [
-      {id:'p1', name:'Aria',   cls:'Rogue',   hp:[10,10], pos:[2,3]},
-      {id:'p2', name:'Bronn',  cls:'Fighter', hp:[13,13], pos:[4,4]},
+      {id:'p1', name:'Aria',   cls:'Rogue',   traits:['Stealthy','Light Armor'], hp:[10,10], pos:[2,3]},
+      {id:'p2', name:'Bronn',  cls:'Fighter', traits:['Heavy Armor','Brute'],     hp:[13,13], pos:[4,4]},
     ],
-    npc: [{id:'n1', name:'Elder Bran', cls:'NPC', hp:[6,6], pos:[7,6]}],
-    enemy: [{id:'e1', name:'Skeleton A', cls:'Enemy', hp:[13,13], pos:[23,1]}]
+    npc: [
+      {id:'n1', name:'Elder Bran', cls:'NPC', traits:['Civilian'], hp:[6,6], pos:[7,6]}
+    ],
+    enemy: [
+      {id:'e1', name:'Skeleton A', cls:'Enemy', traits:['Undead','Darkvision'], hp:[13,13], pos:[23,1]}
+    ]
   },
+
   selected: null,
   notes: '',
   ui: { dmOpen:false, dmTab:'party', environment:null },
@@ -276,7 +307,11 @@ function tokenCard(kind,t){
       <div class="dm-card ${sel?'selected':''}" onclick="selectFromPanel('${kind}','${t.id}')">
         <div class="avatar"><img src="assets/class_icons/${t.cls}.svg" alt=""></div>
         <div class="name">${escapeHtml(t.name)}</div>
-        <div class="badges"><span class="badge">${escapeHtml(t.cls)}</span><span class="badge">HP ${t.hp[0]}/${t.hp[1]}</span></div>
+       <div class="badges">
+  <span class="badge">${escapeHtml(t.cls)}</span>
+  <span class="badge">HP ${t.hp[0]}/${t.hp[1]}</span>
+  ${(Array.isArray(t.traits)?t.traits:[]).map(x=>`<span class="badge">${escapeHtml(x)}</span>`).join('')}
+</div>
       </div>
       <div class="dm-actions">
         <button class="dm-title-btn short adv" title="Advantage" onclick="quickAdvFor('${kind}','${t.id}')">A</button>
@@ -295,20 +330,41 @@ function setEnvironment(env){
 function computeEnvironmentEffects(){
   const env = state.ui.environment;
   if(!env) return { lines:[], adv:[], dis:[] };
-  const rule = ENV_RULES[env] || {adv:[],dis:[]};
+  const rule = ENV_RULES[env] || {};
+  const aClass = new Set(rule.advIfClass || []);
+  const dClass = new Set(rule.disIfClass || []);
+  const aTrait = new Set(rule.advIfTrait || []);
+  const dTrait = new Set(rule.disIfTrait || []);
+
   const all = ['pc','npc','enemy'].flatMap(k => (state.tokens[k]||[]).map(t=>({...t, kind:k})));
   const lines = all.map(t=>{
-    const hasAdv = rule.adv.includes(t.cls);
-    const hasDis = rule.dis.includes(t.cls);
-    if(hasAdv && !hasDis) return `${t.name} (${t.cls}): Advantage`;
-    if(hasDis && !hasAdv) return `${t.name} (${t.cls}): Disadvantage`;
-    if(hasAdv && hasDis)  return `${t.name} (${t.cls}): Mixed (check DM ruling)`;
-    return `${t.name} (${t.cls}): —`;
+    const cls = t.cls || '';
+    const traits = Array.isArray(t.traits) ? t.traits : [];
+    const hasAdvClass = aClass.has(cls);
+    const hasDisClass = dClass.has(cls);
+    const hasAdvTrait = traits.some(tr => aTrait.has(tr));
+    const hasDisTrait = traits.some(tr => dTrait.has(tr));
+    const adv = hasAdvClass || hasAdvTrait;
+    const dis = hasDisClass || hasDisTrait;
+
+    if(adv && !dis) return `${t.name} (${cls}): Advantage`;
+    if(dis && !adv) return `${t.name} (${cls}): Disadvantage`;
+    if(adv && dis)  return `${t.name} (${cls}): Mixed (check DM ruling)`;
+    return `${t.name} (${cls}): —`;
   });
-  return { lines,
-    adv: all.filter(t=>rule.adv.includes(t.cls)).map(t=>t.id),
-    dis: all.filter(t=>rule.dis.includes(t.cls)).map(t=>t.id)
-  };
+
+  const advIds = [];
+  const disIds = [];
+  all.forEach(t=>{
+    const cls = t.cls || '';
+    const traits = Array.isArray(t.traits) ? t.traits : [];
+    const adv = aClass.has(cls) || traits.some(tr => aTrait.has(tr));
+    const dis = dClass.has(cls) || traits.some(tr => dTrait.has(tr));
+    if(adv && !dis) advIds.push(t.id);
+    if(dis && !adv) disIds.push(t.id);
+  });
+
+  return { lines, adv: advIds, dis: disIds };
 }
 
 function renderDmPanel(){
