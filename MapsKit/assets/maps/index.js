@@ -1,4 +1,4 @@
-[
+window.__MAPS__ = [
   {
     "id": "medievalvillage",
     "name": "MedievalVillage",
@@ -9,4 +9,4 @@
     "name": "Worldglobe",
     "src": "MapsKit/assets/maps/worldglobe.png"
   }
-]
+];

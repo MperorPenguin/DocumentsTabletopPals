@@ -1,5 +1,5 @@
 // tools/generate-maps-index.js
-// Usage: npm run maps
+// Usage: npm run maps  (or)  node tools/generate-maps-index.js
 // Scans assets/maps for PNG/SVG/JPG/WEBP and writes assets/maps/index.json.
 
 import { promises as fs } from 'node:fs';

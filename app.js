@@ -1,244 +1,543 @@
-/* DMToolkit v2.3.0 | app.js (stable)
-   - 26x26 responsive board; fullscreen & safe pop-out viewer
-   - Maps via assets/maps/index.json (PNG/SVG)
-   - DM Panel: Party/NPCs/Enemies/Notes/Tools
-   - Tools: Environment (trait-aware), Map selector, Quick Dice (compact)
-   - Toasts: top-right, auto-dismiss, close on panel close/outside click
-   - Dice page: animated “rolling” reveal + themed d20
+/* DM Toolkit — World Map + DM Page + Dice + Live Sync
+   Theme: Lime #d6ed17 (actions), Midnight #000e1b (backgrounds)
 */
 
-/* ========= Grid & Maps ========= */
-const GRID_COLS = 26;
-const GRID_ROWS  = 26;
-let MAPS = []; // loaded from assets/maps/index.json
-const TRY_FETCH_JSON_INDEX = true;
+let MAPS = [];
+const IS_FILE = (location.protocol === 'file:');         // Detect local file usage
+const TRY_FETCH_JSON_INDEX = !IS_FILE;                    // Skip JSON fetch on file:// to avoid CORS
 
-/* ========= Environments (trait-aware) ========= */
-const ENVIRONMENTS = ['Forest','Cavern','Open Field','Urban','Swamp','Desert'];
-const ENV_RULES = {
-  Forest:      { advIfClass:['Rogue'],                    disIfTrait:['Heavy Armor'], advIfTrait:['Stealthy'] },
-  Cavern:      { advIfTrait:['Darkvision','Burrower','Undead'], disIfTrait:['Stealthy'] },
-  'Open Field':{ advIfTrait:['Mounted'],                  disIfTrait:['Stealthy'] },
-  Urban:       { advIfTrait:['Stealthy'],                 disIfClass:['Enemy'] },
-  Swamp:       { advIfTrait:['Amphibious'],               disIfTrait:['Heavy Armor'] },
-  Desert:      { advIfTrait:['Survivalist'],              disIfTrait:['Heavy Armor'] }
-};
+// Broadcast channel (for pop-out world viewer sync)
+const worldChan = (typeof BroadcastChannel !== 'undefined')
+  ? new BroadcastChannel('world-sync')
+  : { postMessage: ()=>{} };
 
-/* ========= State & persistence ========= */
+/* ========= App State ========= */
 const state = load() || {
   route: 'home',
+
+  // World / Map selection
+  worldSrc: null,
+  worldIndex: 0,
+
+  // Legacy board compatibility
   boardBg: null,
+  mapIndex: 0,
+
+  // Sample DM data
   tokens: {
     pc: [
-      {id:'p1', name:'Aria',   cls:'Rogue',   traits:['Stealthy','Light Armor'], hp:[10,10], pos:[2,3]},
-      {id:'p2', name:'Bronn',  cls:'Fighter', traits:['Heavy Armor','Brute'],     hp:[13,13], pos:[4,4]},
+      {id:'p1', name:'Aria',  cls:'Rogue',   traits:['Stealthy','Light Armor'], hp:[10,10]},
+      {id:'p2', name:'Bronn', cls:'Fighter', traits:['Heavy Armor','Brute'],    hp:[13,13]},
     ],
-    npc:   [{id:'n1', name:'Elder Bran', cls:'NPC',   traits:['Civilian'],   hp:[6,6],  pos:[7,6]}],
-    enemy: [{id:'e1', name:'Skeleton A', cls:'Enemy', traits:['Undead','Darkvision'], hp:[13,13], pos:[23,1]}]
+    npc:   [{id:'n1', name:'Elder Bran', cls:'NPC',   traits:['Civilian'], hp:[6,6]}],
+    enemy: [{id:'e1', name:'Skeleton A', cls:'Enemy', traits:['Undead','Darkvision'], hp:[13,13]}],
   },
   selected: null,
   notes: '',
-  ui: { dmOpen:false, dmTab:'party', environment:null },
-  mapIndex: 0
+  appNotes: '',
+  ui: { dmTab:'party', environment:null, worldMode:'fit' }, // worldMode: 'fit' | 'actual'
 };
 
-function save(){ localStorage.setItem('tp_state_v23', JSON.stringify(state)); broadcastState(); }
-function load(){ try{ return JSON.parse(localStorage.getItem('tp_state_v23')); }catch(e){ return null; } }
+function save(){
+  localStorage.setItem('tp_state_v26', JSON.stringify(state));
+  try { worldChan.postMessage({type:'world', src: state.worldSrc || ''}); } catch(e){}
+}
+function load(){
+  try { return JSON.parse(localStorage.getItem('tp_state_v26')); }catch(e){ return null; }
+}
 
-/* ========= Cross-window sync ========= */
-const chan = new BroadcastChannel('board-sync');
-function broadcastState(){ chan.postMessage({type:'state', payload:state}); }
-
-/* ========= Routing ========= */
+/* ========= Routing & View Transitions ========= */
 function nav(route){
   state.route = route; save();
-  const views = ['home','board','dice','notes'];
+  const views = ['home','world','dice','notes','dm'];
   views.forEach(v=>{
     const main = document.getElementById('view-'+v);
     const btn  = document.getElementById('nav-'+v);
     if(!main||!btn) return;
-    if(v===route){ main.classList.remove('hidden'); btn.classList.add('active'); }
-    else{ main.classList.add('hidden'); btn.classList.remove('active'); }
+    if(v===route){
+      main.classList.remove('hidden');
+      btn.classList.add('active');
+      main.classList.add('view-anim');
+      setTimeout(()=>main.classList.remove('view-anim'), 260);
+    }else{
+      main.classList.add('hidden');
+      btn.classList.remove('active');
+    }
   });
   render();
 }
 
-/* ========= Board size/fit ========= */
-const boardEl = () => document.getElementById('board');
-
-function fitBoard(){
-  const el = boardEl(); if(!el) return;
-  const vpH = Math.min(window.innerHeight, (window.visualViewport?.height || window.innerHeight));
-  const vpW = Math.min(window.innerWidth,  (window.visualViewport?.width  || window.innerWidth));
-  const SAFE_H_PAD = 140, SAFE_W_PAD = 24;
-  const availH = Math.max(240, vpH - SAFE_H_PAD);
-  const availW = Math.max(240, vpW - SAFE_W_PAD);
-  const maxSquare = Math.floor(Math.min(availW, availH));
-  const grid = Math.max(GRID_COLS, GRID_ROWS);
-  const cell = Math.max(16, Math.floor(maxSquare / grid));
-  const boardSize = cell * grid;
-  el.style.setProperty('--cell', cell + 'px');
-  el.style.setProperty('--boardSize', boardSize + 'px');
-}
-window.addEventListener('resize', ()=>{ fitBoard(); renderBoard(); });
-document.addEventListener('fullscreenchange', ()=>{ fitBoard(); renderBoard(); });
-
-function cellsz(){
-  const cs = getComputedStyle(boardEl()).getPropertyValue('--cell').trim();
-  return parseInt(cs.replace('px','')) || 42;
+function render(){
+  if(state.route==='world'){ renderWorld(); renderWorldMapList(); }
+  if(state.route==='dice'){ renderDice(); }
+  if(state.route==='notes'){ renderNotes(); }
+  if(state.route==='dm'){ renderDmPage(); }
 }
 
-/* ========= Board interactions ========= */
-window.addEventListener('dragover', e => e.preventDefault());
-window.addEventListener('drop',     e => e.preventDefault());
-
-function boardClick(ev){
-  const el = boardEl(); if(!el) return;
-  const rect = el.getBoundingClientRect();
-  const x = Math.max(0, Math.min(GRID_COLS-1, Math.floor((ev.clientX - rect.left) / cellsz())));
-  const y = Math.max(0, Math.min(GRID_ROWS-1, Math.floor((ev.clientY - rect.top)  / cellsz())));
-  if(!state.selected) return;
-  const list = state.tokens[state.selected.kind];
-  const t = list.find(z=>z.id===state.selected.id);
-  if(!t) return;
-  t.pos = [x,y];
-  save(); renderBoard();
+/* ========= Path helpers ========= */
+function prettyNameFromPath(p){
+  const base = String(p).split(/[\\/]/).pop() || '';
+  const noExt = base.replace(/\.[a-z0-9]+$/i,'');
+  return noExt.replace(/[_\-]+/g,' ').trim() || base;
 }
-
-function selectTokenDom(kind,id){
-  state.selected = {kind,id}; save(); renderBoard();
+function normalizeMapSrc(p){
+  if(!p) return '';
+  p = String(p).replace(/\\/g, '/');
+  if(/^https?:\/\//i.test(p) || p.startsWith('/')) return p;
+  if(p.startsWith('MapsKit/')) return p;
+  if(p.startsWith('assets/')) return 'MapsKit/' + p;
+  return 'MapsKit/assets/maps/' + p;
 }
-
-/* ========= Board render ========= */
-function renderBoard(){
-  const el = boardEl(); if(!el) return;
-  fitBoard();
-  el.style.backgroundImage = state.boardBg ? `url("${state.boardBg}")` : 'linear-gradient(#1b2436,#0f1524)';
-  const size = cellsz();
-  el.innerHTML = '';
-  ['pc','npc','enemy'].forEach(kind=>{
-    (state.tokens[kind] || []).forEach(t=>{
-      const tok = document.createElement('div');
-      tok.className = `token ${kind}` + (state.selected && state.selected.id===t.id && state.selected.kind===kind ? ' selected':'');
-      tok.dataset.id = t.id; tok.dataset.kind = kind; tok.title = t.name;
-      tok.style.left = (t.pos[0]*size + 2) + 'px';
-      tok.style.top  = (t.pos[1]*size + 2) + 'px';
-      tok.style.width = (size-6) + 'px';
-      tok.style.height= (size-6) + 'px';
-      tok.onclick = (e)=>{ e.stopPropagation(); selectTokenDom(kind,t.id); };
-      const img = document.createElement('img');
-      img.loading='lazy'; img.src = `assets/class_icons/${t.cls}.svg`;
-      tok.appendChild(img); el.appendChild(tok);
-    });
+function normalizeMapsList(list){
+  if(!Array.isArray(list)) return [];
+  const out = list.map(m => {
+    const src = normalizeMapSrc(m?.src || m || '');
+    const name = m?.name || prettyNameFromPath(src);
+    return { ...m, src, name };
   });
-  updateDmFab();
+  out.sort((a,b)=> String(a.name||'').localeCompare(String(b.name||'')));
+  return out;
 }
 
-/* ========= Fullscreen & Pop-out ========= */
-function toggleBoardFullscreen(){
-  const el = boardEl(); if(!el) return;
-  if(!document.fullscreenElement){ el.requestFullscreen?.(); }
-  else { document.exitFullscreen?.(); }
+/* ========= Script loader for file:// fallback ========= */
+function loadScript(src){
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
 }
 
-let viewerWin = null;
-function openBoardViewer(){
-  if(viewerWin && !viewerWin.closed){ viewerWin.focus(); broadcastState(); return; }
-  viewerWin = window.open('', 'BoardViewer', 'width=900,height=900');
-  if(!viewerWin) return;
+/* ========= Maps loading ========= */
+async function reloadMaps(){
+  const jsonUrl = 'MapsKit/assets/maps/index.json';
+  const jsUrl   = 'MapsKit/assets/maps/index.js';
 
-  // Safe concatenated HTML (no nested template literals)
-  var html = '<!doctype html><html><head><meta charset="utf-8"><title>Board Viewer</title>'+
-  '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'+
-  '<style>'+
-  ':root{ --cell: 42px; --boardSize: 546px; }'+
-  'html,body{ height:100%; margin:0; background:#0f1115; color:#e6e9f2; font:14px system-ui,Segoe UI,Roboto,Arial }'+
-  '.board{ position:relative; width:var(--boardSize); height:var(--boardSize); margin:20px auto;'+
-  '  border:1px solid #23283a; border-radius:12px; overflow:hidden; background:#0f141f; background-size:cover; background-position:center; }'+
-  '.board::after{ content:""; position:absolute; inset:0;'+
-  '  background-image:linear-gradient(to right,rgba(255,255,255,.06) 1px,transparent 1px),'+
-  '                   linear-gradient(to bottom,rgba(255,255,255,.06) 1px,transparent 1px);'+
-  '  background-size: var(--cell) var(--cell); pointer-events:none; }'+
-  '.token{ position:absolute; border-radius:6px; border:2px solid rgba(255,255,255,.25); display:flex; align-items:center; justify-content:center; overflow:hidden; background:#0f1115 }'+
-  '.token img{ width:100%; height:100%; object-fit:contain; }'+
-  '.pc{ background:#0ea5e9aa } .npc{ background:#22c55eaa } .enemy{ background:#ef4444aa }'+
-  '</style></head><body>'+
-  '<div id="viewerBoard" class="board"></div>'+
-  '<script>'+
-  '  (function(){'+
-  '    var GRID_COLS='+GRID_COLS+', GRID_ROWS='+GRID_ROWS+';'+
-  '    var chan = new BroadcastChannel("board-sync");'+
-  '    chan.onmessage = function(e){ if(!e||!e.data) return; if(e.data.type==="state"){ window.__STATE = e.data.payload; renderViewer(); } };'+
-  '    window.addEventListener("resize", fit);'+
-  '    function fit(){'+
-  '      var el = document.getElementById("viewerBoard");'+
-  '      var vpH = Math.min(window.innerHeight, (window.visualViewport && window.visualViewport.height) || window.innerHeight);'+
-  '      var vpW = Math.min(window.innerWidth,  (window.visualViewport && window.visualViewport.width)  || window.innerWidth);'+
-  '      var avail = Math.min(vpW-40, vpH-40);'+
-  '      var grid = Math.max(GRID_COLS, GRID_ROWS);'+
-  '      var cell = Math.max(14, Math.floor(avail / grid));'+
-  '      var size = cell * grid;'+
-  '      el.style.setProperty("--cell", cell+"px");'+
-  '      el.style.setProperty("--boardSize", size+"px");'+
-  '    }'+
-  '    function renderViewer(){'+
-  '      var s = window.__STATE; if(!s) return;'+
-  '      var el = document.getElementById("viewerBoard"); if(!el) return;'+
-  '      fit();'+
-  '      el.style.backgroundImage = s.boardBg ? "url("+JSON.stringify(s.boardBg)+")" : "linear-gradient(#1b2436,#0f1524)";'+
-  '      var cell = parseInt(getComputedStyle(el).getPropertyValue("--cell"))||42;'+
-  '      el.innerHTML = "";'+
-  '      ["pc","npc","enemy"].forEach(function(kind){'+
-  '        (s.tokens[kind]||[]).forEach(function(t){'+
-  '          var d = document.createElement("div");'+
-  '          d.className = "token "+kind;'+
-  '          d.style.left = (t.pos[0]*cell + 2) + "px";'+
-  '          d.style.top  = (t.pos[1]*cell + 2) + "px";'+
-  '          d.style.width = (cell-6) + "px";'+
-  '          d.style.height= (cell-6) + "px";'+
-  '          var img = document.createElement("img"); img.src="assets/class_icons/"+t.cls+".svg"; img.loading="lazy";'+
-  '          d.appendChild(img); el.appendChild(d);'+
-  '        });'+
-  '      });'+
-  '    }'+
-  '    chan.postMessage({type:"ping"});'+
-  '  })();'+
-  '<\/script></body></html>';
+  if (TRY_FETCH_JSON_INDEX){
+    try{
+      const res = await fetch(jsonUrl, { cache: 'no-store' });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const raw = await res.json();
+      MAPS = normalizeMapsList(raw);
+    }catch(err){
+      console.warn('[maps] JSON fetch failed; trying JS fallback…', err);
+      try{
+        await loadScript(jsUrl);
+        if(Array.isArray(window.__MAPS__)){
+          MAPS = normalizeMapsList(window.__MAPS__);
+        }else{
+          console.error('[maps] JS fallback missing or invalid:', jsUrl);
+          MAPS = [];
+        }
+      }catch(e){
+        console.error('[maps] Failed to load fallback JS:', e);
+        MAPS = [];
+      }
+    }
+  } else {
+    // file:// — go straight to JS fallback to avoid CORS
+    try{
+      await loadScript(jsUrl);
+      if(Array.isArray(window.__MAPS__)){
+        MAPS = normalizeMapsList(window.__MAPS__);
+      }else{
+        console.error('[maps] JS fallback missing or invalid:', jsUrl);
+        MAPS = [];
+      }
+    }catch(e){
+      console.error('[maps] Failed to load fallback JS:', e);
+      MAPS = [];
+    }
+  }
 
-  viewerWin.document.open();
-  viewerWin.document.write(html);
-  viewerWin.document.close();
+  if(!state.worldSrc && MAPS[0]){
+    state.worldIndex = 0;
+    state.worldSrc   = MAPS[0].src;
+    state.mapIndex   = 0;
+    state.boardBg    = MAPS[0].src;
+    save();
+  }
 
-  chan.onmessage = (e)=>{ if(e?.data?.type==='ping'){ broadcastState(); } };
-  broadcastState();
+  renderWorld();
+  renderWorldMapList();
+  syncWorldViewer();
 }
 
-/* ========= DM Panel ========= */
-function maximizeDmPanel(){
-  state.ui.dmOpen = true; save(); renderDmPanel(); updateDmFab();
-}
-function minimizeDmPanel(){
-  state.ui.dmOpen = false; save(); renderDmPanel(); updateDmFab();
-  closeAllToasts();
-}
-function toggleDmPanel(){
-  state.ui.dmOpen = !state.ui.dmOpen; save(); renderDmPanel(); updateDmFab();
-  if(!state.ui.dmOpen) closeAllToasts();
-}
-document.addEventListener('keydown', (e)=>{ if(e.shiftKey && (e.key==='D'||e.key==='d')){ e.preventDefault(); toggleDmPanel(); } });
+/* ========= World viewer (in-page) ========= */
+function renderWorld(){
+  const mount = document.getElementById('world'); if(!mount) return;
+  mount.innerHTML = '';
 
-function updateDmFab(){
-  const fab = document.getElementById('dm-fab');
-  const count = document.getElementById('dm-fab-count');
-  if(!fab||!count) return;
-  const total = (state.tokens.pc?.length||0)+(state.tokens.npc?.length||0)+(state.tokens.enemy?.length||0);
-  count.textContent = total;
-  fab.classList.remove('hidden');
+  const stage = document.createElement('div');
+  stage.className = 'world-stage ' + (state.ui.worldMode==='actual' ? 'actual' : 'fit');
+
+  const img = document.createElement('img');
+  img.className = 'world-img';
+  img.alt = 'World / Region';
+  img.src = state.worldSrc || '';
+
+  // Double-click to toggle Fit/Actual
+  img.addEventListener('dblclick', ()=>{
+    if(stage.classList.contains('fit')){
+      stage.classList.remove('fit'); stage.classList.add('actual');
+      state.ui.worldMode = 'actual';
+    }else{
+      stage.classList.remove('actual'); stage.classList.add('fit');
+      state.ui.worldMode = 'fit';
+    }
+    save();
+  });
+
+  stage.appendChild(img);
+  mount.appendChild(stage);
 }
+function getWorldStage(){ return document.querySelector('#world .world-stage'); }
+
+function renderWorldMapList(){
+  const wrap = document.getElementById('world-map-list'); if(!wrap) return;
+  wrap.innerHTML = (MAPS||[]).map((m,i)=>`
+    <button type="button" class="map-pill ${state.worldIndex===i?'active':''}" onclick="setWorldMapIndex(${i})">
+      ${escapeHtml(m.name || m.src.split('/').pop())}
+    </button>
+  `).join('') || '<div class="small">No maps found. Rebuild MapsKit/assets/maps/index.json or index.js.</div>';
+}
+function setWorldMapIndex(idx){
+  if(!MAPS[idx]) return;
+  state.worldIndex = idx;
+  state.worldSrc   = MAPS[idx].src;
+  state.mapIndex   = idx;
+  state.boardBg    = MAPS[idx].src;
+  save();
+  renderWorld();
+  renderWorldMapList();
+  syncWorldViewer();
+}
+
+function toggleWorldFullscreen(){
+  const stage = getWorldStage(); if(!stage) return;
+  const el = stage;
+  const enter = !document.fullscreenElement;
+  if(enter){
+    stage.classList.remove('fit'); stage.classList.add('actual');
+    el.requestFullscreen?.();
+  }else{
+    document.exitFullscreen?.();
+  }
+}
+document.addEventListener('fullscreenchange', ()=>{
+  const stage = getWorldStage();
+  if(!stage) return;
+  if(!document.fullscreenElement){
+    stage.classList.remove('actual','fit');
+    stage.classList.add(state.ui.worldMode==='actual' ? 'actual' : 'fit');
+  }
+});
+
+/* ========= Pop-out + live sync ========= */
+let worldViewerWin = null;
+worldChan.onmessage = (e)=>{ if(e?.data?.type==='ping'){ try{ worldChan.postMessage({type:'world', src: state.worldSrc || ''}); }catch(ex){} } };
+
+function syncWorldViewer(){
+  try{
+    worldChan.postMessage({type:'world', src: state.worldSrc || ''});
+    if(worldViewerWin && !worldViewerWin.closed){
+      worldViewerWin.postMessage({type:'world', src: state.worldSrc || ''}, '*');
+    }
+  }catch(e){}
+}
+
+function openWorldViewer(){
+  if(worldViewerWin && !worldViewerWin.closed){
+    worldViewerWin.focus();
+    syncWorldViewer();
+    worldChan.postMessage({type:'ping'});
+    return;
+  }
+  worldViewerWin = window.open('', 'WorldViewer', 'width=1200,height=800');
+  if(!worldViewerWin) return;
+
+  const html = `<!doctype html><html><head><meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>World Viewer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    html,body{height:100%;margin:0;background:#000e1b;color:#e9ecf1;font:14px "Arvo", Georgia, serif}
+    .topbar{position:fixed;top:10px;right:10px;left:10px;display:flex;gap:6px;justify-content:flex-end;z-index:10}
+    .btn{appearance:none;background:#d6ed17;border:1px solid transparent;color:#000e1b;padding:6px 10px;border-radius:10px;cursor:pointer;transition:.15s;font-family:"Arvo", Georgia, serif;min-height:40px}
+    .btn:hover{background:#c6de10}
+
+    .stage{position:fixed;inset:0;top:50px;overflow:auto;background:#000e1b}
+    .canvas{min-width:100%;min-height:100%;display:grid;place-items:center}
+    .img{display:block;max-width:100%;height:auto;transform-origin:center center;transition:transform .12s ease-out}
+
+    .fit .img{max-width:100%;max-height:none;width:auto;height:auto}
+    .actual .img{max-width:none;max-height:none;width:auto;height:auto}
+
+    :fullscreen .stage{width:100vw;height:100vh;top:0}
+  </style></head><body>
+    <div class="topbar">
+      <button class="btn" id="btnFit">Fit</button>
+      <button class="btn" id="btnActual">Actual</button>
+      <button class="btn" id="btnZoomIn">+</button>
+      <button class="btn" id="btnZoomOut">−</button>
+      <button class="btn" id="btnReset">Reset</button>
+      <button class="btn" id="btnFull">Full</button>
+    </div>
+
+    <div id="stage" class="stage fit">
+      <div id="canvas" class="canvas">
+        <img id="img" class="img" alt="">
+      </div>
+    </div>
+
+    <script>
+      const stage  = document.getElementById('stage');
+      const img    = document.getElementById('img');
+      let scale = 1;
+
+      function setMode(m){
+        stage.classList.toggle('fit', m==='fit');
+        stage.classList.toggle('actual', m==='actual');
+      }
+      function applyScale(){
+        img.style.transform = 'scale(' + scale.toFixed(4) + ')';
+      }
+      function reset(){
+        scale = 1;
+        applyScale();
+        setMode('fit');
+        requestAnimationFrame(()=>{ stage.scrollLeft = 0; stage.scrollTop = 0; });
+      }
+
+      document.getElementById('btnFit').onclick    = ()=>{ setMode('fit');  if(scale!==1){ scale=1; applyScale(); } };
+      document.getElementById('btnActual').onclick = ()=>{ setMode('actual'); };
+      document.getElementById('btnZoomIn').onclick = ()=>{ scale = Math.min(6, scale*1.2); applyScale(); };
+      document.getElementById('btnZoomOut').onclick= ()=>{ scale = Math.max(0.2, scale/1.2); applyScale(); };
+      document.getElementById('btnReset').onclick  = reset;
+
+      document.getElementById('btnFull').onclick = ()=>{
+        if(!document.fullscreenElement){ stage.requestFullscreen?.(); } else { document.exitFullscreen?.(); }
+      };
+
+      window.addEventListener('wheel', (ev)=>{
+        if(ev.ctrlKey || ev.metaKey){
+          ev.preventDefault();
+          const dir = ev.deltaY > 0 ? -1 : 1;
+          scale = Math.min(6, Math.max(0.2, scale * (dir>0 ? 1.1 : 1/1.1)));
+          applyScale();
+        }
+      }, { passive:false });
+
+      const chan = new BroadcastChannel('world-sync');
+      chan.onmessage = (e)=>{ if(e?.data?.type==='world'){ img.src = e.data.src || ''; } };
+      chan.postMessage({type:'ping'});
+      addEventListener('message', (e)=>{ if(e?.data?.type==='world' && e.data.src!==undefined){ img.src = e.data.src || ''; } });
+    <\/script>
+  </body></html>`;
+
+  worldViewerWin.document.open(); worldViewerWin.document.write(html); worldViewerWin.document.close();
+  syncWorldViewer();
+  worldChan.postMessage({type:'ping'});
+}
+
+/* ========= Dice (main page) ========= */
+let diceSelection = [];
+let lastRollDisplayed = false;
+
+function startRollAnimation(){
+  const hero = document.querySelector('.dice-hero');
+  hero?.classList.remove('settle');
+  hero?.classList.add('rolling');
+  document.querySelector('.roll-total')?.classList.add('rolling');
+}
+function finishRollAnimation(){
+  const hero = document.querySelector('.dice-hero');
+  if(hero){
+    hero.classList.remove('rolling');
+    const rx = (Math.random()*60 - 30)|0;
+    const ry = (Math.random()*60 - 30)|0;
+    const rz = (Math.random()*360)|0;
+    hero.style.setProperty('--end-rx', rx + 'deg');
+    hero.style.setProperty('--end-ry', ry + 'deg');
+    hero.style.setProperty('--end-rz', rz + 'deg');
+    hero.classList.remove('settle');
+    hero.offsetHeight;
+    hero.classList.add('settle');
+    document.querySelector('.roll-total')?.classList.remove('rolling');
+    setTimeout(()=>hero.classList.remove('settle'), 500);
+  }
+}
+function clearRollOutput(){ updateRollOutput('—', 'Add dice to roll…'); }
+
+function renderDice(){
+  const btns = document.getElementById('dice-buttons');
+  if(btns){
+    btns.innerHTML = [4,6,8,10,12,20].map(n=>`
+      <button class="die-btn" onclick="addDie(${n})">
+        <span class="die-icon">d${n}</span>d${n}
+      </button>`).join('');
+  }
+  updateDiceSelectionText();
+  clearRollOutput();
+  lastRollDisplayed = false;
+}
+function addDie(n){
+  if(lastRollDisplayed){
+    diceSelection = [];
+    clearRollOutput();
+    lastRollDisplayed = false;
+  }
+  diceSelection.push(n);
+  updateDiceSelectionText();
+}
+function clearDice(){
+  diceSelection = [];
+  updateDiceSelectionText();
+  clearRollOutput();
+  lastRollDisplayed = false;
+}
+function updateDiceSelectionText(){
+  const sel = document.getElementById('dice-selection');
+  if(!sel) return;
+  if(!diceSelection.length){ sel.textContent = 'No dice selected'; return; }
+  const map = {};
+  diceSelection.forEach(n=>{ map[n]=(map[n]||0)+1; });
+  const parts = Object.keys(map).sort((a,b)=>+a-+b).map(k=>`${map[k]}d${k}`);
+  sel.textContent = parts.join(' + ');
+}
+function rollAll(){
+  if(!diceSelection.length){ clearRollOutput(); return; }
+  startRollAnimation();
+
+  const duration = 900, steps = 18;
+  const stepTime = Math.max(40, Math.floor(duration/steps));
+  const totalEl = document.querySelector('.roll-total');
+  const breakdownEl = document.querySelector('.roll-breakdown');
+
+  let t = 0;
+  const scramble = () => {
+    if(t >= duration){
+      const rolls = diceSelection.map(n => 1 + Math.floor(Math.random()*n));
+      const total = rolls.reduce((a,b)=>a+b,0);
+      updateRollOutput(String(total), rolls.join(' + '));
+      finishRollAnimation();
+      diceSelection = [];
+      updateDiceSelectionText();
+      lastRollDisplayed = true;
+      return;
+    }
+    const temp = diceSelection.map(n => 1 + Math.floor(Math.random()*n));
+    const tempTotal = temp.reduce((a,b)=>a+b,0);
+    if(totalEl) totalEl.textContent = tempTotal;
+    if(breakdownEl) breakdownEl.textContent = temp.join(' + ');
+    t += stepTime;
+    setTimeout(scramble, stepTime);
+  };
+  scramble();
+}
+function updateRollOutput(total, breakdown){
+  const out = document.getElementById('dice-output');
+  if(!out) return;
+  out.querySelector('.roll-total').textContent = total;
+  out.querySelector('.roll-breakdown').textContent = breakdown;
+}
+
+/* ========= Notes ========= */
+function renderNotes(){
+  const ta = document.getElementById('app-notes'); if(!ta) return;
+  ta.value = state.appNotes || '';
+  ta.oninput = ()=>{ state.appNotes = ta.value; save(); };
+}
+
+/* ========= Environment rules & helpers ========= */
+const ENVIRONMENTS = ['Forest','Cavern','Open Field','Urban','Swamp','Desert'];
+const ENV_RULES = {
+  Forest:      { advIfClass:['Rogue'],                        disIfTrait:['Heavy Armor'], advIfTrait:['Stealthy'] },
+  Cavern:      { advIfTrait:['Darkvision','Burrower','Undead'], disIfTrait:['Stealthy'] },
+  'Open Field':{ advIfTrait:['Mounted'],                      disIfTrait:['Stealthy'] },
+  Urban:       { advIfTrait:['Stealthy'],                     disIfClass:['Enemy'] },
+  Swamp:       { advIfTrait:['Amphibious'],                   disIfTrait:['Heavy Armor'] },
+  Desert:      { advIfTrait:['Survivalist'],                  disIfTrait:['Heavy Armor'] }
+};
 
 function dmTabButton(id,label,active){ return `<button class="dm-tab ${active?'active':''}" onclick="setDmTab('${id}')">${label}</button>`; }
-function setDmTab(id){ state.ui.dmTab=id; save(); renderDmPanel(); }
+function setDmTab(id){ state.ui.dmTab=id; save(); renderDmPage(); }
 
+function findToken(kind,id){ return (state.tokens[kind]||[]).find(t=>t.id===id); }
+
+/* Evaluate current environment for a specific token; return reasons */
+function evalEnvironmentForToken(t){
+  const env = state.ui.environment;
+  const out = { env, adv:false, dis:false, reasonsAdv:[], reasonsDis:[] };
+  if(!env){ return out; }
+  const rule = ENV_RULES[env] || {};
+  const traits = Array.isArray(t.traits) ? t.traits : [];
+
+  // Class-based
+  if((rule.advIfClass||[]).includes(t.cls)) out.reasonsAdv.push(`${env}: ${t.cls} class`);
+  if((rule.disIfClass||[]).includes(t.cls)) out.reasonsDis.push(`${env}: ${t.cls} class`);
+
+  // Trait-based
+  (rule.advIfTrait||[]).forEach(tr => { if(traits.includes(tr)) out.reasonsAdv.push(`${env}: ${tr} trait`); });
+  (rule.disIfTrait||[]).forEach(tr => { if(traits.includes(tr)) out.reasonsDis.push(`${env}: ${tr} trait`); });
+
+  out.adv = out.reasonsAdv.length>0;
+  out.dis = out.reasonsDis.length>0;
+  return out;
+}
+
+/* Build a very clear explanation string */
+function buildAdvDisMessage(t, mode){
+  const envInfo = evalEnvironmentForToken(t);
+  const lines = [];
+
+  lines.push(`${t.name} (${t.cls})`);
+  lines.push(`Environment: ${envInfo.env || '— none selected —'}`);
+
+  // Why lines
+  if(envInfo.reasonsAdv.length){ lines.push(`Advantage from: ${envInfo.reasonsAdv.join(', ')}`); }
+  else{ lines.push(`Advantage from environment: none`); }
+  if(envInfo.reasonsDis.length){ lines.push(`Disadvantage from: ${envInfo.reasonsDis.join(', ')}`); }
+  else{ lines.push(`Disadvantage from environment: none`); }
+
+  // Primer
+  if(mode==='adv'){
+    lines.push('');
+    lines.push('Quick primer — Advantage');
+    lines.push('- You get to roll two d20 for the check/attack/save.');
+    lines.push('- Keep the HIGHER result, then add your normal modifiers.');
+    lines.push('- Advantage does not stack (multiple sources still give just one advantage).');
+  }else{
+    lines.push('');
+    lines.push('Quick primer — Disadvantage');
+    lines.push('- You must roll two d20 for the check/attack/save.');
+    lines.push('- Keep the LOWER result, then add your normal modifiers.');
+    lines.push('- Disadvantage does not stack (multiple sources still give just one disadvantage).');
+  }
+
+  // Cancel rule + what to do now
+  lines.push('');
+  lines.push('If you have both advantage and disadvantage at the same time:');
+  lines.push('- They CANCEL each other out — roll a single d20 normally.');
+
+  lines.push('');
+  lines.push('What to roll NOW:');
+  if(mode==='adv'){
+    lines.push('1) Roll 2 × d20.');
+    lines.push('2) Take the HIGHER die.');
+    lines.push('3) Add your usual modifiers (proficiency, ability, magic, etc.).');
+  }else{
+    lines.push('1) Roll 2 × d20.');
+    lines.push('2) Take the LOWER die.');
+    lines.push('3) Add your usual modifiers (proficiency, ability, magic, etc.).');
+  }
+
+  lines.push('');
+  lines.push('Applies equally to: player characters, NPCs, and enemies.');
+  return lines.join('\n');
+}
+
+/* Token cards & actions */
 function tokenCard(kind,t){
   const sel = state.selected && state.selected.kind===kind && state.selected.id===t.id;
   return `
@@ -258,73 +557,66 @@ function tokenCard(kind,t){
       </div>
     </div>`;
 }
+function selectFromPanel(kind,id){ state.selected = {kind,id}; save(); renderDmPage(); }
+function setEnvironment(env){ state.ui.environment = env; save(); renderDmPage(); }
 
-function selectFromPanel(kind,id){ state.selected = {kind,id}; save(); renderDmPanel(); if(state.route!=='board') nav('board'); else renderBoard(); }
-
-function setEnvironment(env){
-  state.ui.environment = env; save();
-  renderDmPanel();
+/* Show detailed reasoned toasts */
+function quickAdvFor(kind,id){
+  const t = findToken(kind,id);
+  if(!t) return;
+  const msg = buildAdvDisMessage(t,'adv');
+  showToast('Advantage', msg, {duration:7000});
+}
+function quickDisFor(kind,id){
+  const t = findToken(kind,id);
+  if(!t) return;
+  const msg = buildAdvDisMessage(t,'dis');
+  showToast('Disadvantage', msg, {duration:7000});
 }
 
+/* Compute summary lines for Tools tab list */
 function computeEnvironmentEffects(){
   const env = state.ui.environment;
-  if(!env) return { lines:[], adv:[], dis:[] };
+  if(!env) return { lines:[] };
   const rule = ENV_RULES[env] || {};
   const aClass = new Set(rule.advIfClass || []);
   const dClass = new Set(rule.disIfClass || []);
   const aTrait = new Set(rule.advIfTrait || []);
   const dTrait = new Set(rule.disIfTrait || []);
-
   const all = ['pc','npc','enemy'].flatMap(k => (state.tokens[k]||[]).map(t=>({...t, kind:k})));
   const lines = all.map(t=>{
     const cls = t.cls || '';
     const traits = Array.isArray(t.traits) ? t.traits : [];
-    const hasAdvClass = aClass.has(cls);
-    const hasDisClass = dClass.has(cls);
-    const hasAdvTrait = traits.some(tr => aTrait.has(tr));
-    const hasDisTrait = traits.some(tr => dTrait.has(tr));
-    const adv = hasAdvClass || hasAdvTrait;
-    const dis = hasDisClass || hasDisTrait;
-
-    if(adv && !dis) return `${t.name} (${cls}): Advantage`;
-    if(dis && !adv) return `${t.name} (${cls}): Disadvantage`;
-    if(adv && dis)  return `${t.name} (${cls}): Mixed (check DM ruling)`;
-    return `${t.name} (${cls}): —`;
-  });
-
-  const advIds = [];
-  const disIds = [];
-  all.forEach(t=>{
-    const cls = t.cls || '';
-    const traits = Array.isArray(t.traits) ? t.traits : [];
     const adv = aClass.has(cls) || traits.some(tr => aTrait.has(tr));
     const dis = dClass.has(cls) || traits.some(tr => dTrait.has(tr));
-    if(adv && !dis) advIds.push(t.id);
-    if(dis && !adv) disIds.push(t.id);
+    if(adv && !dis) return `${t.name} (${cls}): Advantage`;
+    if(dis && !adv) return `${t.name} (${cls}): Disadvantage`;
+    if(adv && dis)  return `${t.name} (${cls}): Mixed (DM rule)`;
+    return `${t.name} (${cls}): —`;
   });
-
-  return { lines, adv: advIds, dis: disIds };
+  return { lines };
 }
 
-function renderDmPanel(){
-  const panel=document.getElementById('dm-panel'); if(!panel) return;
-  if(!state.ui.dmOpen){ panel.classList.add('hidden'); return; }
-  panel.classList.remove('hidden');
+function renderDmPage(){
+  const tabsEl = document.getElementById('dm-tabs');
+  const bodyEl = document.getElementById('dm-body');
+  if(!tabsEl || !bodyEl) return;
 
   const pcs = state.tokens.pc||[];
   const npcs= state.tokens.npc||[];
   const enemies = state.tokens.enemy||[];
   const tab= state.ui.dmTab||'party';
 
-  const tabsHtml=`<div class="dm-tabs">
+  tabsEl.innerHTML = `
     ${dmTabButton('party','Party',tab==='party')}
     ${dmTabButton('npcs','NPCs',tab==='npcs')}
     ${dmTabButton('enemies','Enemies',tab==='enemies')}
     ${dmTabButton('notes','Notes',tab==='notes')}
     ${dmTabButton('tools','Tools',tab==='tools')}
-  </div>`;
+  `;
 
-  let body='';
+  let body = '';
+
   if(tab==='party'){ body+=`<div class="dm-grid3">${pcs.map(p=>tokenCard('pc',p)).join('')||'<div class="small">No PCs yet.</div>'}</div>`; }
   if(tab==='npcs'){ body+=`<div class="dm-grid3">${npcs.map(n=>tokenCard('npc',n)).join('')||'<div class="small">No NPCs yet.</div>'}</div>`; }
   if(tab==='enemies'){ body+=`<div class="dm-grid3">${enemies.map(e=>tokenCard('enemy',e)).join('')||'<div class="small">No Enemies yet.</div>'}</div>`; }
@@ -333,7 +625,7 @@ function renderDmPanel(){
     body+=`
       <div class="dm-section">
         <div class="dm-sec-head"><span>DM Notes</span></div>
-        <textarea id="dm-notes" rows="8" style="width:100%">${escapeHtml(state.notes||'')}</textarea>
+        <textarea id="dm-notes" rows="12" style="width:100%">${escapeHtml(state.notes||'')}</textarea>
       </div>`;
   }
 
@@ -341,21 +633,14 @@ function renderDmPanel(){
     const env = state.ui.environment;
     const effects = computeEnvironmentEffects();
     const mapButtons = (MAPS||[]).map((m,i)=>`
-      <button class="map-pill ${state.mapIndex===i?'active':''}" onclick="setMapByIndex(${i})">${escapeHtml(m.name || (m.src.split('/').pop()))}</button>
+      <button type="button" class="map-pill ${state.worldIndex===i?'active':''}" onclick="setWorldMapIndex(${i})">${escapeHtml(m.name || (m.src.split('/').pop()))}</button>
     `).join('');
-    const quickRow = `
-      <div class="quick-dice-row">
-        ${['d4','d6','d8','d10','d12','d20'].map(s=>`
-          <button class="quick-die-btn" onclick="rollQuick('${s}')">
-            <span class="die-icon">${polyIcon(s)}</span>${s.toUpperCase()}
-          </button>`).join('')}
-      </div>`;
 
     body+=`
       <div class="dm-section">
         <div class="dm-sec-head"><span>Environment / Terrain</span></div>
         <div class="env-grid">
-          ${ENVIRONMENTS.map(e=>`<div class="env-pill ${env===e?'active':''}" onclick="setEnvironment('${e}')">${e}</div>`).join('')}
+          ${ENVIRONMENTS.map(e=>`<button type="button" class="env-pill ${env===e?'active':''}" onclick="setEnvironment('${e}')">${e}</button>`).join('')}
         </div>
         <div class="dm-detail" style="margin-top:8px">
           ${env ? `<strong>Selected:</strong> ${env}` : 'Select an environment to see advantages/disadvantages.'}
@@ -364,258 +649,237 @@ function renderDmPanel(){
       </div>
 
       <div class="dm-section" style="margin-top:10px">
-        <div class="dm-sec-head"><span>Maps</span></div>
+        <div class="dm-sec-head"><span>Maps (World)</span></div>
         <div class="map-list">
-          ${mapButtons || '<div class="small">No maps yet. Add PNG/SVG files and rebuild assets/maps/index.json.</div>'}
+          ${mapButtons || '<div class="small">No maps yet. Add files to MapsKit/assets/maps and rebuild index.json/index.js.</div>'}
         </div>
         <div class="dm-detail" style="margin-top:8px">
-          Current map: ${state.boardBg ? escapeHtml(MAPS[state.mapIndex]?.name || MAPS[state.mapIndex]?.src || 'Loaded') : 'None'}
+          Current: ${escapeHtml(state.worldSrc || 'None')}
           <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn tiny" onclick="clearMap()">Clear Map</button>
-            <button class="btn tiny" onclick="reloadMaps()">Reload Maps</button>
+            <button class="btn tiny" onclick="openWorldViewer()">Open Pop-out</button>
+            <button class="btn tiny" onclick="renderWorld()">Refresh</button>
           </div>
         </div>
       </div>
 
       <div class="dm-section" style="margin-top:10px">
         <div class="dm-sec-head"><span>Quick Dice</span></div>
-        ${quickRow}
-        <div class="dm-quick-bar">
-          <button class="dm-title-btn big" onclick="quickD20()">Roll d20</button>
-          <div id="dm-last-roll" class="dm-detail">—</div>
+
+        <div class="quick-dice-row">
+          ${[4,6,8,10,12,20].map(n=>`
+            <button class="quick-die-btn" onclick="dmAddDie(${n})">
+              <span class="die-icon">d${n}</span>d${n}
+            </button>`).join('')}
+        </div>
+
+        <div class="dm-quick-bar" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px">
+          <div id="dm-dice-selection" class="small">No dice selected</div>
+          <button class="btn btn-xl" onclick="dmRollAll()">Roll</button>
+          <button class="btn btn-xl" onclick="dmClearDice()">Clear</button>
+        </div>
+
+        <div id="dm-dice-output" class="roll-output" style="margin-top:8px">
+          <div class="dice-hero" style="color:#d6ed17">
+            <!-- Same SVG as main dice output -->
+            <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <defs>
+                <linearGradient id="arcane-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#B79CFF"/>
+                  <stop offset="1" stop-color="#5FB4FF"/>
+                </linearGradient>
+                <radialGradient id="arcane-shine" cx="50%" cy="38%" r="65%">
+                  <stop offset="0" stop-color="#ffffff" stop-opacity=".25"/>
+                  <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+                </radialGradient>
+                <filter id="arcane-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feDropShadow dx="0" dy="3" stdDeviation="2.6" flood-opacity=".45"/>
+                </filter>
+                <clipPath id="arcane-clip">
+                  <polygon points="24,4 40,12 44,24 32,40 16,40 4,24 8,12"/>
+                </clipPath>
+                <style>.ink{stroke:#e9ecf1}</style>
+              </defs>
+              <g filter="url(#arcane-shadow)">
+                <polygon fill="url(#arcane-fill)" points="24,4 40,12 44,24 32,40 16,40 4,24 8,12"/>
+                <rect x="0" y="0" width="48" height="48" fill="url(#arcane-shine)" clip-path="url(#arcane-clip)"/>
+                <polygon fill="none" class="ink" stroke-width="2.1" stroke-linejoin="round" points="24,4 40,12 44,24 32,40 16,40 4,24 8,12"/>
+              </g>
+              <g fill="none" class="ink" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">
+                <path d="M24 4 L8 12 L24 24 L40 12 Z"/>
+                <path d="M8 12 L40 12 M4 24 L44 24"/>
+                <path d="M16 40 L24 24 L32 40"/>
+                <path d="M4 24 L16 40 L32 40 L44 24"/>
+              </g>
+              <g fill="#0f1115" font-family="system-ui, Segoe UI, Roboto, Arial, sans-serif" font-weight="900">
+                <text x="24" y="15" font-size="9" text-anchor="middle">20</text>
+                <text x="24" y="29" font-size="16" text-anchor="middle">8</text>
+                <text x="16" y="34" font-size="10" text-anchor="middle">4</text>
+                <text x="32" y="34" font-size="10" text-anchor="middle">4</text>
+                <text x="10" y="26" font-size="9" text-anchor="middle">8</text>
+                <text x="38" y="26" font-size="9" text-anchor="middle">1</text>
+              </g>
+            </svg>
+          </div>
+          <div class="roll-card">
+            <div class="roll-total">—</div>
+            <div class="roll-breakdown">Add dice to roll…</div>
+          </div>
         </div>
       </div>`;
   }
 
-  panel.innerHTML = `
-    <div class="dm-head">
-      <h3>DM Panel</h3>
-      <div><button class="btn tiny" onclick="minimizeDmPanel()">Close</button></div>
-    </div>
-    ${tabsHtml}
-    ${body}
-  `;
+  bodyEl.innerHTML = body;
 
   const notesEl=document.getElementById('dm-notes');
-  if(notesEl){
-    notesEl.addEventListener('input', ()=>{
-      state.notes=notesEl.value; save();
-      const n=document.getElementById('notes'); if(n) n.value=state.notes;
-    });
+  if(notesEl){ notesEl.addEventListener('input', ()=>{ state.notes=notesEl.value; save(); }); }
+  if(tab==='tools'){ dmInitQuickDice(); }
+}
+
+/* ========= DM Quick Dice ========= */
+let dmDiceSelection = [];
+let dmLastRollDisplayed = false;
+
+function dmInitQuickDice(){
+  dmDiceSelection = [];
+  dmLastRollDisplayed = false;
+  dmUpdateDiceSelectionText();
+  dmUpdateRollOutput('—','Add dice to roll…');
+}
+function dmAddDie(n){
+  if(dmLastRollDisplayed){
+    dmDiceSelection = [];
+    dmUpdateRollOutput('—','Add dice to roll…');
+    dmLastRollDisplayed = false;
+  }
+  dmDiceSelection.push(n);
+  dmUpdateDiceSelectionText();
+}
+function dmClearDice(){
+  dmDiceSelection = [];
+  dmUpdateDiceSelectionText();
+  dmUpdateRollOutput('—','Add dice to roll…');
+  dmLastRollDisplayed = false;
+}
+function dmUpdateDiceSelectionText(){
+  const el = document.getElementById('dm-dice-selection'); if(!el) return;
+  if(!dmDiceSelection.length){ el.textContent = 'No dice selected'; return; }
+  const map = {};
+  dmDiceSelection.forEach(n=> map[n]=(map[n]||0)+1 );
+  const parts = Object.keys(map).sort((a,b)=>+a-+b).map(k=>`${map[k]}d${k}`);
+  el.textContent = parts.join(' + ');
+}
+function dmUpdateRollOutput(total, breakdown){
+  const root = document.getElementById('dm-dice-output'); if(!root) return;
+  root.querySelector('.roll-total').textContent = total;
+  root.querySelector('.roll-breakdown').textContent = breakdown;
+}
+function startRollAnimationIn(root){
+  const hero = root?.querySelector('.dice-hero');
+  hero?.classList.remove('settle');
+  hero?.classList.add('rolling');
+  root?.querySelector('.roll-total')?.classList.add('rolling');
+}
+function finishRollAnimationIn(root){
+  const hero = root?.querySelector('.dice-hero');
+  if(hero){
+    hero.classList.remove('rolling');
+    const rx=(Math.random()*60-30)|0, ry=(Math.random()*60-30)|0, rz=(Math.random()*360)|0;
+    hero.style.setProperty('--end-rx', rx+'deg');
+    hero.style.setProperty('--end-ry', ry+'deg');
+    hero.style.setProperty('--end-rz', rz+'deg');
+    hero.classList.remove('settle'); hero.offsetHeight; hero.classList.add('settle');
+    root?.querySelector('.roll-total')?.classList.remove('rolling');
+    setTimeout(()=>hero.classList.remove('settle'), 500);
   }
 }
+function dmRollAll(){
+  const root = document.getElementById('dm-dice-output'); if(!root) return;
+  if(!dmDiceSelection.length){ dmUpdateRollOutput('—','Add dice to roll…'); return; }
 
-function clearMap(){ state.boardBg=null; save(); renderBoard(); }
+  startRollAnimationIn(root);
 
-/* ========= Toasts ========= */
-let activeToast = null;
-function closeAllToasts(){
-  document.querySelectorAll('.dm-toast').forEach(t=>t.remove());
-  activeToast = null;
+  const duration=900, steps=18, stepTime=Math.max(40, Math.floor(duration/steps));
+  let t=0;
+  const totalEl = root.querySelector('.roll-total');
+  const breakdownEl = root.querySelector('.roll-breakdown');
+
+  const scramble = ()=>{
+    if(t>=duration){
+      const rolls = dmDiceSelection.map(n => 1 + Math.floor(Math.random()*n));
+      const total = rolls.reduce((a,b)=>a+b,0);
+      dmUpdateRollOutput(String(total), rolls.join(' + '));
+      finishRollAnimationIn(root);
+      dmDiceSelection = [];
+      dmUpdateDiceSelectionText();
+      dmLastRollDisplayed = true;
+      return;
+    }
+    const temp = dmDiceSelection.map(n => 1 + Math.floor(Math.random()*n));
+    const tempTotal = temp.reduce((a,b)=>a+b,0);
+    if(totalEl) totalEl.textContent = tempTotal;
+    if(breakdownEl) breakdownEl.textContent = temp.join(' + ');
+    t += stepTime;
+    setTimeout(scramble, stepTime);
+  };
+  scramble();
 }
-function showToast(title,msg,hint){
+
+/* ========= Toast ========= */
+let activeToast = null;
+/* make toasts preserve line breaks and allow longer explanations */
+function showToast(title,msg, opts){
   closeAllToasts();
   const div=document.createElement('div');
-  div.className='dm-toast fade';
+  div.className='dm-toast';
   div.innerHTML=`
     <div class="close" onclick="this.parentElement.remove()">×</div>
     <h4>${escapeHtml(title)}</h4>
-    <div>${escapeHtml(msg)}</div>
-    ${hint ? `<div class="hint">${escapeHtml(hint)}</div>` : ``}
+    <div class="msg"></div>
   `;
+  const body = div.querySelector('.msg');
+  body.textContent = String(msg); // preserves \n with CSS white-space:pre-wrap
   document.body.appendChild(div);
   activeToast = div;
-  setTimeout(()=>{ if(div===activeToast){ div.remove(); activeToast=null; } }, 4500);
+  const ms = (opts && opts.duration) ? opts.duration : 7000;
+  setTimeout(()=>{ if(div===activeToast){ div.remove(); activeToast=null; } }, ms);
 }
-document.addEventListener('click', (e)=>{
-  if(!activeToast) return;
-  const insideToast = activeToast.contains(e.target);
-  const insidePanel = document.getElementById('dm-panel')?.contains(e.target);
-  if(!insideToast && !insidePanel){ closeAllToasts(); }
-});
-
-/* ========= Quick dice (DM Tools) ========= */
-function quickD20(){
-  const v=1+Math.floor(Math.random()*20);
-  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`d20 → ${v}`;
-  showToast('Quick d20', `→ ${v}`, 'Instruction: roll 1d20; apply modifiers as usual.');
-}
-function quickAdvFor(kind,id){
-  const a=1+Math.floor(Math.random()*20), b=1+Math.floor(Math.random()*20), res=Math.max(a,b);
-  const list=state.tokens[kind]||[]; const name=(list.find(x=>x.id===id)?.name)||kind.toUpperCase();
-  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`Adv: ${a} vs ${b} ⇒ ${res}`;
-  showToast(name, `Advantage → ${res} (${a} vs ${b})`, 'Instruction: roll 2d20, keep highest; then add relevant modifiers.');
-}
-function quickDisFor(kind,id){
-  const a=1+Math.floor(Math.random()*20), b=1+Math.floor(Math.random()*20), res=Math.min(a,b);
-  const list=state.tokens[kind]||[]; const name=(list.find(x=>x.id===id)?.name)||kind.toUpperCase();
-  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`Dis: ${a} vs ${b} ⇒ ${res}`;
-  showToast(name, `Disadvantage → ${res} (${a} vs ${b})`, 'Instruction: roll 2d20, keep lowest; then add relevant modifiers.');
-}
-function rollQuick(tag){
-  const n=parseInt(tag.replace('d',''),10)||6;
-  const v=1+Math.floor(Math.random()*n);
-  const box=document.getElementById('dm-last-roll'); if(box) box.textContent=`${tag.toUpperCase()} → ${v}`;
-  showToast('Quick Dice', `${tag.toUpperCase()} → ${v}`, 'Instruction: roll the selected die; apply modifiers as needed.');
-}
-
-/* ========= Dice page ========= */
-const dice=['d4','d6','d8','d10','d12','d20']; let selectedDice=[];
-
-function renderDiceButtons(){
-  const row=document.getElementById('dice-buttons'); if(!row) return;
-  row.innerHTML=dice.map(s=>`
-    <button class="die-btn" onclick="addDie('${s}')">
-      <span class="die-icon">${polyIcon(s)}</span>${s.toUpperCase()}
-    </button>`).join('');
-}
-function addDie(s){ selectedDice.push(s); updateDiceSelection(); shakeOutput(); }
-function clearDice(){
-  selectedDice=[]; updateDiceSelection();
-  const out=document.getElementById('dice-output');
-  out.innerHTML = `
-    <div class="roll-card">
-      <div class="dice-hero">${bigDiceSvg()}</div>
-      <div class="roll-status">Select dice and tap Roll</div>
-    </div>
-  `;
-}
-function updateDiceSelection(){
-  const el=document.getElementById('dice-selection'); if(!el) return;
-  el.textContent= selectedDice.length? selectedDice.join(' + '):'No dice selected';
-}
-function rollAll(){
-  if(!selectedDice.length) return;
-
-  const out = document.getElementById('dice-output');
-  out.innerHTML = `
-    <div class="roll-card rolling">
-      <div class="dice-hero">${bigDiceSvg()}</div>
-      <div class="roll-status">Rolling…</div>
-    </div>
-  `;
-
-  setTimeout(()=>{
-    const rolls = selectedDice.map(tag=>roll(tag));
-    const total = rolls.reduce((a,b)=>a+b,0);
-    out.innerHTML = `
-      <div class="roll-card">
-        <div class="dice-hero">${bigDiceSvg()}</div>
-        <div class="roll-total">Total: ${total}</div>
-        <div class="roll-breakdown">${selectedDice.map((s,i)=>`${s} [${rolls[i]}]`).join(' + ')}</div>
-      </div>
-    `;
-    selectedDice=[]; updateDiceSelection();
-  }, 900);
-}
-function roll(tag){ const n=parseInt(tag.replace('d',''),10)||6; return 1+Math.floor(Math.random()*n); }
-function shakeOutput(){ const out=document.getElementById('dice-output'); out.classList.remove('shake'); void out.offsetWidth; out.classList.add('shake'); }
-
-/* Themed dice SVG for hero */
-function bigDiceSvg(){
-  return `
-  <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
-    <defs>
-      <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%"  stop-color="#2a3760"/>
-        <stop offset="100%" stop-color="#121a2e"/>
-      </linearGradient>
-    </defs>
-    <polygon points="32,4 53,10 60,31 50,52 32,60 14,52 4,31 11,10"
-      fill="url(#g1)" stroke="currentColor" stroke-width="2" />
-    <polygon points="32,4 53,10 32,32 11,10"
-      fill="none" stroke="currentColor" stroke-opacity=".5" />
-    <polygon points="32,60 50,52 32,32 14,52"
-      fill="none" stroke="currentColor" stroke-opacity=".5" />
-    <polygon points="4,31 32,32 60,31"
-      fill="none" stroke="currentColor" stroke-opacity=".45" />
-  </svg>`;
-}
-
-/* Small poly icon used on buttons */
-function polyIcon(s){
-  const map={d4:3,d6:4,d8:6,d10:7,d12:8,d20:10};
-  const sides=map[s]||6;
-  return `<svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-    <polygon points="${regularPoly(12,12,9,sides)}" stroke="currentColor" stroke-width="2" fill="none"/>
-  </svg>`;
-}
-function regularPoly(cx,cy,r,n){
-  const pts=[];
-  for(let i=0;i<n;i++){
-    const a=(Math.PI*2*(i/n))-Math.PI/2;
-    pts.push((cx+r*Math.cos(a)).toFixed(1)+','+(cy+r*Math.sin(a)).toFixed(1));
-  }
-  return pts.join(' ');
+function closeAllToasts(){
+  document.querySelectorAll('.dm-toast').forEach(t=>t.remove());
+  activeToast = null;
 }
 
 /* ========= Utils & boot ========= */
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-function render(){
-  if(state.route==='board'){ renderBoard(); }
-  if(state.route==='dice'){ renderDiceButtons(); updateDiceSelection(); }
-  const notes=document.getElementById('notes'); if(notes) notes.value=state.notes||'';
-  updateDmFab();
-  renderDmPanel();
-}
-
 document.addEventListener('DOMContentLoaded', async ()=>{
   try{
-    nav(state.route || 'home');
-    fitBoard();
     await reloadMaps();
-    if(!state.boardBg && (MAPS[0]?.src)) setMapByIndex(0);
-    clearDice(); // prime dice panel
+    renderNotes();
+    renderDice();
   }catch(err){ console.error('boot error', err); }
 });
 
-/* ========= Map loading ========= */
-function setMapByIndex(idx){
-  if(!MAPS[idx]) return;
-  state.mapIndex = idx;
-  state.boardBg  = MAPS[idx].src;
-  save(); renderBoard(); renderDmPanel();
-}
-function nextMap(){ if(!MAPS.length) return; setMapByIndex((state.mapIndex+1)%MAPS.length); }
-function prevMap(){ if(!MAPS.length) return; setMapByIndex((state.mapIndex-1+MAPS.length)%MAPS.length); }
-async function reloadMaps(){
-  if(!TRY_FETCH_JSON_INDEX){ return; }
-  try{
-    const res = await fetch('assets/maps/index.json', {cache:'no-store'});
-    if(!res.ok) throw new Error('index.json not found');
-    const list = await res.json();
-    if(Array.isArray(list)){
-      MAPS = list;
-      const cur = state.boardBg;
-      const found = MAPS.findIndex(m => m.src === cur);
-      state.mapIndex = found >= 0 ? found : 0;
-      if(!cur && MAPS[0]) state.boardBg = MAPS[0].src;
-      save();
-    }
-  }catch(e){
-    console.warn('No index.json found or error reading it.', e);
-  }finally{
-    renderDmPanel(); renderBoard();
-  }
-}
-
-/* ========= Export globals ========= */
-window.boardClick=boardClick;
+/* ========= Expose for onclicks ========= */
 window.nav=nav;
-window.openBoardViewer=openBoardViewer;
-window.toggleBoardFullscreen=toggleBoardFullscreen;
-window.selectFromPanel=selectFromPanel;
-window.quickD20=quickD20;
-window.quickAdvFor=quickAdvFor;
-window.quickDisFor=quickDisFor;
-window.maximizeDmPanel=maximizeDmPanel;
-window.minimizeDmPanel=minimizeDmPanel;
+
+window.renderWorld=renderWorld;
+window.renderWorldMapList=renderWorldMapList;
+window.setWorldMapIndex=setWorldMapIndex;
+window.toggleWorldFullscreen=toggleWorldFullscreen;
+window.openWorldViewer=openWorldViewer;
+window.syncWorldViewer=syncWorldViewer;
+
+window.rollAll=rollAll;
+window.clearDice=clearDice;
+window.addDie=addDie;
+window.renderDice=renderDice;
+
+window.renderDmPage=renderDmPage;
 window.setDmTab=setDmTab;
-window.prevMap=prevMap;
-window.nextMap=nextMap;
-window.reloadMaps=reloadMaps;
-window.setEnvironment=setEnvironment;
-window.setMapByIndex=setMapByIndex;
-window.clearMap=clearMap;
-window.rollQuick=rollQuick;
+
+window.dmAddDie = dmAddDie;
+window.dmClearDice = dmClearDice;
+window.dmRollAll = dmRollAll;
+
+window.quickAdvFor = quickAdvFor;
+window.quickDisFor = quickDisFor;

@@ -1,8 +1,17 @@
 @echo off
-REM Generate assets/maps/index.json by scanning assets/maps/
-REM Usage: Double-click this file.
-node tools\generate-maps-index.js
+setlocal enabledelayedexpansion
+cd /d "%~dp0"
+
 echo.
-echo Done. If you saw "Wrote assets\maps\index.json ...", it worked.
-echo Press any key to exit.
-pause >nul
+echo Generating .\assets\maps\index.json ...
+where node >nul 2>nul
+if errorlevel 1 (
+  echo [ERR] Node.js not found on PATH. Install from https://nodejs.org/ and retry.
+  pause
+  exit /b 1
+)
+
+node "%~dp0generate-maps-index.js"
+echo.
+echo Done.
+pause

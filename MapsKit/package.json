@@ -1,10 +1,5 @@
 {
-  "name": "tabletop-pals-maps-kit",
-  "version": "1.0.0",
-  "description": "Standalone maps generator for Tabletop Pals DM Toolkit",
-  "scripts": {
-    "maps": "node tools/generate-maps-index.js"
-  },
-  "author": "",
-  "license": "MIT"
+  "name": "mapskit",
+  "private": true,
+  "type": "commonjs"
 }
