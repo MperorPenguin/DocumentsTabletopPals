@@ -372,10 +372,10 @@ function clearRollOutput(){ updateRollOutput('—', 'Add dice to roll…'); }
 function renderDice(){
   const btns = document.getElementById('dice-buttons');
   if(btns){
-    btns.innerHTML = [4,6,8,10,12,20].map(n=>`
-      <button class="die-btn" onclick="addDie(${n})">
-        <span class="die-icon">d${n}</span>d${n}
-      </button>`).join('');
+    btns.innerHTML = [4,6,8,10,12,20].map(n => `
+  <button class="die-btn" onclick="addDie(${n})" aria-label="d${n}">
+    <span class="die-icon">d${n}</span>
+  </button>`).join('');
   }
   updateDiceSelectionText();
   clearRollOutput();
@@ -666,11 +666,10 @@ function renderDmPage(){
         <div class="dm-sec-head"><span>Quick Dice</span></div>
 
         <div class="quick-dice-row">
-          ${[4,6,8,10,12,20].map(n=>`
-            <button class="quick-die-btn" onclick="dmAddDie(${n})">
-              <span class="die-icon">d${n}</span>d${n}
-            </button>`).join('')}
-        </div>
+          ${[4,6,8,10,12,20].map(n => `
+  <button class="quick-die-btn" onclick="dmAddDie(${n})" aria-label="d${n}">
+    <span class="die-icon">d${n}</span>
+  </button>`).join('')}
 
         <div class="dm-quick-bar" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px">
           <div id="dm-dice-selection" class="small">No dice selected</div>
