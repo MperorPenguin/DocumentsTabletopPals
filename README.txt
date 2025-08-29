@@ -1,4 +1,58 @@
-# Tabletop Pals — Maps Kit (PNG-first)
+ Tabletop Pals — DM Toolkit (with MapsKit + Logbook)
+
+**Current Version:** v2.2-alpha  
+**Stable Baseline:** v2.1 (DM Lite)
+
+---
+
+## What’s New (v2.2-alpha)
+- Added **Logbook** as a new Home tile (iframe from `/logbook` folder).
+- Updated routing + rescue nav to include `logbook`.
+- Future-proof hover state for tiles (`.home-grid .tile:hover`).
+- Confirmed working structure in:
+
+
+# Tabletop Pals — DM Toolkit (with MapsKit)
+
+Current Version: **v2.2-alpha**  
+Stable Baseline: **v2.1 (DM Lite)**
+
+---
+
+## What's New (v2.2-alpha)
+- Integrated **Logbook** feature: a dedicated space for session notes/history.
+- Added a **future-proof hover rule** for home tiles — consistent animations without needing tile-specific selectors.
+- Cleaned up redundant CSS hover rules to keep codebase lean.
+
+---
+
+## Project Structure
+- `index.html` — Main UI (Home tiles, navigation, panels).
+- `style.css` — Global theme (Lime Green + Midnight Blue), responsive scaling, tile hover states.
+- `app.js` — App state, routing, maps loader, dice logic, DM tools, logbook integration.
+- `MapsKit/` — Map manager:
+  - `assets/maps/` — Drop your PNG/JPG/SVG/WEBP maps here.
+  - `assets/maps/index.json` — Auto-generated map list.
+  - `assets/maps/index.js` — Fallback for local `file://` use.
+  - `tools/generate-maps-index.js` — Node script to rebuild map index.
+  - `generate-maps.bat` — One-click Windows script for rebuilding index.
+- `README.txt` — Project documentation.
+- `CHANGELOG.md` — Version history.
+
+---
+
+## Quick Start
+1. Open `index.html` in a browser (serve locally for best results).
+2. Use the **Home Tiles** to access World, Dice, DM, Notes, and now **Logbook**.
+3. For maps: drop files into `MapsKit/assets/maps/`, then run `generate-maps.bat` (Windows) or  
+   `node tools/generate-maps-index.js` (Mac/Linux).
+
+---
+
+## Versioning
+- **v2.1 (stable)** — Baseline “DM Lite” release.
+- **v2.2-alpha** — Current development build with Logbook + improved CSS.
+
 
 This kit contains ONLY what's needed to manage **battle maps** for the DM Toolkit.
 

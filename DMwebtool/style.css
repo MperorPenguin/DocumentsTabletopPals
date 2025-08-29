@@ -348,19 +348,16 @@ button, .btn{ font-family: inherit; touch-action: manipulation; }
 .view-anim{ animation: fadeSlideIn .24s ease both; }
 @keyframes fadeSlideIn{ from{ opacity:0; transform: translateY(6px); } to{ opacity:1; transform: translateY(0); } }
 
-/* Hover/focus for ANY home tile */
-.home-grid .tile:hover,
-.home-grid .tile:focus-visible{
+/* Tile hover accent */
+.tile-home-dice:hover, .tile-home-dice:focus-visible,
+.tile-home-notes:hover, .tile-home-notes:focus-visible,
+.tile-home-dm:hover, .tile-home-dm:focus-visible,
+.tile-home-world:hover, .tile-home-world:focus-visible{
   border-color: var(--lime);
   box-shadow: 0 8px 28px rgba(0,0,0,.45),
               0 0 0 2px rgba(214,237,23,.30) inset;
   transform: translateY(-2px);
   background: rgba(214,237,23,.10);
 }
-
-/* Logbook host view polish */
-#view-logbook .panel { border-radius: 12px; overflow: hidden; }
-#logbook-frame { background: var(--bg); display: block; }
-.tile-home-logbook h2 { font-family: "Arvo", Georgia, serif; }
 
 /* Remove the old "blow up on mobile" overrides. The fluid clamps above handle scaling well. */
