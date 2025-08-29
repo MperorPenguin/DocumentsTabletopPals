@@ -248,7 +248,7 @@ button, .btn{ font-family: inherit; touch-action: manipulation; }
 .dm-title-btn.short{ display:inline-flex; align-items:center; justify-content:center; padding:8px; min-width:38px; height:38px; line-height:1; }
 /* semantic colours remain */
 .dm-title-btn.adv{ background:#065f46; color:#d1fae5; border-color:#0b7a5b }
-.dm-title-btn.dis{ background:#7f1d1d; color:#fee2e2; border-color:#9b2222 }
+dm-title-btn.dis{ background:#7f1d1d; color:#fee2e2; border-color:#9b2222 }
 .dm-character-box > .dm-actions{ display:flex; gap:6px; margin-top:6px; justify-content:center; align-items:center; }
 
 /* Quick dice inside DM tools */
@@ -290,12 +290,14 @@ button, .btn{ font-family: inherit; touch-action: manipulation; }
   display:grid; place-items:center; color:var(--accent);
   filter: drop-shadow(0 8px 20px rgba(0,0,0,.35));
 }
-.dice-hero svg{
+.dice-hero svg,
+.dice-hero img{
   width: clamp(44px, 12vw, 56px);
   height: clamp(44px, 12vw, 56px);
-  stroke-linecap:round; stroke-dasharray:6 10;
+  stroke-linecap:round;
 }
-.dice-hero.rolling svg{ animation:spin .8s linear infinite; }
+.dice-hero.rolling svg,
+.dice-hero.rolling img{ animation:spin .8s linear infinite; }
 .roll-total.rolling{ animation:pulse .25s ease-in-out infinite alternate; }
 @keyframes pulse{ from{ transform:translateZ(0) scale(1); } to{ transform:translateZ(0) scale(1.05); } }
 
