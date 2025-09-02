@@ -74,7 +74,7 @@ export function mountCreator(root, opts = {}){
               <button id="chip-2024" class="chip ${state.filter2024?'active':''}" type="button" aria-pressed="${state.filter2024}">2024</button>
             </div>
           </div>
-            <ul id="class-grid" class="grid"></ul>
+          <ul id="class-grid" class="grid"></ul>
         </aside>
 
         <section class="cc-right" id="creator-right">
@@ -364,8 +364,9 @@ export function mountCreator(root, opts = {}){
       <div class="cardish"><strong>Skills:</strong><br>${skills.map(esc).join(', ')||'—'}</div>
       <div class="cardish"><strong>Languages:</strong><br>${(state.languages||[]).map(esc).join(', ')||'—'}</div>
     `;
-    root.querySelector('#modal-review').showModal();
-    root.querySelectorAll('[data-close]').forEach(b => b.onclick = ()=> root.querySelector('#modal-review').close());
+    const dlg = root.querySelector('#modal-review');
+    dlg.showModal();
+    dlg.querySelectorAll('[data-close]').forEach(b => b.onclick = ()=> dlg.close());
   }
 
   function saveNow(){

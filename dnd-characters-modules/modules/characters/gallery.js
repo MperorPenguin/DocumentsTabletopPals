@@ -12,15 +12,18 @@ export function mountGallery(root, { focusId = null } = {}){
         <button class="btn ghost" id="delete-selected">Delete Selected</button>
       </div>
     </section>
+
     <section class="gallery-tools">
       <input type="search" id="gallery-search" placeholder="Search by name, class, species" />
       <span class="tiny muted">Tip: Press <strong>Esc</strong> for quick actions.</span>
     </section>
+
     <ul class="gallery-grid" id="gallery-grid"></ul>
 
-    <div class="esc-menu" id="esc-menu" hidden>
-      <div class="esc-menu__inner panel">
-        <h3>Quick Actions</h3>
+    <!-- Quick Actions overlay (ESC menu) -->
+    <div class="esc-menu" id="esc-menu" hidden aria-hidden="true">
+      <div class="esc-menu__inner panel" role="dialog" aria-modal="true" aria-labelledby="esc-title">
+        <h3 id="esc-title">Quick Actions</h3>
         <div class="esc-menu__row">
           <button class="btn" id="esc-new">New Character</button>
           <button class="btn" id="esc-print">Print Selected</button>
@@ -38,37 +41,61 @@ export function mountGallery(root, { focusId = null } = {}){
   const escMenu = root.querySelector('#esc-menu');
   const selection = new Set();
 
+  // Top actions
   root.querySelector('#new-char').addEventListener('click', ()=>navigate('#characters/new'));
   root.querySelector('#print-selected').addEventListener('click', ()=>printSelected());
   root.querySelector('#delete-selected').addEventListener('click', ()=>bulkDelete());
 
+  // Overlay actions
   root.querySelector('#esc-new').addEventListener('click', ()=>navigate('#characters/new'));
   root.querySelector('#esc-print').addEventListener('click', ()=>printSelected());
   root.querySelector('#esc-delete').addEventListener('click', ()=>bulkDelete());
   root.querySelector('#esc-close').addEventListener('click', ()=>toggleEsc(false));
 
-  document.addEventListener('keydown', onKey);
+  // Close overlay when clicking the dimmed backdrop
+  escMenu.addEventListener('click', (e)=>{
+    if (e.target === escMenu) toggleEsc(false);
+  });
 
-  const unsub = onStoreChange(()=> render());
-  render();
-
+  // Keyboard shortcut to toggle overlay
   function onKey(e){
     if(e.key === 'Escape'){
-      toggleEsc(escMenu.hasAttribute('hidden'));
+      // toggle if there are items; if empty, keep it open
+      const hasAny = listCharacters().length > 0;
+      toggleEsc(hasAny ? escMenu.hasAttribute('hidden') : true);
     }
   }
-  function toggleEsc(open){
-    if(open){ escMenu.removeAttribute('hidden'); }
-    else { escMenu.setAttribute('hidden',''); }
-  }
+  document.addEventListener('keydown', onKey);
 
+  // Re-render on data change
+  const unsub = onStoreChange(()=> render());
   elSearch.addEventListener('input', render);
 
-  function render(){
+  render(); // initial draw
+
+  function toggleEsc(open){
+    if(open){
+      escMenu.removeAttribute('hidden');
+      escMenu.setAttribute('aria-hidden', 'false');
+    }else{
+      escMenu.setAttribute('hidden','');
+      escMenu.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function currentFilteredList(){
     const q = (elSearch.value || '').toLowerCase();
-    const list = listCharacters()
+    return listCharacters()
       .filter(c => `${c.name||''} ${c.class||''} ${c.species||''}`.toLowerCase().includes(q))
       .sort((a,b)=> (b.updatedAt||b.createdAt||'').localeCompare(a.updatedAt||a.createdAt||''));
+  }
+
+  function render(){
+    const list = currentFilteredList();
+
+    // Auto-open Quick Actions if library is EMPTY
+    const hasAny = listCharacters().length > 0;
+    if(!hasAny) toggleEsc(true); else toggleEsc(false);
 
     elGrid.innerHTML = list.map(c => `
       <li class="gal-card ${selection.has(c.id)?'selected':''}" data-id="${c.id}">
@@ -99,6 +126,7 @@ export function mountGallery(root, { focusId = null } = {}){
       focusId = null;
     }
 
+    // Wire item events
     elGrid.querySelectorAll('.gal-card').forEach(card => {
       const id = card.getAttribute('data-id');
       card.querySelector('.gal-card__ck').addEventListener('change', (e)=>{
@@ -112,21 +140,35 @@ export function mountGallery(root, { focusId = null } = {}){
   }
 
   function bulkDelete(){
-    if(selection.size === 0) return;
+    if(selection.size === 0){
+      alert('Select one or more characters first.');
+      return;
+    }
     if(!confirm(`Delete ${selection.size} character(s)? This cannot be undone.`)) return;
     deleteCharacters(Array.from(selection));
     selection.clear();
   }
 
   function printSelected(forceIds){
-    const ids = forceIds || Array.from(selection);
-    if(ids.length === 0) return;
+    let ids = forceIds || Array.from(selection);
+    if(ids.length === 0){
+      const list = currentFilteredList();
+      if(list.length === 1){
+        ids = [list[0].id]; // smart default: print the single visible result
+      }else{
+        alert('Select at least one character to print.');
+        return;
+      }
+    }
     const chars = listCharacters().filter(c => ids.includes(c.id));
     const area = root.querySelector('#print-area');
     area.innerHTML = chars.map(sheetHTML).join('');
     area.removeAttribute('hidden');
-    window.print();
-    area.setAttribute('hidden','');
+    // Give the DOM a tick so layout is ready before printing
+    requestAnimationFrame(()=> {
+      window.print();
+      area.setAttribute('hidden','');
+    });
   }
 
   function sheetHTML(c){
@@ -146,5 +188,6 @@ export function mountGallery(root, { focusId = null } = {}){
 
   function esc(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
 
+  // Cleanup on unmount
   return () => { unsub(); document.removeEventListener('keydown', onKey); };
 }
