@@ -66,7 +66,7 @@ button.select.like-input{ text-align:left; }
 }
 label.check{ display:flex; align-items:center; gap:8px; padding:6px 4px; }
 
-/* Creator layout & cards (unchanged from previous) */
+/* Creator layout & cards */
 .cc-top{ position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:rgba(0,14,27,.92); border-bottom:1px solid var(--border); backdrop-filter:saturate(120%) blur(2px); }
 .cc-top__left{ display:flex; align-items:center; gap:10px; }
 .cc-brand-mark{ width:28px; height:28px; border-radius:8px; background:var(--lime-green); }
@@ -163,9 +163,11 @@ label.check{ display:flex; align-items:center; gap:8px; padding:6px 4px; }
 .gal-card__tags .tag{ background:rgba(214,237,23,.1); border:1px solid var(--border); border-radius:999px; padding:3px 8px; }
 .gal-card__foot{ display:flex; gap:8px; }
 
-/* ESC overlay menu */
-.esc-menu{ position:fixed; inset:0; display:grid; place-items:center; background:rgba(0,0,0,.5); z-index:50; }
-.esc-menu__inner{ min-width:min(560px,92vw); }
+/* Empty state */
+.gallery-grid .gal-empty{ grid-column: 1 / -1; }
+.empty-state{
+  display:grid; place-items:center; gap:8px; text-align:center; padding:20px;
+}
 
 /* Party */
 .party-grid{ list-style:none; padding:0; margin:0; display:grid; gap:8px; grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -186,5 +188,5 @@ label.check{ display:flex; align-items:center; gap:8px; padding:6px 4px; }
   body{ background:#fff; color:#000; }
   .print-area{ display:block !important; }
   .print-sheet{ break-inside:avoid; page-break-inside:avoid; }
-  .cc-top, .cc-footer, .esc-menu { display:none !important; }
+  .cc-top, .cc-footer { display:none !important; }
 }

@@ -15,73 +15,30 @@ export function mountGallery(root, { focusId = null } = {}){
 
     <section class="gallery-tools">
       <input type="search" id="gallery-search" placeholder="Search by name, class, species" />
-      <span class="tiny muted">Tip: Press <strong>Esc</strong> for quick actions.</span>
     </section>
 
     <ul class="gallery-grid" id="gallery-grid"></ul>
-
-    <!-- Quick Actions overlay (ESC menu) -->
-    <div class="esc-menu" id="esc-menu" hidden aria-hidden="true">
-      <div class="esc-menu__inner panel" role="dialog" aria-modal="true" aria-labelledby="esc-title">
-        <h3 id="esc-title">Quick Actions</h3>
-        <div class="esc-menu__row">
-          <button class="btn" id="esc-new">New Character</button>
-          <button class="btn" id="esc-print">Print Selected</button>
-          <button class="btn ghost" id="esc-delete">Delete Selected</button>
-          <button class="btn ghost" id="esc-close">Close</button>
-        </div>
-      </div>
-    </div>
 
     <div id="print-area" class="print-area" hidden></div>
   `;
 
   const elGrid = root.querySelector('#gallery-grid');
   const elSearch = root.querySelector('#gallery-search');
-  const escMenu = root.querySelector('#esc-menu');
+  const btnNew   = root.querySelector('#new-char');
+  const btnPrint = root.querySelector('#print-selected');
+  const btnDel   = root.querySelector('#delete-selected');
   const selection = new Set();
 
   // Top actions
-  root.querySelector('#new-char').addEventListener('click', ()=>navigate('#characters/new'));
-  root.querySelector('#print-selected').addEventListener('click', ()=>printSelected());
-  root.querySelector('#delete-selected').addEventListener('click', ()=>bulkDelete());
+  btnNew.addEventListener('click', ()=>navigate('#characters/new'));
+  btnPrint.addEventListener('click', ()=>printSelected());
+  btnDel.addEventListener('click', ()=>bulkDelete());
 
-  // Overlay actions
-  root.querySelector('#esc-new').addEventListener('click', ()=>navigate('#characters/new'));
-  root.querySelector('#esc-print').addEventListener('click', ()=>printSelected());
-  root.querySelector('#esc-delete').addEventListener('click', ()=>bulkDelete());
-  root.querySelector('#esc-close').addEventListener('click', ()=>toggleEsc(false));
-
-  // Close overlay when clicking the dimmed backdrop
-  escMenu.addEventListener('click', (e)=>{
-    if (e.target === escMenu) toggleEsc(false);
-  });
-
-  // Keyboard shortcut to toggle overlay
-  function onKey(e){
-    if(e.key === 'Escape'){
-      // toggle if there are items; if empty, keep it open
-      const hasAny = listCharacters().length > 0;
-      toggleEsc(hasAny ? escMenu.hasAttribute('hidden') : true);
-    }
-  }
-  document.addEventListener('keydown', onKey);
-
-  // Re-render on data change
+  // Re-render when storage changes or search changes
   const unsub = onStoreChange(()=> render());
   elSearch.addEventListener('input', render);
 
   render(); // initial draw
-
-  function toggleEsc(open){
-    if(open){
-      escMenu.removeAttribute('hidden');
-      escMenu.setAttribute('aria-hidden', 'false');
-    }else{
-      escMenu.setAttribute('hidden','');
-      escMenu.setAttribute('aria-hidden', 'true');
-    }
-  }
 
   function currentFilteredList(){
     const q = (elSearch.value || '').toLowerCase();
@@ -91,11 +48,19 @@ export function mountGallery(root, { focusId = null } = {}){
   }
 
   function render(){
+    const all = listCharacters();
     const list = currentFilteredList();
 
-    // Auto-open Quick Actions if library is EMPTY
-    const hasAny = listCharacters().length > 0;
-    if(!hasAny) toggleEsc(true); else toggleEsc(false);
+    // Disable/enable toolbar actions sensibly
+    const hasAny = all.length > 0;
+    btnPrint.disabled = !hasAny;
+    btnDel.disabled   = selection.size === 0;
+
+    if (!hasAny){
+      elGrid.innerHTML = emptyStateHTML();
+      elGrid.querySelector('#create-first')?.addEventListener('click', ()=>navigate('#characters/new'));
+      return;
+    }
 
     elGrid.innerHTML = list.map(c => `
       <li class="gal-card ${selection.has(c.id)?'selected':''}" data-id="${c.id}">
@@ -132,11 +97,24 @@ export function mountGallery(root, { focusId = null } = {}){
       card.querySelector('.gal-card__ck').addEventListener('change', (e)=>{
         e.currentTarget.checked ? selection.add(id) : selection.delete(id);
         card.classList.toggle('selected', e.currentTarget.checked);
+        btnDel.disabled = selection.size === 0;
       });
       card.querySelector('[data-edit]').addEventListener('click', ()=> navigate('#characters/edit', { id }));
       card.querySelector('[data-print-one]').addEventListener('click', ()=> printSelected([id]));
       card.addEventListener('dblclick', ()=> navigate('#characters/edit', { id }));
     });
+  }
+
+  function emptyStateHTML(){
+    return `
+      <li class="gal-empty">
+        <div class="panel empty-state">
+          <h3>No characters yet</h3>
+          <p class="small muted">Create your first hero to get started.</p>
+          <button id="create-first" class="btn">Create Character</button>
+        </div>
+      </li>
+    `;
   }
 
   function bulkDelete(){
@@ -147,6 +125,7 @@ export function mountGallery(root, { focusId = null } = {}){
     if(!confirm(`Delete ${selection.size} character(s)? This cannot be undone.`)) return;
     deleteCharacters(Array.from(selection));
     selection.clear();
+    render();
   }
 
   function printSelected(forceIds){
@@ -164,7 +143,6 @@ export function mountGallery(root, { focusId = null } = {}){
     const area = root.querySelector('#print-area');
     area.innerHTML = chars.map(sheetHTML).join('');
     area.removeAttribute('hidden');
-    // Give the DOM a tick so layout is ready before printing
     requestAnimationFrame(()=> {
       window.print();
       area.setAttribute('hidden','');
@@ -189,5 +167,5 @@ export function mountGallery(root, { focusId = null } = {}){
   function esc(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
 
   // Cleanup on unmount
-  return () => { unsub(); document.removeEventListener('keydown', onKey); };
+  return () => { unsub(); };
 }
