@@ -143,7 +143,7 @@ export function mountCreator(root, opts = {}){
   }
 
   function renderSteps(){
-    elStepLinks.innerHTML = steps().map((s, i)=>`<li><button class="btn ${i===state.step?'active':''}" type="button" data-jump="\${i}">\${s.label}</button></li>`).join('');
+    elStepLinks.innerHTML = steps().map((s, i)=>`<li><button class="btn ${i===state.step?'active':''}" type="button" data-jump="${i}">${s.label}</button></li>`).join('');
     elStepLinks.querySelectorAll('[data-jump]').forEach(b => b.addEventListener('click', e=>{
       const i = +e.currentTarget.getAttribute('data-jump');
       if(i<0 || i>=steps().length) return;
@@ -163,9 +163,9 @@ export function mountCreator(root, opts = {}){
     elGrid.innerHTML = list.map(row => {
       const isSel = isSelected(row);
       return `<li>
-        <button class="card \${isSel?'selected':''}" data-bg="\${row.name}" type="button" data-class="\${row.name}" data-year="\${row.year}">
-          <span class="tag">\${row.year}</span>
-          <div class="inner"><span class="name">\${row.name}</span><span class="pub"></span></div>
+        <button class="card ${isSel?'selected':''}" data-bg="${row.name}" type="button" data-class="${row.name}" data-year="${row.year}">
+          <span class="tag">${row.year}</span>
+          <div class="inner"><span class="name">${row.name}</span><span class="pub"></span></div>
         </button>
       </li>`;
     }).join('');
@@ -188,13 +188,13 @@ export function mountCreator(root, opts = {}){
     if(id==='species'){
       mount.innerHTML = `<div class="panel"><h2>Species</h2><div class="pillwrap" id="species-list"></div></div>`;
       const wrap = mount.querySelector('#species-list');
-      wrap.innerHTML = SPECIES.map(sp => `<button type="button" class="pill \${state.species===sp?'active':''}" data-sp="\${sp}">\${sp}</button>`).join('');
+      wrap.innerHTML = SPECIES.map(sp => `<button type="button" class="pill ${state.species===sp?'active':''}" data-sp="${sp}">${sp}</button>`).join('');
       wrap.querySelectorAll('[data-sp]').forEach(b => b.addEventListener('click', ()=>{ state.species = b.getAttribute('data-sp'); render(); }));
     }
     if(id==='background'){
       mount.innerHTML = `<div class="panel"><h2>Background</h2><div class="pillwrap" id="bg-list"></div><div id="bg-info" class="small" style="margin-top:8px;"></div></div>`;
       const wrap = mount.querySelector('#bg-list');
-      wrap.innerHTML = BACKGROUNDS.map(b => `<button type="button" class="pill \${state.background===b.name?'active':''}" data-bg="\${b.name}">\${b.name}</button>`).join('');
+      wrap.innerHTML = BACKGROUNDS.map(b => `<button type="button" class="pill ${state.background===b.name?'active':''}" data-bg="${b.name}">${b.name}</button>`).join('');
       wrap.querySelectorAll('[data-bg]').forEach(b => b.addEventListener('click', ()=>{ state.background = b.getAttribute('data-bg'); renderRight(); updateStepIndicators(); }));
       updateBgInfo();
     }
@@ -234,7 +234,7 @@ export function mountCreator(root, opts = {}){
 
   function updateStepIndicators(){
     const step = curStep().id;
-    elWhere.textContent = `Step \${state.step+1} of \${steps().length}: \${curStep().label}`;
+    elWhere.textContent = `Step ${state.step+1} of ${steps().length}: ${curStep().label}`;
     elBack.disabled = state.step === 0;
     elNext.disabled = !canContinue(step);
     elNext.textContent = state.step === steps().length-1 ? 'Finish' : 'Next';
@@ -276,7 +276,7 @@ export function mountCreator(root, opts = {}){
     const el = root.querySelector('#bg-info');
     if(!el) return;
     const b = BACKGROUNDS.find(x=>x.name===state.background);
-    el.textContent = b ? `Grants skills: \${b.skills.join(', ')}\${b.languages?', Languages: choose '+b.languages:''}` : '';
+    el.textContent = b ? `Grants skills: ${b.skills.join(', ')}${b.languages?', Languages: choose '+b.languages:''}` : '';
   }
 
   function drawSkills(){
@@ -285,8 +285,8 @@ export function mountCreator(root, opts = {}){
     const fixed = new Set((BACKGROUNDS.find(b=>b.name===state.background)?.skills) || []);
     const picksAllowed = row?.skillChoices ?? 0;
     root.querySelector('#skills-rules').textContent =
-      row ? `Choose \${picksAllowed} skill\${picksAllowed>1?'s':''} for your class. ` +
-      (fixed.size ? `Background grants: \${Array.from(fixed).join(', ')}.` : 'Background grants: none.')
+      row ? `Choose ${picksAllowed} skill${picksAllowed>1?'s':''} for your class. ` +
+      (fixed.size ? `Background grants: ${Array.from(fixed).join(', ')}.` : 'Background grants: none.')
       : 'Choose a class first.';
 
     if(!row){ mount.innerHTML = ''; return; }
@@ -296,9 +296,9 @@ export function mountCreator(root, opts = {}){
       const disabled = fixed.has(sk);
       const checked = disabled || state.classSkillChoices.includes(sk);
       const suggested = candidates.includes(sk);
-      return `<label class="skill \${suggested?'suggested':''}">
-        <input type="checkbox" \${checked?'checked':''} \${disabled?'disabled':''} data-skill="\${sk}" />
-        <span>\${sk}\${disabled?' (from background):':''}</span>
+      return `<label class="skill ${suggested?'suggested':''}">
+        <input type="checkbox" ${checked?'checked':''} ${disabled?'disabled':''} data-skill="${sk}" />
+        <span>${sk}${disabled?' (from background):':''}</span>
       </label>`;
     }).join('');
 
@@ -327,7 +327,7 @@ export function mountCreator(root, opts = {}){
       const chosen = new Set(state.languages || []);
       panel.innerHTML = LANGUAGES.map(l => {
         const ck = chosen.has(l) ? 'checked' : '';
-        return `<label class="check"><input type="checkbox" \${ck} data-lang="\${l}" /> <span>\${l}</span></label>`;
+        return `<label class="check"><input type="checkbox" ${ck} data-lang="${l}" /> <span>${l}</span></label>`;
       }).join('');
       btn.textContent = chosen.size ? Array.from(chosen).join(', ') : 'Select languages';
     }
@@ -357,12 +357,12 @@ export function mountCreator(root, opts = {}){
     const bg = BACKGROUNDS.find(x=>x.name===state.background);
     const skills = [...(bg?bg.skills:[]), ...state.classSkillChoices];
     div.innerHTML = `
-      <div class="cardish"><strong>Name:</strong><br>\${esc(state.name||'—')}</div>
-      <div class="cardish"><strong>Class:</strong><br>\${esc(state.selectedClass?\`\${state.selectedClass.name} (\${state.selectedClass.year})\`:'—')}</div>
-      <div class="cardish"><strong>Species:</strong><br>\${esc(state.species||'—')}</div>
-      <div class="cardish"><strong>Background:</strong><br>\${esc(state.background||'—')}</div>
-      <div class="cardish"><strong>Skills:</strong><br>\${skills.map(esc).join(', ')||'—'}</div>
-      <div class="cardish"><strong>Languages:</strong><br>\${(state.languages||[]).map(esc).join(', ')||'—'}</div>
+      <div class="cardish"><strong>Name:</strong><br>${esc(state.name||'—')}</div>
+      <div class="cardish"><strong>Class:</strong><br>${esc(state.selectedClass?`${state.selectedClass.name} (${state.selectedClass.year})`:'—')}</div>
+      <div class="cardish"><strong>Species:</strong><br>${esc(state.species||'—')}</div>
+      <div class="cardish"><strong>Background:</strong><br>${esc(state.background||'—')}</div>
+      <div class="cardish"><strong>Skills:</strong><br>${skills.map(esc).join(', ')||'—'}</div>
+      <div class="cardish"><strong>Languages:</strong><br>${(state.languages||[]).map(esc).join(', ')||'—'}</div>
     `;
     root.querySelector('#modal-review').showModal();
     root.querySelectorAll('[data-close]').forEach(b => b.onclick = ()=> root.querySelector('#modal-review').close());

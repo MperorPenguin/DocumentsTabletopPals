@@ -16,15 +16,15 @@ registerRoutes({
 document.addEventListener('DOMContentLoaded', () => {
   mountAt('app-root');
 
-  // Optional nav buttons in your page:
+  // Optional: if this page ever has nav buttons (not parent page)
   document.getElementById('nav-characters')?.addEventListener('click', () => navigate('#characters/gallery'));
   document.getElementById('nav-party')?.addEventListener('click', () => navigate('#party'));
 
-  // Global helpers for your DM app
+  // Helpers (only visible inside this iframe window)
   window.DND = window.DND || {};
   window.DND.openCharacters = () => navigate('#characters/gallery');
   window.DND.openParty = () => navigate('#party');
 });
 
-// Keep listeners warm; views re-render on store changes.
+// Re-render views on store changes
 onStoreChange(() => {});
