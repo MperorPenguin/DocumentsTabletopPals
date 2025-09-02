@@ -3,54 +3,29 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DocumentsTabletopPals — DM Tools</title>
+  <title>Encounters</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css" />
+  <style>
+    :root{ --lime-green:#d6ed17; --midnight-blue:#000e1b; --text:#d7e6ff; --border:#0f2a44; }
+    html,body{
+      margin:0; background:var(--midnight-blue); color:var(--text);
+      font-family:"Arvo", Georgia, serif; display:grid; place-items:center; height:100svh
+    }
+    a{ color:#000; background:var(--lime-green); padding:.7rem 1rem; border-radius:.7rem; text-decoration:none; font-weight:700 }
+    a:hover{ background:#c6de10 }
+    a:active{ background:#a7c60e }
+    a:focus-visible{ outline:3px solid var(--lime-green); outline-offset:3px }
+    .wrap{ display:grid; gap:.75rem; place-items:center }
+    .muted{ opacity:.75 }
+  </style>
 </head>
 <body>
-  <header class="wrap bar">
-    <div class="title">
-      <h1>DocumentsTabletopPals</h1>
-      <p class="sub">DM Tools · Character Creator · Encounter Calculator</p>
-    </div>
-  </header>
-
-  <main class="wrap main">
-    <section class="grid tiles">
-      <a class="tile" href="./encounters/">
-        <div class="tile-body">
-          <h2>Encounter Builder</h2>
-          <p>Clean calculator for difficulty, hit/save odds, DPR, and concentration. Uses Lime Green buttons & Arvo font.</p>
-          <button class="btn" type="button">Open</button>
-        </div>
-      </a>
-      <div class="tile disabled">
-        <div class="tile-body">
-          <h2>Character Creator</h2>
-          <p>(Already in your project) This home tile is a placeholder. Party data lives in <code>tp_cc_characters</code>.</p>
-          <button class="btn" type="button" disabled>Open</button>
-        </div>
-      </div>
-      <div class="tile info">
-        <div class="tile-body">
-          <h2>How to test</h2>
-          <ol class="tiny">
-            <li>Click <strong>Encounter Builder</strong>.</li>
-            <li>Use <em>Load Sample Party</em> and <em>Load Demo Encounter</em>.</li>
-            <li>Check the <em>Diagnostics</em> tab — all tests should be ✅.</li>
-          </ol>
-          <button class="btn ghost" id="seed-party">Seed Sample Party Here</button>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="wrap foot tiny muted">
-    Theme: <strong>Lime Green</strong> (buttons) & <strong>Midnight Blue</strong> (surfaces). Font: <strong>Arvo</strong>.
-  </footer>
-
-  <script src="./app.js"></script>
+  <div class="wrap">
+    <h1>Encounters</h1>
+    <p class="muted">Open the Encounter Builder (Calculator).</p>
+    <p><a href="./encounters/">Open Encounter Builder</a></p>
+  </div>
 </body>
 </html>

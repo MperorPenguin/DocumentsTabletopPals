@@ -1,476 +1,268 @@
-/* Encounter Builder — Calculator-Only (with Demo + Diagnostics) */
-const load = (k, d) => JSON.parse(localStorage.getItem(k) || JSON.stringify(d));
-const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Encounter Builder — Calculator (Dropdown)</title>
 
-const THRESHOLDS_2014 = {
-  1:[25,50,75,100], 2:[50,100,150,200], 3:[75,150,225,400], 4:[125,250,375,500],
-  5:[250,500,750,1100], 6:[300,600,900,1400], 7:[350,750,1100,1700], 8:[450,900,1400,2100],
-  9:[550,1100,1600,2400],10:[600,1200,1900,2800],11:[800,1600,2400,3600],12:[1000,2000,3000,4500],
-  13:[1100,2200,3400,5100],14:[1250,2500,3800,5700],15:[1400,2800,4300,6400],16:[1600,3200,4800,7200],
-  17:[2000,3900,5900,8800],18:[2100,4200,6300,9500],19:[2400,4900,7300,10900],20:[2800,5700,8500,12700]
-};
-const THRESHOLDS_2024 = THRESHOLDS_2014;
-const XP_BY_CR = {"0":10,"1/8":25,"1/4":50,"1/2":100,1:200,2:450,3:700,4:1100,5:1800,6:2300,7:2900,8:3900,9:5000,10:5900,11:7200,12:8400,13:10000,14:11500,15:13000,16:15000,17:18000,18:20000,19:22000,20:25000,21:33000,22:41000,23:50000,24:62000,25:75000,26:90000,27:105000,28:120000,29:135000,30:155000};
+  <!-- Fonts: Arvo default (project rule). 
+       If you want Aptos where available, add class="use-aptos" on <html> and the CSS will prefer "Aptos","Arvo". -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@400;700&display=swap" rel="stylesheet">
 
-const SEED_MONSTERS = [
-  { name:"Goblin", cr:"1/4", xp:XP_BY_CR["1/4"], ac:15, hp:7, attacks:1, tohit:+4, dice:"1d6+2" },
-  { name:"Wolf",   cr:"1/4", xp:XP_BY_CR["1/4"], ac:13, hp:11, attacks:1, tohit:+4, dice:"2d4+2" },
-  { name:"Troll",  cr:"5",   xp:XP_BY_CR[5],     ac:15, hp:84, attacks:2, tohit:+7, dice:"2d6+4" }
-];
-
-let STATE = {
-  party: [], partySel: [],
-  scene: { terrain:"Any", lighting:"Bright", cover:0, adv:"normal" },
-  ruleset: "2014",
-  groups: [],
-  library: load('tp_dm_encounters', []),
-  hpAdjust: {}
-};
-
-const $  = s => document.querySelector(s);
-const $$ = s => [...document.querySelectorAll(s)];
-const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
-const uid = (p="id")=>p+Math.random().toString(36).slice(2,8);
-
-function parseDiceAvg(expr){
-  if(!expr) return {avg:0, avgCrit:0};
-  const m = expr.trim().match(/(\d+)d(\d+)([+\-]\d+)?/i);
-  if(!m) return {avg:0, avgCrit:0};
-  const n = +m[1], s = +m[2], b = m[3]?+m[3]:0;
-  const dieAvg = (s+1)/2;
-  return { avg: n*dieAvg + b, avgCrit: (n*2)*dieAvg + b };
-}
-function hitChance(attackBonus, targetAC, adv="normal"){
-  const p = clamp((21 + attackBonus - targetAC)/20, 0.05, 0.95);
-  if(adv==='adv') return 1 - (1 - p)**2;
-  if(adv==='dis') return p**2;
-  return p;
-}
-function critChance(adv="normal"){ const p=0.05; if(adv==='adv')return 1-(1-p)**2; if(adv==='dis')return p**2; return p; }
-function saveFailChance(dc, saveBonus, adv="normal"){
-  const need = dc - saveBonus;
-  const baseSuc = clamp((21 - need)/20, 0, 1);
-  let suc = baseSuc;
-  if(adv==='adv') suc = 1 - (1 - baseSuc)**2;
-  if(adv==='dis') suc = baseSuc**2;
-  return 1 - suc;
-}
-function concSuccessChancePerHit(damage, conBonus, adv="normal"){
-  const dc = Math.max(10, Math.floor(damage/2));
-  const need = dc - conBonus;
-  const baseSuc = clamp((21 - need)/20, 0, 1);
-  let suc = baseSuc;
-  if(adv==='adv') suc = 1 - (1 - baseSuc)**2;
-  if(adv==='dis') suc = baseSuc**2;
-  return suc;
-}
-function monsterMultiplier(n){ if(n<=1) return 1; if(n===2) return 1.5; if(n<=6) return 2; if(n<=10) return 2.5; if(n<=14) return 3; return 4; }
-function thresholds(levels, ruleset){
-  const tbl = ruleset==='2024'?THRESHOLDS_2024:THRESHOLDS_2014;
-  const sum = levels.reduce((a,l)=>{const r=tbl[l]||tbl[1]; return [a[0]+r[0],a[1]+r[1],a[2]+r[2],a[3]+r[3]];},[0,0,0,0]);
-  return {easy:sum[0], med:sum[1], hard:sum[2], deadly:sum[3]};
-}
-function totalMonsters(){ return STATE.groups.reduce((s,g)=>s+(g.count||1),0); }
-function totalBaseXP(){ return STATE.groups.reduce((s,g)=>s+(g.xp*(g.count||1)),0); }
-function difficulty(levels, ruleset){
-  const t = thresholds(levels, ruleset);
-  const base = totalBaseXP();
-  const mult = monsterMultiplier(totalMonsters());
-  const adjusted = Math.round(base*mult);
-  let band = 'Deadly';
-  if(adjusted<=t.easy) band='Easy'; else if(adjusted<=t.med) band='Medium'; else if(adjusted<=t.hard) band='Hard';
-  return { t, base, mult, adjusted, band };
-}
-
-// Party
-function getParty(){ return load('tp_cc_characters', []); }
-function loadParty(){ STATE.party = getParty(); }
-function renderPartyBox(){
-  const root = $('#partyBox');
-  if(!STATE.party.length){
-    root.innerHTML = '<div class="helper">No party found in <code>tp_cc_characters</code>. Create characters first or click “Load Sample Party”.</div>';
-    $('#applyBox').innerHTML = '<div class="helper">No party loaded.</div>';
-    return;
-  }
-  const items = STATE.party.map(p=>{
-    const checked = STATE.partySel.includes(p.id) ? 'checked' : '';
-    const hp = (p.hp ?? '?') + '/' + (p.hpMax ?? '?');
-    return `<label class="row"><input type="checkbox" data-id="${p.id}" ${checked}/> <span>${p.name}</span><small>Lv ${p.level??'?'} • AC ${p.ac??'—'} • HP ${hp}</small></label>`;
-  }).join('');
-  root.innerHTML = items;
-  const applyRows = STATE.party.map(p=>{
-    const cur = p.hp ?? 0; const max = p.hpMax ?? cur; const adj = STATE.hpAdjust[p.id] ?? 0;
-    return `<div class="row"><div><strong>${p.name}</strong><small> HP ${cur}/${max}</small></div><label>Adjust <input type="number" value="${adj}" data-act="hp-adj" data-id="${p.id}" /></label></div>`;
-  }).join('');
-  $('#applyBox').innerHTML = applyRows;
-}
-
-// Groups
-function addGroup(g){ STATE.groups.push({...g, id: uid('g_')}); saveBuilder(); renderGroups(); renderDiff(); }
-function removeGroup(id){ STATE.groups = STATE.groups.filter(g=>g.id!==id); saveBuilder(); renderGroups(); renderDiff(); }
-function updateGroup(id, key, val){ const g=STATE.groups.find(x=>x.id===id); if(!g) return; g[key]=val; saveBuilder(); renderGroups(); renderDiff(); }
-function renderGroups(){
-  const root = $('#groupsList');
-  if(!STATE.groups.length){ root.innerHTML = '<div class="helper">No enemy/NPC groups added yet.</div>'; return; }
-  root.innerHTML = STATE.groups.map(g=>`
-    <div class="row group">
-      <div class="left">
-        <strong>${g.name}</strong>
-        <small>CR ${g.cr ?? '?'} • ${g.xp||0} XP • AC ${g.ac||'?'} • HP ${g.hp||'?'} • Att ${g.attacks||1}× +${g.tohit||0} (${g.dice||'—'})</small>
-      </div>
-      <div class="right">
-        <label>Count <input type="number" min="1" value="${g.count||1}" data-act="g-count" data-id="${g.id}"/></label>
-        <button class="btn ghost" data-act="g-del" data-id="${g.id}">Remove</button>
-      </div>
-    </div>`).join('');
-}
-
-// Difficulty
-function renderDiff(){
-  const levels = STATE.party.filter(p=>STATE.partySel.includes(p.id)).map(p=>p.level||1);
-  const res = difficulty(levels, STATE.ruleset);
-  const pcs = levels.length||0, mon = totalMonsters();
-  $('#diffReadout').innerHTML = `
-    <div class="grid cols-5 tight">
-      <div class="pill">PCs: <strong>${pcs}</strong></div>
-      <div class="pill">Monsters: <strong>${mon}</strong></div>
-      <div class="pill">Base XP: <strong>${res.base}</strong></div>
-      <div class="pill">Multiplier: <strong>${res.mult}×</strong></div>
-      <div class="pill">Adjusted: <strong>${res.adjusted}</strong></div>
+  <!-- Project root tokens + module styles -->
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="wrap bar">
+    <div class="title">
+      <h1>Encounter Builder <small class="muted">Calculator</small></h1>
+      <div class="sub">Dropdown-first calculators · reads Party from Character Creator</div>
     </div>
-    <div class="bars">
-      <div class="barrow"><span>Easy</span><div class="bar"><i style="width:${Math.min(100,res.t.easy?res.adjusted/res.t.easy*100:0)}%"></i></div><b>${res.t.easy}</b></div>
-      <div class="barrow"><span>Medium</span><div class="bar"><i style="width:${Math.min(100,res.t.med?res.adjusted/res.t.med*100:0)}%"></i></div><b>${res.t.med}</b></div>
-      <div class="barrow"><span>Hard</span><div class="bar"><i style="width:${Math.min(100,res.t.hard?res.adjusted/res.t.hard*100:0)}%"></i></div><b>${res.t.hard}</b></div>
-      <div class="barrow"><span>Deadly</span><div class="bar"><i style="width:${Math.min(100,res.t.deadly?res.adjusted/res.t.deadly*100:0)}%"></i></div><b>${res.t.deadly}</b></div>
-    </div>
-    <div class="callout ${res.band.toLowerCase()}">Difficulty: <strong>${res.band}</strong></div>`;
-}
-// --- Dropdown helpers for Calculators ---
-function entityLabelFromParty(p) {
-  const ac = (p.ac ?? '—');
-  const hp = (p.hp ?? '?') + '/' + (p.hpMax ?? '?');
-  return `${p.name} (PC · AC ${ac} · HP ${hp})`;
-}
-function entityLabelFromGroup(g) {
-  const att = (g.attacks||1) + '× +' + (g.tohit||0) + ' (' + (g.dice||'—') + ')';
-  return `${g.name} (G · AC ${g.ac??'—'} · ${att})`;
-}
+    <nav class="tabs" role="tablist">
+      <button class="tab btn ghost" data-tab="setup" aria-selected="true">Setup</button>
+      <button class="tab btn ghost" data-tab="difficulty">Difficulty</button>
+      <button class="tab btn ghost" data-tab="calculators">Calculators</button>
+      <button class="tab btn ghost" data-tab="results">Results</button>
+      <button class="tab btn ghost" data-tab="library">Library</button>
+      <button class="tab btn ghost" data-tab="diagnostics">Diagnostics</button>
+    </nav>
+  </header>
 
-/** Build options for attacker/target selects from current Party + Groups */
-function buildCalcEntityOptions(){
-  const atkSel = document.getElementById('atk-entity');
-  const tgtSel = document.getElementById('tgt-entity');
-  const svTgtSel = document.getElementById('sv-target-entity');
-  if(!atkSel || !tgtSel || !svTgtSel) return;
+  <main class="wrap main">
+    <!-- SETUP -->
+    <section id="tab-setup" class="tabpanel" role="tabpanel">
+      <div class="grid cols-2">
+        <section class="card">
+          <header class="section-head">
+            <h2>Party Selection</h2>
+            <div class="actions">
+              <button class="btn" id="btn-refresh-party">Refresh from Creator</button>
+            </div>
+          </header>
+          <div id="partyBox" class="party-box"></div>
+          <footer class="helper tiny">
+            Party source: <code>localStorage['tp_cc_characters']</code>. Select who is involved.
+          </footer>
+        </section>
 
-  const mk = (id, label) => `<option value="${id}">${label}</option>`;
-  let partyOpts = STATE.party.map(p => mk(`P:${p.id}`, entityLabelFromParty(p))).join('');
-  let groupOpts = STATE.groups.map(g => mk(`G:${g.id}`, entityLabelFromGroup(g))).join('');
+        <section class="card">
+          <header class="section-head">
+            <h2>Add Monsters / NPCs</h2>
+          </header>
+          <form id="monsterForm" class="grid cols-5 compact">
+            <label class="field"><span>Name</span><input id="m-name" placeholder="Troll" /></label>
+            <label class="field"><span>CR</span><input id="m-cr" placeholder="5" /></label>
+            <label class="field"><span>XP</span><input id="m-xp" placeholder="auto" /></label>
+            <label class="field"><span>AC</span><input id="m-ac" type="number" placeholder="15" /></label>
+            <label class="field"><span>HP</span><input id="m-hp" type="number" placeholder="84" /></label>
+            <label class="field"><span>Attacks</span><input id="m-attacks" type="number" placeholder="2" /></label>
+            <label class="field"><span>To-Hit</span><input id="m-tohit" type="number" placeholder="+7" /></label>
+            <label class="field cols-2"><span>Damage Dice</span><input id="m-dice" placeholder="2d6+4" /></label>
+            <label class="field"><span>Count</span><input id="m-count" type="number" value="1" min="1" /></label>
+            <div class="actions right"><button class="btn" type="submit">+ Add Group</button></div>
+          </form>
+          <div id="groupsList" class="list"></div>
+        </section>
+      </div>
 
-  const partyGroup = partyOpts ? `<optgroup label="Party">${partyOpts}</optgroup>` : '';
-  const monGroup   = groupOpts ? `<optgroup label="Monsters">${groupOpts}</optgroup>` : '';
+      <section class="card">
+        <header class="section-head"><h2>Scene Conditions</h2></header>
+        <div class="grid cols-4 compact">
+          <label class="field"><span>Terrain</span>
+            <select id="scene-terrain">
+              <option>Any</option><option>Dungeon</option><option>Forest</option><option>Urban</option><option>Plains</option><option>Mountain</option>
+            </select>
+          </label>
+          <label class="field"><span>Lighting</span>
+            <select id="scene-lighting"><option>Bright</option><option>Dim</option><option>Dark</option></select>
+          </label>
+          <label class="field"><span>Cover</span>
+            <select id="scene-cover"><option value="0">None</option><option value="2">+2 (half)</option><option value="5">+5 (3/4)</option></select>
+          </label>
+          <label class="field"><span>Adv./Disadv.</span>
+            <select id="scene-adv"><option value="normal">Normal</option><option value="adv">Advantage</option><option value="dis">Disadvantage</option></select>
+          </label>
+        </div>
+      </section>
 
-  const opts = partyGroup + monGroup;
-  [atkSel, tgtSel, svTgtSel].forEach(sel => { sel.innerHTML = `<option value="">—</option>${opts}`; });
-}
+      <section class="card">
+        <details open>
+          <summary><strong>Quick Start & Tips</strong></summary>
+          <ol>
+            <li>Click <em>Refresh from Creator</em> to pull your party from the Character Creator.</li>
+            <li>Select the PCs who will be in this encounter.</li>
+            <li>Add enemy/NPC groups with Name, CR (sets XP), AC, HP, and an optional attack profile.</li>
+            <li>Open the <em>Difficulty</em> tab to see Base XP → Multiplier → Adjusted XP and the difficulty band.</li>
+            <li>Use <em>Calculators</em> for hit chances, saves, DPR, and concentration survival.</li>
+            <li>(Optional) In <em>Results</em>, type HP adjustments (e.g., Matthew -8) and apply to Party.</li>
+          </ol>
+          <p><strong>Notes:</strong> Calculator-only. No battlemap/turn tracker. Buttons = Lime Green; surfaces = Midnight Blue; font = Arvo.</p>
+          <p>
+            <button class="btn" id="btn-load-demo">Load Demo Encounter</button>
+            <button class="btn ghost" id="btn-load-sample-party">Load Sample Party (won’t overwrite your data)</button>
+          </p>
+        </details>
+      </section>
+    </section>
 
-/** Read an entity by encoded id ("P:..." or "G:...") */
-function getEntityByValue(v){
-  if(!v) return null;
-  const [kind, id] = v.split(':');
-  if(kind === 'P') return STATE.party.find(p => p.id === id) || null;
-  if(kind === 'G') return STATE.groups.find(g => g.id === id) || null;
-  return null;
-}
+    <!-- DIFFICULTY -->
+    <section id="tab-difficulty" class="tabpanel" role="tabpanel" hidden>
+      <section class="card">
+        <header class="section-head">
+          <h2>Encounter Difficulty</h2>
+          <div class="right"><label class="switch"><input type="checkbox" id="ruleset2024"><span>Use 2024 (beta) math</span></label></div>
+        </header>
+        <div id="diffReadout" class="diff"></div>
+      </section>
+    </section>
 
-/** Quick-pick appliers (write into the existing inputs the math uses) */
-function qp(val, inputId){ if(val===''||val==null) return; const el=document.getElementById(inputId); if(el) el.value = val.replace('+',''); }
-function qpDice(val, inputId){ if(!val) return; const el=document.getElementById(inputId); if(!el) return; if(val==='custom') { el.focus(); return; } el.value = val; }
+    <!-- CALCULATORS (Dropdown-first) -->
+    <section id="tab-calculators" class="tabpanel" role="tabpanel" hidden>
+      <div class="grid cols-2">
+        <!-- Attack vs AC -->
+        <section class="card">
+          <header class="section-head"><h2>Attack vs AC</h2></header>
+          <form id="calc-attack" class="grid cols-4 compact">
+            <label class="field cols-2"><span>Attacker</span><select id="atk-entity"></select></label>
+            <label class="field cols-2"><span>Target</span><select id="tgt-entity"></select></label>
 
-// Calculators
-function onCalcAttack(e){
-  e.preventDefault();
-  const adv = $('#atk-adv').value;
-  const cover = parseInt($('#atk-cover').value||'0',10);
-  const bonus = parseInt($('#atk-bonus').value||'0',10);
-  const count = parseInt($('#atk-count').value||'1',10);
-  const dice = $('#atk-dice').value.trim();
-  const ac = parseInt($('#tgt-ac').value||'10',10) + cover;
-  const {avg, avgCrit} = parseDiceAvg(dice);
-  const pHit = hitChance(bonus, ac, adv);
-  const pCrit = critChance(adv);
-  const pNorm = Math.max(0, pHit - pCrit);
-  const dprOne = pNorm*avg + pCrit*avgCrit;
-  const dpr = dprOne * count;
-  $('#atkOut').innerHTML = `<div class="grid cols-4 tight">
-    <div class="pill">Hit% <strong>${(pHit*100).toFixed(1)}%</strong></div>
-    <div class="pill">Crit% <strong>${(pCrit*100).toFixed(1)}%</strong></div>
-    <div class="pill">Avg/Attack <strong>${dprOne.toFixed(2)}</strong></div>
-    <div class="pill">DPR (<em>${count}×</em>) <strong>${dpr.toFixed(2)}</strong></div></div>`;
-}
-function onCalcSave(e){
-  e.preventDefault();
-  const dc = parseInt($('#sv-dc').value||'10',10);
-  const bonus = parseInt($('#sv-bonus').value||'0',10);
-  const adv = $('#sv-adv').value;
-  const half = $('#sv-half').value==='yes';
-  const dice = $('#sv-dice').value.trim();
-  const {avg} = parseDiceAvg(dice);
-  const pFail = saveFailChance(dc, bonus, adv);
-  const exp = half ? (pFail*avg + (1-pFail)*(avg/2)) : (pFail*avg);
-  $('#svOut').innerHTML = `<div class="grid cols-4 tight">
-    <div class="pill">Fail% <strong>${(pFail*100).toFixed(1)}%</strong></div>
-    <div class="pill">Success% <strong>${((1-pFail)*100).toFixed(1)}%</strong></div>
-    <div class="pill">Avg Damage <strong>${avg.toFixed(2)}</strong></div>
-    <div class="pill">Expected/Target <strong>${exp.toFixed(2)}</strong></div></div>`;
-}
-function onCalcConc(e){
-  e.preventDefault();
-  const conBonus = parseInt($('#co-bonus').value||'0',10);
-  const adv = $('#co-adv').value;
-  let dmg = parseFloat($('#co-dmg').value||'0');
-  const hits = parseInt($('#co-hits').value||'1',10);
-  const dice = $('#co-dice').value.trim();
-  if(dice){ const {avg} = parseDiceAvg(dice); if(avg>0) dmg = avg; }
-  const pKeep = concSuccessChancePerHit(dmg, conBonus, adv);
-  const pAll = Math.pow(pKeep, hits);
-  $('#coOut').innerHTML = `<div class="grid cols-4 tight">
-    <div class="pill">DC/Hit <strong>${Math.max(10, Math.floor(dmg/2))}</strong></div>
-    <div class="pill">Keep/Hit <strong>${(pKeep*100).toFixed(1)}%</strong></div>
-    <div class="pill">Hits <strong>${hits}</strong></div>
-    <div class="pill">Keep After All <strong>${(pAll*100).toFixed(1)}%</strong></div></div>`;
-}
-// --- Dropdown behavior wiring ---
-function onAtkEntityChange(){
-  const v = document.getElementById('atk-entity').value;
-  const ent = getEntityByValue(v);
-  // If it's a monster group, we can auto-fill its attack profile.
-  if(ent && ent.name && ent.xp !== undefined){ // treat as group
-    qp(''+(ent.tohit||0), 'atk-bonus');
-    qp(''+(ent.attacks||1), 'atk-count');
-    qpDice(ent.dice||'', 'atk-dice');
-  }
-  // Party attackers don't have weapon data here; leave inputs as-is (user can quick-pick).
-}
-function onTgtEntityChange(){
-  const v = document.getElementById('tgt-entity').value;
-  const ent = getEntityByValue(v);
-  // Set AC if we have it (party or group)
-  if(ent && typeof ent.ac !== 'undefined'){
-    qp(''+(ent.ac||10), 'tgt-ac');
-  }
-}
-function onSvTargetChange(){
-  // We generally don't know save bonuses; keep as quick-pick/manual.
-  // (In future we could store typical save profs per PC.)
-}
+            <label class="field"><span>To-Hit (quick)</span>
+              <select id="atk-bonus-q"><option value="">—</option><option>+3</option><option>+4</option><option>+5</option><option>+6</option><option>+7</option><option>+8</option><option>+9</option><option>+10</option></select>
+            </label>
+            <label class="field"><span>Attacks (quick)</span>
+              <select id="atk-count-q"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option></select>
+            </label>
+            <label class="field cols-2"><span>Damage (quick)</span>
+              <select id="atk-dice-q"><option value="">—</option><option>1d6+2</option><option>1d8+3</option><option>2d6+4</option><option>2d8+4</option><option>1d12+4</option><option value="custom">Custom…</option></select>
+            </label>
 
-// Quick-pick dropdowns → inputs
-function hookQuickPicks(){
-  // Attack
-  document.getElementById('atk-bonus-q')?.addEventListener('change', e => qp(e.target.value, 'atk-bonus'));
-  document.getElementById('atk-count-q')?.addEventListener('change', e => qp(e.target.value, 'atk-count'));
-  document.getElementById('atk-dice-q')?.addEventListener('change', e => qpDice(e.target.value, 'atk-dice'));
+            <!-- Editable fields used by the math -->
+            <label class="field"><span>To-Hit</span><input id="atk-bonus" type="number" placeholder="+7" /></label>
+            <label class="field"><span>Attacks</span><input id="atk-count" type="number" value="1" min="1" /></label>
+            <label class="field"><span>Damage Dice</span><input id="atk-dice" placeholder="2d6+4" /></label>
+            <label class="field"><span>Target AC</span><input id="tgt-ac" type="number" placeholder="16" /></label>
 
-  // Save
-  document.getElementById('sv-dc-q')?.addEventListener('change', e => qp(e.target.value, 'sv-dc'));
-  document.getElementById('sv-bonus-q')?.addEventListener('change', e => qp(e.target.value, 'sv-bonus'));
-  document.getElementById('sv-dice-q')?.addEventListener('change', e => qpDice(e.target.value, 'sv-dice'));
+            <label class="field"><span>Adv./Dis.</span>
+              <select id="atk-adv"><option value="normal">Normal</option><option value="adv">Advantage</option><option value="dis">Disadvantage</option></select>
+            </label>
+            <label class="field"><span>Cover</span>
+              <select id="atk-cover"><option value="0">None</option><option value="2">+2</option><option value="5">+5</option></select>
+            </label>
+            <div class="actions right"><button class="btn" type="submit">Calculate</button></div>
+          </form>
+          <div id="atkOut" class="readout"></div>
+        </section>
 
-  // Concentration
-  document.getElementById('co-bonus-q')?.addEventListener('change', e => qp(e.target.value, 'co-bonus'));
-  document.getElementById('co-dmg-q')?.addEventListener('change', e => {
-    const v = e.target.value;
-    if(v === 'custom'){ document.getElementById('co-dmg')?.focus(); return; }
-    qp(v, 'co-dmg');
-  });
-  document.getElementById('co-hits-q')?.addEventListener('change', e => qp(e.target.value, 'co-hits'));
+        <!-- Save vs DC -->
+        <section class="card">
+          <header class="section-head"><h2>Save vs DC</h2></header>
+          <form id="calc-save" class="grid cols-4 compact">
+            <label class="field cols-2"><span>Target (optional)</span><select id="sv-target-entity"></select></label>
 
-  // Entity selects
-  document.getElementById('atk-entity')?.addEventListener('change', onAtkEntityChange);
-  document.getElementById('tgt-entity')?.addEventListener('change', onTgtEntityChange);
-  document.getElementById('sv-target-entity')?.addEventListener('change', onSvTargetChange);
-}
+            <label class="field"><span>Save DC (quick)</span>
+              <select id="sv-dc-q"><option value="">—</option><option>12</option><option>13</option><option>14</option><option selected>15</option><option>16</option><option>17</option><option>18</option></select>
+            </label>
+            <label class="field"><span>Save Bonus (quick)</span>
+              <select id="sv-bonus-q"><option value="">—</option><option>-1</option><option>0</option><option>+1</option><option>+2</option><option>+3</option><option>+4</option><option>+5</option><option>+6</option><option>+7</option><option>+8</option><option>+9</option></select>
+            </label>
+            <label class="field cols-2"><span>Damage (quick)</span>
+              <select id="sv-dice-q"><option value="">—</option><option>2d6</option><option>3d6</option><option>4d6</option><option>6d6</option><option selected>8d6</option><option>10d6</option><option value="custom">Custom…</option></select>
+            </label>
 
-// Library
-function listEncounters(){ return load('tp_dm_encounters', []); }
-function upsertEncounter(enc){
-  const all = listEncounters();
-  const idx = all.findIndex(x=>x.id===enc.id);
-  if(idx>=0) all[idx]=enc; else all.push(enc);
-  save('tp_dm_encounters', all);
-  STATE.library = all;
-  renderEncList();
-}
-function renderEncList(){
-  const root = $('#encList');
-  const all = STATE.library;
-  root.innerHTML = all.length ? all.map(e=>`<div class="row">
-    <div class="left"><strong>${e.name}</strong><small>${e.groups.length} groups • party ${e.partySnapshot?.levels?.join(", ")||"—"}</small></div>
-    <div class="right">
-      <button class="btn ghost" data-act="load-enc" data-id="${e.id}">Load</button>
-      <button class="btn ghost" data-act="del-enc" data-id="${e.id}">Delete</button>
-    </div></div>`).join('') : '<div class="helper">No saved encounters yet.</div>';
-}
-function onEncListClick(e){
-  const id = e.target.getAttribute('data-id');
-  const act = e.target.getAttribute('data-act');
-  if(!act) return;
-  const all = listEncounters();
-  if(act==='load-enc'){
-    const enc = all.find(x=>x.id===id); if(!enc) return;
-    STATE.ruleset = enc.ruleset || "2014";
-    STATE.groups = enc.groups || [];
-    STATE.partySel = (enc.partySel && enc.partySel.length) ? enc.partySel : STATE.party.map(p=>p.id);
-    saveBuilder();
-    renderGroups()  root.innerHTML = STATE.groups.map(...).join('');
-  **buildCalcEntityOptions();**
-; renderPartyBox()  $('#applyBox').innerHTML = applyRows;
-  **buildCalcEntityOptions();**
-; renderDiff();
-    switchTab('setup');
-  }
-  if(act==='del-enc'){
-    const next = all.filter(x=>x.id!==id);
-    save('tp_dm_encounters', next);
-    STATE.library = next;
-    renderEncList();
-  }
-}
-function onSaveEncounter(){
-  const name = prompt("Name this encounter:", "New Encounter");
-  if(!name) return;
-  const enc = {
-    id: uid('e_'), name, ruleset: STATE.ruleset, scene: STATE.scene,
-    groups: STATE.groups, partySel: STATE.partySel,
-    partySnapshot: { size: STATE.partySel.length, levels: STATE.party.filter(p=>STATE.partySel.includes(p.id)).map(p=>p.level||1) }
-  };
-  upsertEncounter(enc); alert("Encounter saved.");
-}
+            <!-- Editable fields used by the math -->
+            <label class="field"><span>Save DC</span><input id="sv-dc" type="number" placeholder="15" /></label>
+            <label class="field"><span>Target bonus</span><input id="sv-bonus" type="number" placeholder="+2" /></label>
+            <label class="field"><span>Half on save?</span>
+              <select id="sv-half"><option value="yes">Yes</option><option value="no">No</option></select>
+            </label>
+            <label class="field cols-2"><span>Damage Dice</span><input id="sv-dice" placeholder="8d6" /></label>
+            <label class="field"><span>Adv./Dis.</span>
+              <select id="sv-adv"><option value="normal">Normal</option><option value="adv">Advantage</option><option value="dis">Disadvantage</option></select>
+            </label>
 
-// Builder cache
-function saveBuilder(){ save('tp_dm_enc_builder', { groups: STATE.groups, partySel: STATE.partySel, ruleset: STATE.ruleset }); }
-function loadBuilder(){ const s = load('tp_dm_enc_builder', {}); if(s.groups) STATE.groups=s.groups; if(s.partySel) STATE.partySel=s.partySel; if(s.ruleset) STATE.ruleset=s.ruleset; }
+            <div class="actions right"><button class="btn" type="submit">Calculate</button></div>
+          </form>
+          <div id="svOut" class="readout"></div>
+        </section>
+      </div>
 
-// Results apply
-function onApplyInput(e){ const el = e.target.closest('input[data-act="hp-adj"]'); if(!el) return; STATE.hpAdjust[el.getAttribute('data-id')] = parseInt(el.value||'0',10); }
-function onApplyToParty(){
-  const party = getParty(); let changed=0;
-  party.forEach(p=>{ const d = STATE.hpAdjust[p.id]||0; if(d!==0){ const newHp = clamp((p.hp||0)+d, 0, p.hpMax||((p.hp||0)+Math.max(0,d))); if(newHp!==p.hp){ p.hp=newHp; changed++; } } });
-  save('tp_cc_characters', party); loadParty(); renderPartyBox();
-  alert(changed ? `Updated ${changed} character(s).` : "No changes to apply.");
-}
+      <!-- Concentration -->
+      <section class="card">
+        <header class="section-head"><h2>Concentration — survive hits</h2></header>
+        <form id="calc-conc" class="grid cols-6 compact">
+          <label class="field"><span>Con Save (quick)</span>
+            <select id="co-bonus-q"><option value="">—</option><option>+2</option><option>+3</option><option>+4</option><option>+5</option><option>+6</option><option>+7</option><option>+8</option></select>
+          </label>
+          <label class="field"><span>Damage/Hit (quick)</span>
+            <select id="co-dmg-q"><option value="">—</option><option>5</option><option>8</option><option>10</option><option selected>12</option><option>15</option><option>20</option><option value="custom">Custom…</option></select>
+          </label>
+          <label class="field"><span>Hits (quick)</span>
+            <select id="co-hits-q"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+          </label>
 
-// Demo & Sample
-function loadSampleParty(){
-  STATE.party = [
-    { id:"sample1", name:"Kael", level:3, ac:16, hp:28, hpMax:31 },
-    { id:"sample2", name:"Nyra", level:3, ac:14, hp:20, hpMax:24 },
-    { id:"sample3", name:"Borin", level:3, ac:18, hp:32, hpMax:35 },
-    { id:"sample4", name:"Elowen", level:3, ac:13, hp:18, hpMax:20 }
-  ];
-  STATE.partySel = STATE.party.map(p=>p.id);
-  renderPartyBox(); renderDiff();
-}
-function loadDemoEncounter(){
-  STATE.groups = [{ id: uid('g_'), name:"Goblin", cr:"1/4", xp:XP_BY_CR["1/4"], ac:15, hp:7, attacks:1, tohit:+4, dice:"1d6+2", count:4 }];
-  saveBuilder(); renderGroups(); renderDiff();
-}
+          <!-- Editable fields used by the math -->
+          <label class="field"><span>Con Save Bonus</span><input id="co-bonus" type="number" placeholder="+4" /></label>
+          <label class="field"><span>Adv./Dis.</span>
+            <select id="co-adv"><option value="normal">Normal</option><option value="adv">Advantage</option><option value="dis">Disadvantage</option></select>
+          </label>
+          <label class="field"><span>Damage / hit</span><input id="co-dmg" type="number" placeholder="12" /></label>
+          <label class="field"><span>Hits</span><input id="co-hits" type="number" value="1" min="1" /></label>
+          <label class="field cols-2"><span>Custom Dice?</span><input id="co-dice" placeholder="(optional) 2d8+3" /></label>
 
-// Diagnostics
-function approx(a,b,tol=1e-6){ return Math.abs(a-b)<=tol; }
-function diag(title, ok, exp, got){ return `<div class="row"><div><strong>${ok?"✅":"❌"} ${title}</strong></div><small>expected: ${exp} • got: ${got}</small></div>`; }
-function runDiagnostics(){
-  const out = [];
-  const p1 = hitChance(+7,15,'normal'); out.push(diag("hitChance +7 vs AC15", approx(p1,0.65), "0.65", p1.toFixed(5)));
-  const pa = hitChance(+7,15,'adv');   out.push(diag("hitChance ADV", approx(pa,0.8775), "0.8775", pa.toFixed(5)));
-  const pd = hitChance(+7,15,'dis');   out.push(diag("hitChance DIS", approx(pd,0.4225), "0.4225", pd.toFixed(5)));
-  const ca = critChance('adv');        out.push(diag("critChance ADV", approx(ca,0.0975), "0.0975", ca.toFixed(5)));
-  const cd = critChance('dis');        out.push(diag("critChance DIS", approx(cd,0.0025), "0.0025", cd.toFixed(5)));
-  const sf = saveFailChance(15,+2,'normal'); out.push(diag("saveFailChance DC15 +2", approx(sf,0.6), "0.6", sf.toFixed(5)));
-  const c1 = concSuccessChancePerHit(12,+4,'normal'); out.push(diag("concentration keep/one hit", approx(c1,0.75), "0.75", c1.toFixed(5)));
-  const c2 = Math.pow(c1,2); out.push(diag("concentration keep after 2 hits", approx(c2,0.5625), "0.5625", c2.toFixed(5)));
-  const levels=[3,3,3,3]; const t=thresholds(levels,'2014'); const base=200; const mult=2; const adj=400; const band = (adj<=t.easy)?"Easy":(adj<=t.med)?"Medium":(adj<=t.hard)?"Hard":"Deadly";
-  out.push(diag("thresholds L3x4 easy", t.easy===300, "300", t.easy));
-  out.push(diag("base xp goblins x4", base===200, "200", base));
-  out.push(diag("multiplier 4 monsters", approx(mult,2), "2", mult));
-  out.push(diag("adjusted xp", adj===400, "400", adj));
-  out.push(diag("band", band==="Medium", "Medium", band));
-  $('#diagOut').innerHTML = out.join("");
-}
+          <div class="actions right"><button class="btn" type="submit">Calculate</button></div>
+        </form>
+        <div id="coOut" class="readout"></div>
+      </section>
+    </section>
 
-// Tabs & events
-function switchTab(tab){
-  document.querySelectorAll('.tabpanel').forEach(p => p.hidden = true);
-  document.querySelector(`#tab-${tab}`).hidden = false;
-  document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.getAttribute('data-tab')===tab ? 'true':'false'));
-}
-function onTabClick(e){ const btn = e.target.closest('.tab'); if(!btn) return; switchTab(btn.getAttribute('data-tab')); }
-function onPartyToggle(e){
-  const cb = e.target.closest('input[type="checkbox"][data-id]'); if(!cb) return;
-  const id = cb.getAttribute('data-id');
-  if(cb.checked){ if(!STATE.partySel.includes(id)) STATE.partySel.push(id); }
-  else { STATE.partySel = STATE.partySel.filter(x=>x!==id); }
-  saveBuilder(); renderDiff();
-}
-function onMonsterForm(e){
-  e.preventDefault();
-  const name = $('#m-name').value.trim() || 'Creature';
-  const cr = $('#m-cr').value.trim() || '';
-  const xp = parseInt($('#m-xp').value || (XP_BY_CR[cr]||0), 10);
-  const ac = parseInt($('#m-ac').value||'10',10);
-  const hp = parseInt($('#m-hp').value||'1',10);
-  const attacks = parseInt($('#m-attacks').value||'1',10);
-  const tohit = parseInt($('#m-tohit').value||'0',10);
-  const dice = $('#m-dice').value.trim();
-  const count = parseInt($('#m-count').value||'1',10);
-  addGroup({name,cr,xp,ac,hp,attacks,tohit,dice,count});
-  e.target.reset();
-}
-function onGroupsList(e){
-  const id = e.target.getAttribute('data-id');
-  const act = e.target.getAttribute('data-act');
-  if(!act) return;
-  if(act==='g-del') return removeGroup(id);
-  if(act==='g-count') return updateGroup(id, 'count', parseInt(e.target.value||'1',10));
-}
-function onRulesetToggle(){ STATE.ruleset = $('#ruleset2024').checked ? '2024' : '2014'; saveBuilder(); renderDiff(); }
+    <!-- RESULTS -->
+    <section id="tab-results" class="tabpanel" role="tabpanel" hidden>
+      <section class="card">
+        <header class="section-head">
+          <h2>Apply Results to Party (optional)</h2>
+          <div class="helper tiny">Enter HP adjustments (negative = damage, positive = healing), then Apply.</div>
+        </header>
+        <div id="applyBox" class="apply-box"></div>
+        <footer class="actions right">
+          <button class="btn" id="btn-apply-party">Apply to Party</button>
+        </footer>
+      </section>
+    </section>
 
-function boot(){
-  document.addEventListener('click', onTabClick);
-  loadParty(); if(!STATE.partySel.length) STATE.partySel = STATE.party.map(p=>p.id);
-  renderPartyBox();
-  $('#partyBox').addEventListener('change', onPartyToggle);
-  $('#btn-refresh-party').addEventListener('click', ()=>{ loadParty(); renderPartyBox(); renderDiff(); });
+    <!-- LIBRARY -->
+    <section id="tab-library" class="tabpanel" role="tabpanel" hidden>
+      <section class="card">
+        <header class="section-head">
+          <h2>Saved Encounters</h2>
+          <div class="actions">
+            <button class="btn" id="btn-save-enc">Save Current</button>
+          </div>
+        </header>
+        <div id="encList" class="list"></div>
+      </section>
+    </section>
 
-  loadBuilder(); renderGroups();
-  $('#monsterForm').addEventListener('submit', onMonsterForm);
-  // Ensure BOTH input changes and remove button clicks are captured
-  $('#groupsList').addEventListener('input', onGroupsList);
-  $('#groupsList').addEventListener('click', onGroupsList);
+    <!-- DIAGNOSTICS -->
+    <section id="tab-diagnostics" class="tabpanel" role="tabpanel" hidden>
+      <section class="card">
+        <header class="section-head">
+          <h2>Diagnostics — Self Test</h2>
+          <div class="actions">
+            <button class="btn" id="btn-run-diagnostics">Run Diagnostics</button>
+          </div>
+        </header>
+        <div id="diagOut" class="list"></div>
+      </section>
+    </section>
+  </main>
 
-  renderDiff();
-  $('#ruleset2024').addEventListener('change', onRulesetToggle);
+  <footer class="wrap foot tiny muted">
+    Buttons are Lime Green; surfaces Midnight Blue; font Arvo — per project tokens.
+  </footer>
 
-  $('#calc-attack').addEventListener('submit', onCalcAttack);
-  $('#calc-save').addEventListener('submit', onCalcSave);
-  $('#calc-conc').addEventListener('submit', onCalcConc);
-
-  $('#applyBox').addEventListener('input', onApplyInput);
-  $('#btn-apply-party').addEventListener('click', onApplyToParty);
-
-  STATE.library = listEncounters(); renderEncList();
-  $('#encList').addEventListener('click', onEncListClick);
-  $('#btn-save-enc').addEventListener('click', onSaveEncounter);
-
-  document.getElementById('btn-load-demo')?.addEventListener('click', loadDemoEncounter);
-  document.getElementById('btn-load-sample-party')?.addEventListener('click', loadSampleParty);
-  document.getElementById('btn-run-diagnostics')?.addEventListener('click', runDiagnostics);
-
-  buildCalcEntityOptions();
-  hookQuickPicks();
-}
-boot();
-
-console.log('SEED_MONSTERS', SEED_MONSTERS);
+  <script src="./app.js" type="module"></script>
+</body>
+</html>
