@@ -1,5 +1,5 @@
 // modules/characters/gallery.js
-import { listCharacters, deleteCharacters, onStoreChange } from './storage.js';
+import { listCharacters, deleteCharacters, onStoreChange, setInParty } from './storage.js';
 import { navigate } from '../router.js';
 
 export function mountGallery(root, { focusId = null } = {}){
@@ -75,10 +75,12 @@ export function mountGallery(root, { focusId = null } = {}){
         </div>
         <div class="gal-card__tags tiny">
           ${(c.languages||[]).map(l => `<span class="tag">${esc(l)}</span>`).join('')}
+          ${c.inParty ? `<span class="tag">In Party</span>` : ``}
         </div>
         <div class="gal-card__foot">
           <button class="btn ghost" data-edit>Edit</button>
           <button class="btn" data-print-one>Print</button>
+          <button class="btn ghost" data-party-toggle>${c.inParty ? 'Remove from Party' : 'Add to Party'}</button>
         </div>
       </li>
     `).join('');
@@ -94,6 +96,8 @@ export function mountGallery(root, { focusId = null } = {}){
     // Wire item events
     elGrid.querySelectorAll('.gal-card').forEach(card => {
       const id = card.getAttribute('data-id');
+      const c  = list.find(x => x.id === id) || listCharacters().find(x => x.id===id);
+
       card.querySelector('.gal-card__ck').addEventListener('change', (e)=>{
         e.currentTarget.checked ? selection.add(id) : selection.delete(id);
         card.classList.toggle('selected', e.currentTarget.checked);
@@ -101,6 +105,9 @@ export function mountGallery(root, { focusId = null } = {}){
       });
       card.querySelector('[data-edit]').addEventListener('click', ()=> navigate('#characters/edit', { id }));
       card.querySelector('[data-print-one]').addEventListener('click', ()=> printSelected([id]));
+      card.querySelector('[data-party-toggle]').addEventListener('click', ()=>{
+        setInParty(id, !c?.inParty);
+      });
       card.addEventListener('dblclick', ()=> navigate('#characters/edit', { id }));
     });
   }
