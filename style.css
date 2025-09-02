@@ -384,3 +384,43 @@ button, .btn{ font-family: inherit; touch-action: manipulation; }
 .tile-home-characters:hover{
   box-shadow: 0 0 0 2px rgba(214,237,23,.25) inset;
 }
+
+/* === Accessibility & Readability Upgrades (patch) === */
+/* Keep Arvo default per project; optionally enable Aptos with .use-aptos on <html> */
+.use-aptos html, .use-aptos body { font-family: "Aptos","Arvo", Georgia, serif; }
+
+/* Buttons: Lime Green with black text; Ghost buttons keep white text on dark surfaces */
+.btn, button {
+  background: var(--lime-green);
+  color: #000; /* black on green */
+  border: 1px solid transparent;
+  padding: .70rem 1rem;
+  border-radius: .75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .06s ease, background .1s ease, box-shadow .1s ease;
+}
+.btn:hover, button:hover { background: var(--lime-600); box-shadow: 0 0 0 2px rgba(214,237,23,.25) inset; }
+.btn:active, button:active { background: var(--lime-700); transform: translateY(1px); }
+.btn:focus-visible, button:focus-visible { outline: 3px solid var(--lime-green); outline-offset: 3px; }
+.btn.ghost { background: transparent; border: 1px solid var(--lime-green); color: #fff; }
+.btn.ghost:hover { background: rgba(214,237,23,.12); }
+
+/* Tiles get clearer hover */
+.tile, .panel.tile {
+  transition: transform .08s ease, box-shadow .1s ease, border-color .1s ease;
+}
+.tile:hover, .panel.tile:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  border-color: var(--lime-green);
+}
+
+/* Home tile for Encounters */
+.tile-home-encounters {
+  background:
+    linear-gradient(180deg, rgba(214,237,23,0.12), rgba(0,0,0,0)),
+    var(--midnight-blue);
+  border: 1px solid var(--border);
+}
+.tile-home-encounters:hover { box-shadow: 0 0 0 2px rgba(214,237,23,.25) inset; }
