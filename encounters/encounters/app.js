@@ -146,6 +146,47 @@ function renderDiff(){
     </div>
     <div class="callout ${res.band.toLowerCase()}">Difficulty: <strong>${res.band}</strong></div>`;
 }
+// --- Dropdown helpers for Calculators ---
+function entityLabelFromParty(p) {
+  const ac = (p.ac ?? '—');
+  const hp = (p.hp ?? '?') + '/' + (p.hpMax ?? '?');
+  return `${p.name} (PC · AC ${ac} · HP ${hp})`;
+}
+function entityLabelFromGroup(g) {
+  const att = (g.attacks||1) + '× +' + (g.tohit||0) + ' (' + (g.dice||'—') + ')';
+  return `${g.name} (G · AC ${g.ac??'—'} · ${att})`;
+}
+
+/** Build options for attacker/target selects from current Party + Groups */
+function buildCalcEntityOptions(){
+  const atkSel = document.getElementById('atk-entity');
+  const tgtSel = document.getElementById('tgt-entity');
+  const svTgtSel = document.getElementById('sv-target-entity');
+  if(!atkSel || !tgtSel || !svTgtSel) return;
+
+  const mk = (id, label) => `<option value="${id}">${label}</option>`;
+  let partyOpts = STATE.party.map(p => mk(`P:${p.id}`, entityLabelFromParty(p))).join('');
+  let groupOpts = STATE.groups.map(g => mk(`G:${g.id}`, entityLabelFromGroup(g))).join('');
+
+  const partyGroup = partyOpts ? `<optgroup label="Party">${partyOpts}</optgroup>` : '';
+  const monGroup   = groupOpts ? `<optgroup label="Monsters">${groupOpts}</optgroup>` : '';
+
+  const opts = partyGroup + monGroup;
+  [atkSel, tgtSel, svTgtSel].forEach(sel => { sel.innerHTML = `<option value="">—</option>${opts}`; });
+}
+
+/** Read an entity by encoded id ("P:..." or "G:...") */
+function getEntityByValue(v){
+  if(!v) return null;
+  const [kind, id] = v.split(':');
+  if(kind === 'P') return STATE.party.find(p => p.id === id) || null;
+  if(kind === 'G') return STATE.groups.find(g => g.id === id) || null;
+  return null;
+}
+
+/** Quick-pick appliers (write into the existing inputs the math uses) */
+function qp(val, inputId){ if(val===''||val==null) return; const el=document.getElementById(inputId); if(el) el.value = val.replace('+',''); }
+function qpDice(val, inputId){ if(!val) return; const el=document.getElementById(inputId); if(!el) return; if(val==='custom') { el.focus(); return; } el.value = val; }
 
 // Calculators
 function onCalcAttack(e){
@@ -200,6 +241,57 @@ function onCalcConc(e){
     <div class="pill">Hits <strong>${hits}</strong></div>
     <div class="pill">Keep After All <strong>${(pAll*100).toFixed(1)}%</strong></div></div>`;
 }
+// --- Dropdown behavior wiring ---
+function onAtkEntityChange(){
+  const v = document.getElementById('atk-entity').value;
+  const ent = getEntityByValue(v);
+  // If it's a monster group, we can auto-fill its attack profile.
+  if(ent && ent.name && ent.xp !== undefined){ // treat as group
+    qp(''+(ent.tohit||0), 'atk-bonus');
+    qp(''+(ent.attacks||1), 'atk-count');
+    qpDice(ent.dice||'', 'atk-dice');
+  }
+  // Party attackers don't have weapon data here; leave inputs as-is (user can quick-pick).
+}
+function onTgtEntityChange(){
+  const v = document.getElementById('tgt-entity').value;
+  const ent = getEntityByValue(v);
+  // Set AC if we have it (party or group)
+  if(ent && typeof ent.ac !== 'undefined'){
+    qp(''+(ent.ac||10), 'tgt-ac');
+  }
+}
+function onSvTargetChange(){
+  // We generally don't know save bonuses; keep as quick-pick/manual.
+  // (In future we could store typical save profs per PC.)
+}
+
+// Quick-pick dropdowns → inputs
+function hookQuickPicks(){
+  // Attack
+  document.getElementById('atk-bonus-q')?.addEventListener('change', e => qp(e.target.value, 'atk-bonus'));
+  document.getElementById('atk-count-q')?.addEventListener('change', e => qp(e.target.value, 'atk-count'));
+  document.getElementById('atk-dice-q')?.addEventListener('change', e => qpDice(e.target.value, 'atk-dice'));
+
+  // Save
+  document.getElementById('sv-dc-q')?.addEventListener('change', e => qp(e.target.value, 'sv-dc'));
+  document.getElementById('sv-bonus-q')?.addEventListener('change', e => qp(e.target.value, 'sv-bonus'));
+  document.getElementById('sv-dice-q')?.addEventListener('change', e => qpDice(e.target.value, 'sv-dice'));
+
+  // Concentration
+  document.getElementById('co-bonus-q')?.addEventListener('change', e => qp(e.target.value, 'co-bonus'));
+  document.getElementById('co-dmg-q')?.addEventListener('change', e => {
+    const v = e.target.value;
+    if(v === 'custom'){ document.getElementById('co-dmg')?.focus(); return; }
+    qp(v, 'co-dmg');
+  });
+  document.getElementById('co-hits-q')?.addEventListener('change', e => qp(e.target.value, 'co-hits'));
+
+  // Entity selects
+  document.getElementById('atk-entity')?.addEventListener('change', onAtkEntityChange);
+  document.getElementById('tgt-entity')?.addEventListener('change', onTgtEntityChange);
+  document.getElementById('sv-target-entity')?.addEventListener('change', onSvTargetChange);
+}
 
 // Library
 function listEncounters(){ return load('tp_dm_encounters', []); }
@@ -232,7 +324,11 @@ function onEncListClick(e){
     STATE.groups = enc.groups || [];
     STATE.partySel = (enc.partySel && enc.partySel.length) ? enc.partySel : STATE.party.map(p=>p.id);
     saveBuilder();
-    renderGroups(); renderPartyBox(); renderDiff();
+    renderGroups()  root.innerHTML = STATE.groups.map(...).join('');
+  **buildCalcEntityOptions();**
+; renderPartyBox()  $('#applyBox').innerHTML = applyRows;
+  **buildCalcEntityOptions();**
+; renderDiff();
     switchTab('setup');
   }
   if(act==='del-enc'){
@@ -371,6 +467,9 @@ function boot(){
   document.getElementById('btn-load-demo')?.addEventListener('click', loadDemoEncounter);
   document.getElementById('btn-load-sample-party')?.addEventListener('click', loadSampleParty);
   document.getElementById('btn-run-diagnostics')?.addEventListener('click', runDiagnostics);
+
+  buildCalcEntityOptions();
+  hookQuickPicks();
 }
 boot();
 

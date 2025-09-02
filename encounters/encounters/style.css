@@ -99,3 +99,8 @@ html, body { font-family: "Arvo", Georgia, serif; }
   border: 1px solid var(--border);
 }
 .tile-home-encounters:hover { box-shadow: 0 0 0 2px rgba(214,237,23,.25) inset; }
+
+/* Quick-pick polish (optional) */
+#tab-calculators .field select { min-height: 2.4rem; }
+#tab-calculators .field input { min-height: 2.4rem; }
+

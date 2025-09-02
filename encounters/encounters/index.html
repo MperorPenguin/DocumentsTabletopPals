@@ -1,4 +1,4 @@
-<!doctype html>
+<!-- CALCULATORS --><!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -117,27 +117,162 @@
     </section>
 
     <!-- CALCULATORS -->
-    <section id="tab-calculators" class="tabpanel" role="tabpanel" hidden>
-      <div class="grid cols-2">
-        <section class="card">
-          <header class="section-head"><h2>Attack vs AC</h2></header>
-          <form id="calc-attack" class="grid cols-4 compact">
-            <label class="field cols-2"><span>Attacker (name)</span><input id="atk-name" placeholder="Troll 1 or Matthew" /></label>
-            <label class="field"><span>To-Hit</span><input id="atk-bonus" type="number" placeholder="+7" /></label>
-            <label class="field"><span>Attacks</span><input id="atk-count" type="number" value="1" min="1" /></label>
-            <label class="field"><span>Damage Dice</span><input id="atk-dice" placeholder="2d6+4" /></label>
-            <label class="field cols-2"><span>Target (name)</span><input id="tgt-name" placeholder="AC source" /></label>
-            <label class="field"><span>Target AC</span><input id="tgt-ac" type="number" placeholder="16" /></label>
-            <label class="field"><span>Adv./Dis.</span>
-              <select id="atk-adv"><option value="normal">Normal</option><option value="adv">Advantage</option><option value="dis">Disadvantage</option></select>
-            </label>
-            <label class="field"><span>Cover</span>
-              <select id="atk-cover"><option value="0">None</option><option value="2">+2</option><option value="5">+5</option></select>
-            </label>
-            <div class="actions right"><button class="btn" type="submit">Calculate</button></div>
-          </form>
-          <div id="atkOut" class="readout"></div>
-        </section>
+    <!-- CALCULATORS -->
+<section id="tab-calculators" class="tabpanel" role="tabpanel" hidden>
+  <div class="grid cols-2">
+    <!-- Attack vs AC -->
+    <section class="card">
+      <header class="section-head"><h2>Attack vs AC</h2></header>
+      <form id="calc-attack" class="grid cols-4 compact">
+        <!-- Pick attacker/target from party or monsters -->
+        <label class="field cols-2">
+          <span>Attacker</span>
+          <select id="atk-entity"></select>
+        </label>
+        <label class="field cols-2">
+          <span>Target</span>
+          <select id="tgt-entity"></select>
+        </label>
+
+        <!-- Quick picks (auto-fill the inputs, which remain editable) -->
+        <label class="field">
+          <span>To-Hit (quick)</span>
+          <select id="atk-bonus-q">
+            <option value="">—</option>
+            <option>+3</option><option>+4</option><option>+5</option>
+            <option>+6</option><option>+7</option><option>+8</option><option>+9</option><option>+10</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Attacks (quick)</span>
+          <select id="atk-count-q">
+            <option value="">—</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option>
+          </select>
+        </label>
+        <label class="field cols-2">
+          <span>Damage (quick)</span>
+          <select id="atk-dice-q">
+            <option value="">—</option>
+            <option>1d6+2</option><option>1d8+3</option><option>2d6+4</option>
+            <option>2d8+4</option><option>1d12+4</option><option value="custom">Custom…</option>
+          </select>
+        </label>
+
+        <!-- Under-the-hood editable fields the math uses (pre-filled by dropdowns) -->
+        <label class="field"><span>To-Hit</span><input id="atk-bonus" type="number" placeholder="+7" /></label>
+        <label class="field"><span>Attacks</span><input id="atk-count" type="number" value="1" min="1" /></label>
+        <label class="field"><span>Damage Dice</span><input id="atk-dice" placeholder="2d6+4" /></label>
+        <label class="field"><span>Target AC</span><input id="tgt-ac" type="number" placeholder="16" /></label>
+
+        <label class="field">
+          <span>Adv./Dis.</span>
+          <select id="atk-adv"><option value="normal">Normal</option><option value="adv">Advantage</option><option value="dis">Disadvantage</option></select>
+        </label>
+        <label class="field">
+          <span>Cover</span>
+          <select id="atk-cover"><option value="0">None</option><option value="2">+2</option><option value="5">+5</option></select>
+        </label>
+
+        <div class="actions right"><button class="btn" type="submit">Calculate</button></div>
+      </form>
+      <div id="atkOut" class="readout"></div>
+    </section>
+
+    <!-- Save vs DC -->
+    <section class="card">
+      <header class="section-head"><h2>Save vs DC</h2></header>
+      <form id="calc-save" class="grid cols-4 compact">
+        <!-- Who is rolling the save? (optional, only for convenience) -->
+        <label class="field cols-2">
+          <span>Target (optional)</span>
+          <select id="sv-target-entity"></select>
+        </label>
+
+        <!-- Quick picks -->
+        <label class="field">
+          <span>Save DC (quick)</span>
+          <select id="sv-dc-q">
+            <option value="">—</option>
+            <option>12</option><option>13</option><option>14</option><option selected>15</option>
+            <option>16</option><option>17</option><option>18</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Save Bonus (quick)</span>
+          <select id="sv-bonus-q">
+            <option value="">—</option>
+            <option>-1</option><option>0</option><option>+1</option><option>+2</option><option>+3</option>
+            <option>+4</option><option>+5</option><option>+6</option><option>+7</option><option>+8</option><option>+9</option>
+          </select>
+        </label>
+        <label class="field cols-2">
+          <span>Damage (quick)</span>
+          <select id="sv-dice-q">
+            <option value="">—</option>
+            <option>2d6</option><option>3d6</option><option>4d6</option><option>6d6</option>
+            <option selected>8d6</option><option>10d6</option><option value="custom">Custom…</option>
+          </select>
+        </label>
+
+        <!-- Editable fields used by math -->
+        <label class="field"><span>Save DC</span><input id="sv-dc" type="number" placeholder="15" /></label>
+        <label class="field"><span>Target bonus</span><input id="sv-bonus" type="number" placeholder="+2" /></label>
+        <label class="field"><span>Half on save?</span>
+          <select id="sv-half"><option value="yes">Yes</option><option value="no">No</option></select>
+        </label>
+        <label class="field cols-2"><span>Damage Dice</span><input id="sv-dice" placeholder="8d6" /></label>
+        <label class="field">
+          <span>Adv./Dis.</span>
+          <select id="sv-adv"><option value="normal">Normal</option><option value="adv">Advantage</option><option value="dis">Disadvantage</option></select>
+        </label>
+
+        <div class="actions right"><button class="btn" type="submit">Calculate</button></div>
+      </form>
+      <div id="svOut" class="readout"></div>
+    </section>
+  </div>
+
+  <!-- Concentration -->
+  <section class="card">
+    <header class="section-head"><h2>Concentration — survive hits</h2></header>
+    <form id="calc-conc" class="grid cols-6 compact">
+      <!-- Quick picks -->
+      <label class="field">
+        <span>Con Save (quick)</span>
+        <select id="co-bonus-q">
+          <option value="">—</option>
+          <option>+2</option><option>+3</option><option>+4</option><option>+5</option><option>+6</option><option>+7</option><option>+8</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Damage/Hit (quick)</span>
+        <select id="co-dmg-q">
+          <option value="">—</option>
+          <option>5</option><option>8</option><option>10</option><option selected>12</option><option>15</option><option>20</option><option value="custom">Custom…</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Hits (quick)</span>
+        <select id="co-hits-q">
+          <option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+        </select>
+      </label>
+
+      <!-- Editable fields used by math -->
+      <label class="field"><span>Con Save Bonus</span><input id="co-bonus" type="number" placeholder="+4" /></label>
+      <label class="field"><span>Adv./Dis.</span>
+        <select id="co-adv"><option value="normal">Normal</option><option value="adv">Advantage</option><option value="dis">Disadvantage</option></select>
+      </label>
+      <label class="field"><span>Damage / hit</span><input id="co-dmg" type="number" placeholder="12" /></label>
+      <label class="field"><span>Hits</span><input id="co-hits" type="number" value="1" min="1" /></label>
+      <label class="field cols-2"><span>Custom Dice?</span><input id="co-dice" placeholder="(optional) 2d8+3" /></label>
+
+      <div class="actions right"><button class="btn" type="submit">Calculate</button></div>
+    </form>
+    <div id="coOut" class="readout"></div>
+  </section>
+</section>
 
         <section class="card">
           <header class="section-head"><h2>Save vs DC</h2></header>
