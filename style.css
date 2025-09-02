@@ -366,3 +366,118 @@ dm-title-btn.dis{ background:#7f1d1d; color:#fee2e2; border-color:#9b2222 }
 .tile-home-logbook h2 { font-family: "Arvo", Georgia, serif; }
 
 /* Remove the old "blow up on mobile" overrides. The fluid clamps above handle scaling well. */
+
+/* === BEGIN Character Creator, Gallery, Party, Print UI (no globals) === */
+
+/* Surface */
+.panel {
+  background: var(--midnight-blue);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+/* Ghost button (keeps primary button rules from your base theme) */
+.btn.ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+/* Creator header */
+.cc-top {
+  position: sticky; top: 0; z-index: 10;
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 14px; background: rgba(0,14,27,.92); border-bottom:1px solid var(--border);
+}
+.cc-top__left { display:flex; align-items:center; gap:10px; }
+.cc-brand-mark { width:28px; height:28px; border-radius:8px; background: var(--lime-green); }
+.cc-title{ margin:0; font-size:18px; }
+.ver{ font-weight: normal; font-size: 14px; opacity:.75; margin-left:6px; }
+.cc-top__actions{ display:flex; gap:8px; }
+
+/* Creator layout */
+.cc-layout{ max-width:1280px; margin:0 auto; padding:14px; display:grid; grid-template-columns:1.2fr .8fr; gap:14px; }
+@media (max-width:980px){ .cc-layout{ grid-template-columns:1fr; } }
+
+/* Class list + filters */
+.cc-search-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+.cc-search{ width:260px; max-width:100%; background: var(--midnight-blue); color: var(--text); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+.cc-chips{ display:flex; gap:6px; flex-wrap:wrap; }
+.chip{ background: var(--lime-green); color: var(--midnight-blue); border:1px solid transparent; border-radius:999px; padding:6px 10px; min-height:34px; font-weight:700; }
+.chip.active{ filter: brightness(.9); }
+
+/* Generic grid + class tiles */
+.grid{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; list-style:none; padding:0; margin:0; }
+@media (max-width:900px){ .grid{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width:560px){ .grid{ grid-template-columns: 1fr; } }
+
+.card{ position:relative; border:1px solid var(--border); border-radius:12px; background:#06111d; min-height:120px; display:grid; place-items:end; cursor:pointer; }
+.card .inner{ width:100%; padding:10px; display:flex; align-items:center; justify-content:space-between; gap:8px; background: linear-gradient(0deg, rgba(0,0,0,.68), rgba(0,0,0,0)); }
+.card .tag{ position:absolute; top:8px; left:8px; background: var(--lime-green); color: var(--midnight-blue); border-radius:999px; padding: 3px 8px; font-size:12px; font-weight:800; }
+.card.selected{ border-color: var(--lime-green); box-shadow: 0 0 0 2px rgba(214,237,23,.25) inset; }
+
+.suggested span{ background: rgba(214,237,23,.1); border:1px solid var(--border); color: var(--text); padding:4px 8px; border-radius: 999px; }
+
+/* Creator footer / steps */
+.cc-footer{ position: sticky; bottom:0; z-index:5; display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background: rgba(0,14,27,.92); border-top:1px solid var(--border); }
+.step-links{ list-style:none; margin:0; padding:0; display:flex; gap:6px; flex-wrap:wrap; }
+.step-links .active{ filter: brightness(.9); }
+.step-where{ opacity:.75; }
+
+/* Pills */
+.pillwrap{ display:flex; gap:8px; flex-wrap:wrap; }
+.pill{ background: var(--lime-green); color: var(--midnight-blue); border: 1px solid transparent; border-radius:999px; padding:8px 12px; min-height:36px; }
+
+/* Skills */
+.skills-grid{ display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:6px; }
+@media (max-width:640px){ .skills-grid{ grid-template-columns:1fr; } }
+.skill{ display:flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:10px; padding:8px 10px; background:#06111d; }
+.skill.suggested{ box-shadow: 0 0 0 2px rgba(214,237,23,.25) inset; border-color: var(--lime-green); }
+
+/* Gallery */
+.gallery-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin:10px 0; }
+.gallery-actions{ display:flex; gap:8px; align-items:center; }
+
+.gallery-tools{ display:flex; gap:10px; align-items:center; margin:8px 0 12px; }
+#gallery-search{ background: var(--midnight-blue); color: var(--text); border:1px solid var(--border); border-radius:10px; padding:10px 12px; min-width:280px; }
+
+.gallery-grid{ list-style:none; padding:0; margin:0; display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; }
+@media (max-width: 900px){ .gallery-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 560px){ .gallery-grid{ grid-template-columns: 1fr; } }
+
+.gal-card{ border:1px solid var(--border); border-radius:12px; background:#06111d; padding:10px; display:flex; flex-direction:column; gap:8px; }
+.gal-card.selected{ box-shadow: 0 0 0 2px rgba(214,237,23,.25) inset; border-color: var(--lime-green); }
+.gal-card.pulse{ animation: galPulse .8s ease; }
+@keyframes galPulse{ 50%{ box-shadow: 0 0 0 3px rgba(214,237,23,.35) inset; } }
+
+.gal-card__head{ display:flex; align-items:center; gap:8px; }
+.gal-card__name{ font-weight:800; }
+.gal-card__meta{ opacity:.8; }
+.gal-card__tags{ display:flex; gap:6px; flex-wrap:wrap; }
+.gal-card__tags .tag{ background: rgba(214,237,23,.1); border:1px solid var(--border); border-radius:999px; padding:3px 8px; }
+.gal-card__foot{ display:flex; gap:8px; }
+
+/* ESC overlay */
+.esc-menu{ position:fixed; inset:0; display:grid; place-items:center; background: rgba(0,0,0,.5); z-index:50; }
+.esc-menu__inner{ min-width: min(560px, 92vw); }
+.esc-menu__row{ display:flex; gap:8px; flex-wrap:wrap; }
+
+/* Party */
+.party-grid{ list-style:none; padding:0; margin:0; display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:8px; }
+@media (max-width:640px){ .party-grid{ grid-template-columns:1fr; } }
+.party-card{ border:1px solid var(--border); border-radius:10px; background:#06111d; padding:8px; }
+
+/* Print */
+@media print{
+  body{ background:#fff; color:#000; }
+  .print-area{ display:block !important; }
+  .print-sheet{ break-inside: avoid; page-break-inside: avoid; }
+}
+.print-area{ display:none; }
+.print-sheet{ border:1px solid #ccc; border-radius:8px; padding:12px; margin:8px 0; background:#fff; color:#000; font-family: Georgia, 'Times New Roman', serif; }
+.print-sheet h2{ margin:0 0 6px; font-size:18px; }
+.print-row{ margin-bottom:4px; }
+
+/* === END Character Creator, Gallery, Party, Print UI === */
+
