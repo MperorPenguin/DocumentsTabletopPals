@@ -19,15 +19,14 @@
         <strong>DM Toolkit</strong>
       </div>
       <div class="nav">
-        <button id="nav-home"  onclick="nav('home')">Home</button>
-        <button id="nav-world" onclick="nav('world')">World Map</button>
-        <button id="nav-dice"  onclick="nav('dice')">Dice</button>
-        <button id="nav-notes" onclick="nav('notes')">Notes</button>
-        <button id="nav-dm"    onclick="nav('dm')">DM</button>
-        <button id="nav-logbook" onclick="nav('logbook')">Logbook</button>
-
-        <!-- Launcher for the Characters iframe section -->
-        <button class="btn" id="btn-open-characters">Open Character Manager</button>
+        <button id="nav-home"      onclick="nav('home')">Home</button>
+        <button id="nav-world"     onclick="nav('world')">World Map</button>
+        <button id="nav-dice"      onclick="nav('dice')">Dice</button>
+        <button id="nav-notes"     onclick="nav('notes')">Notes</button>
+        <button id="nav-dm"        onclick="nav('dm')">DM</button>
+        <button id="nav-logbook"   onclick="nav('logbook')">Logbook</button>
+        <!-- New: Characters in the top nav (consistent with others) -->
+        <button id="nav-characters" onclick="nav('characters')">Characters</button>
       </div>
     </div>
   </div>
@@ -46,11 +45,13 @@
       </div>
 
       <div class="home-grid">
-        <div class="panel tile tile-home-world" tabindex="0" onclick="nav('world')"><h2>World Map</h2></div>
-        <div class="panel tile tile-home-dice"  tabindex="0" onclick="nav('dice')"><h2>Dice</h2></div>
-        <div class="panel tile tile-home-dm"    tabindex="0" onclick="nav('dm')"><h2>DM</h2></div>
-        <div class="panel tile tile-home-notes" tabindex="0" onclick="nav('notes')"><h2>Notes</h2></div>
-        <div class="panel tile tile-home-logbook" tabindex="0" onclick="nav('logbook')"><h2>Logbook</h2></div>
+        <div class="panel tile tile-home-world"      tabindex="0" onclick="nav('world')"><h2>World Map</h2></div>
+        <div class="panel tile tile-home-dice"       tabindex="0" onclick="nav('dice')"><h2>Dice</h2></div>
+        <div class="panel tile tile-home-dm"         tabindex="0" onclick="nav('dm')"><h2>DM</h2></div>
+        <div class="panel tile tile-home-notes"      tabindex="0" onclick="nav('notes')"><h2>Notes</h2></div>
+        <div class="panel tile tile-home-logbook"    tabindex="0" onclick="nav('logbook')"><h2>Logbook</h2></div>
+        <!-- New: Characters tile on landing page -->
+        <div class="panel tile tile-home-characters" tabindex="0" onclick="nav('characters')"><h2>Character Manager</h2></div>
       </div>
     </section>
 
@@ -63,11 +64,11 @@
         </div>
 
         <iframe
-  id="characters-frame"
-  title="Character Manager"
-  src="./dnd-characters-modules/index.html#characters/gallery"
-  style="width:100%; height:80vh; border:0; display:block;"
-></iframe>
+          id="characters-frame"
+          title="Character Manager"
+          src="./dnd-characters-modules/index.html#characters/gallery"
+          style="width:100%; height:80vh; border:0; display:block;"
+        ></iframe>
       </div>
     </section>
 
@@ -118,7 +119,6 @@
 
         <div id="dice-output" class="roll-output" style="margin-top:8px">
           <div class="dice-hero" style="color:#d6ed17">
-            <!-- SIMPLIFIED: external SVG as <img>; animation kept via CSS -->
             <img src="assets/icons/d20-lime.svg" alt="d20" />
           </div>
 
@@ -195,24 +195,6 @@
       }
       window.nav = window.nav || navRescue;
     })();
-  </script>
-
-  <!-- Characters launcher (iframe-based, no cross-window API calls) -->
-  <script>
-    function showSection(id) {
-      document.querySelectorAll('section[id^="view-"]').forEach(function(s){ s.classList.add('hidden'); });
-      var el = document.getElementById(id);
-      if (el) el.classList.remove('hidden');
-    }
-
-    document.getElementById('btn-open-characters')?.addEventListener('click', function () {
-      showSection('view-characters');
-      // Optional: ensure the iframe resets to gallery every time
-      var frame = document.getElementById('characters-frame');
-      try { if (frame && frame.contentWindow) frame.contentWindow.location.hash = '#characters/gallery'; } catch(e){}
-      // Optional: move focus into iframe for keyboard users
-      frame?.focus();
-    });
   </script>
 
   <!-- Main app logic -->
