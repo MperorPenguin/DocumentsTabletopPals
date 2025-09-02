@@ -49,11 +49,22 @@ function load(){
 /* ========= Routing & View Transitions ========= */
 function nav(route){
   state.route = route; save();
-  const views = ['home','world','dice','notes','dm','logbook'];
+  // ✅ Include 'characters' so the Characters section toggles like the others
+  const views = ['home','world','dice','notes','dm','logbook','characters'];
   views.forEach(v=>{
     const main = document.getElementById('view-'+v);
     const btn  = document.getElementById('nav-'+v);
-    if(!main||!btn) return;
+    if(!main || !btn){
+      // Still toggle the main section if present even if there's no matching nav button
+      if(main){
+        main.classList.toggle('hidden', v!==route);
+        if(v===route){
+          main.classList.add('view-anim');
+          setTimeout(()=>main.classList.remove('view-anim'), 260);
+        }
+      }
+      return;
+    }
     if(v===route){
       main.classList.remove('hidden');
       btn.classList.add('active');
@@ -64,6 +75,14 @@ function nav(route){
       btn.classList.remove('active');
     }
   });
+
+  // Accessibility / focus mgmt for the iframe section
+  if(route === 'characters'){
+    document.getElementById('characters-frame')?.focus();
+  }else{
+    document.getElementById('characters-frame')?.blur();
+  }
+
   render();
 }
 
@@ -819,6 +838,12 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     await reloadMaps();
     renderNotes();
     renderDice();
+
+    // Optional: keyboard support for tiles on the home grid
+    document.querySelectorAll('.tile[tabindex]')
+      .forEach(tile => tile.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tile.click(); }
+      }));
   }catch(err){ console.error('boot error', err); }
 });
 
