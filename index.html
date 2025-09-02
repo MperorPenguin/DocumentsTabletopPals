@@ -25,7 +25,7 @@
         <button id="nav-notes"     onclick="nav('notes')">Notes</button>
         <button id="nav-dm"        onclick="nav('dm')">DM</button>
         <button id="nav-logbook"   onclick="nav('logbook')">Logbook</button>
-        <!-- New: Characters in the top nav (consistent with others) -->
+        <!-- Characters in the top nav -->
         <button id="nav-characters" onclick="nav('characters')">Characters</button>
       </div>
     </div>
@@ -50,12 +50,12 @@
         <div class="panel tile tile-home-dm"         tabindex="0" onclick="nav('dm')"><h2>DM</h2></div>
         <div class="panel tile tile-home-notes"      tabindex="0" onclick="nav('notes')"><h2>Notes</h2></div>
         <div class="panel tile tile-home-logbook"    tabindex="0" onclick="nav('logbook')"><h2>Logbook</h2></div>
-        <!-- New: Characters tile on landing page -->
+        <!-- Characters tile on landing page -->
         <div class="panel tile tile-home-characters" tabindex="0" onclick="nav('characters')"><h2>Character Manager</h2></div>
       </div>
     </section>
 
-    <!-- CHARACTER MANAGER (iframe, same pattern as Logbook) -->
+    <!-- CHARACTER MANAGER (iframe, same origin so localStorage sync works) -->
     <section id="view-characters" class="hidden">
       <div class="panel" style="padding:0">
         <div class="section-head" style="padding:12px 16px">
@@ -177,7 +177,6 @@
   <script>
     (function(){
       function navRescue(route){
-        // include all known views so rescue nav shows them properly
         var views = ['home','world','dice','notes','dm','logbook','characters'];
         for (var i=0;i<views.length;i++){
           var v = views[i];

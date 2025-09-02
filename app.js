@@ -6,6 +6,9 @@ let MAPS = [];
 const IS_FILE = (location.protocol === 'file:');         // Detect local file usage
 const TRY_FETCH_JSON_INDEX = !IS_FILE;                    // Skip JSON fetch on file:// to avoid CORS
 
+// Character Manager localStorage key (shared with iframe)
+const CHAR_LIB_KEY = 'tp_cc_characters';
+
 // Broadcast channel (for pop-out world viewer sync)
 const worldChan = (typeof BroadcastChannel !== 'undefined')
   ? new BroadcastChannel('world-sync')
@@ -23,12 +26,9 @@ const state = load() || {
   boardBg: null,
   mapIndex: 0,
 
-  // Sample DM data
+  // DM tokens (NPCs/Enemies keep using internal state; PCs now come from Character Manager)
   tokens: {
-    pc: [
-      {id:'p1', name:'Aria',  cls:'Rogue',   traits:['Stealthy','Light Armor'], hp:[10,10]},
-      {id:'p2', name:'Bronn', cls:'Fighter', traits:['Heavy Armor','Brute'],    hp:[13,13]},
-    ],
+    pc:   [], // PCs now sourced from Character Manager → inParty
     npc:   [{id:'n1', name:'Elder Bran', cls:'NPC',   traits:['Civilian'], hp:[6,6]}],
     enemy: [{id:'e1', name:'Skeleton A', cls:'Enemy', traits:['Undead','Darkvision'], hp:[13,13]}],
   },
@@ -46,16 +46,43 @@ function load(){
   try { return JSON.parse(localStorage.getItem('tp_state_v26')); }catch(e){ return null; }
 }
 
+/* ========= Characters library bridge (from Character Manager) ========= */
+function listCharactersLib(){
+  try { return JSON.parse(localStorage.getItem(CHAR_LIB_KEY)) || []; }
+  catch { return []; }
+}
+function getPartyTokens(){
+  // Map Character Manager models → DM token model
+  const party = listCharactersLib().filter(c => !!c.inParty);
+  return party.map(c => ({
+    id: c.id,
+    name: c.name || 'Unnamed',
+    cls: c.class || '—',
+    // traits: leave empty unless you later add traits in the Character Manager
+    traits: Array.isArray(c.traits) ? c.traits : [],
+    // extra badges to show (species/background)
+    badges: [c.background, c.species].filter(Boolean),
+    // hp is optional in the library; if added later, tokenCard will render it
+    hp: Array.isArray(c.hp) && c.hp.length >= 2 ? c.hp : null,
+  }));
+}
+// Auto-refresh DM Party when Character Manager updates the library
+window.addEventListener('storage', (e)=>{
+  if(e.key === CHAR_LIB_KEY){
+    if(state.route === 'dm' && state.ui.dmTab === 'party'){
+      renderDmPage();
+    }
+  }
+});
+
 /* ========= Routing & View Transitions ========= */
 function nav(route){
   state.route = route; save();
-  // ✅ Include 'characters' so the Characters section toggles like the others
   const views = ['home','world','dice','notes','dm','logbook','characters'];
   views.forEach(v=>{
     const main = document.getElementById('view-'+v);
     const btn  = document.getElementById('nav-'+v);
     if(!main || !btn){
-      // Still toggle the main section if present even if there's no matching nav button
       if(main){
         main.classList.toggle('hidden', v!==route);
         if(v===route){
@@ -523,51 +550,41 @@ function buildAdvDisMessage(t, mode){
   if(mode==='adv'){
     lines.push('');
     lines.push('Quick primer — Advantage');
-    lines.push('- You get to roll two d20 for the check/attack/save.');
-    lines.push('- Keep the HIGHER result, then add your normal modifiers.');
-    lines.push('- Advantage does not stack (multiple sources still give just one advantage).');
+    lines.push('- Roll two d20; keep the HIGHER result.');
+    lines.push('- Add your normal modifiers.');
+    lines.push('- Multiple sources do not stack.');
   }else{
     lines.push('');
     lines.push('Quick primer — Disadvantage');
-    lines.push('- You must roll two d20 for the check/attack/save.');
-    lines.push('- Keep the LOWER result, then add your normal modifiers.');
-    lines.push('- Disadvantage does not stack (multiple sources still give just one disadvantage).');
-  }
-
-  // Cancel rule + what to do now
-  lines.push('');
-  lines.push('If you have both advantage and disadvantage at the same time:');
-  lines.push('- They CANCEL each other out — roll a single d20 normally.');
-
-  lines.push('');
-  lines.push('What to roll NOW:');
-  if(mode==='adv'){
-    lines.push('1) Roll 2 × d20.');
-    lines.push('2) Take the HIGHER die.');
-    lines.push('3) Add your usual modifiers (proficiency, ability, magic, etc.).');
-  }else{
-    lines.push('1) Roll 2 × d20.');
-    lines.push('2) Take the LOWER die.');
-    lines.push('3) Add your usual modifiers (proficiency, ability, magic, etc.).');
+    lines.push('- Roll two d20; keep the LOWER result.');
+    lines.push('- Add your normal modifiers.');
+    lines.push('- Multiple sources do not stack.');
   }
 
   lines.push('');
-  lines.push('Applies equally to: player characters, NPCs, and enemies.');
+  lines.push('If you have both, they cancel (roll a single d20).');
+
   return lines.join('\n');
 }
 
 /* Token cards & actions */
 function tokenCard(kind,t){
   const sel = state.selected && state.selected.kind===kind && state.selected.id===t.id;
+  const hpBadge = (Array.isArray(t.hp) && t.hp.length>=2)
+    ? `<span class="badge">HP ${t.hp[0]}/${t.hp[1]}</span>`
+    : '';
+  const extra = []
+    .concat(Array.isArray(t.badges)?t.badges:[])
+    .concat(Array.isArray(t.traits)?t.traits:[]);
   return `
     <div class="dm-character-box">
       <div class="dm-card ${sel?'selected':''}" onclick="selectFromPanel('${kind}','${t.id}')">
-        <div class="avatar"><img src="assets/class_icons/${t.cls}.svg" alt=""></div>
+        <div class="avatar"><img src="assets/class_icons/${escapeHtml(t.cls)}.svg" alt=""></div>
         <div class="name">${escapeHtml(t.name)}</div>
         <div class="badges">
           <span class="badge">${escapeHtml(t.cls)}</span>
-          <span class="badge">HP ${t.hp[0]}/${t.hp[1]}</span>
-          ${(Array.isArray(t.traits)?t.traits:[]).map(x=>`<span class="badge">${escapeHtml(x)}</span>`).join('')}
+          ${hpBadge}
+          ${extra.map(x=>`<span class="badge">${escapeHtml(x)}</span>`).join('')}
         </div>
       </div>
       <div class="dm-actions">
@@ -579,15 +596,15 @@ function tokenCard(kind,t){
 function selectFromPanel(kind,id){ state.selected = {kind,id}; save(); renderDmPage(); }
 function setEnvironment(env){ state.ui.environment = env; save(); renderDmPage(); }
 
-/* Show detailed reasoned toasts */
+/* Show detailed toasts */
 function quickAdvFor(kind,id){
-  const t = findToken(kind,id);
+  const t = (kind==='pc' ? getPartyTokens().find(x=>x.id===id) : findToken(kind,id));
   if(!t) return;
   const msg = buildAdvDisMessage(t,'adv');
   showToast('Advantage', msg, {duration:7000});
 }
 function quickDisFor(kind,id){
-  const t = findToken(kind,id);
+  const t = (kind==='pc' ? getPartyTokens().find(x=>x.id===id) : findToken(kind,id));
   if(!t) return;
   const msg = buildAdvDisMessage(t,'dis');
   showToast('Disadvantage', msg, {duration:7000});
@@ -602,7 +619,10 @@ function computeEnvironmentEffects(){
   const dClass = new Set(rule.disIfClass || []);
   const aTrait = new Set(rule.advIfTrait || []);
   const dTrait = new Set(rule.disIfTrait || []);
-  const all = ['pc','npc','enemy'].flatMap(k => (state.tokens[k]||[]).map(t=>({...t, kind:k})));
+  const allPcs = getPartyTokens().map(t=>({...t, kind:'pc'}));
+  const others = ['npc','enemy'].flatMap(k => (state.tokens[k]||[]).map(t=>({...t, kind:k})));
+  const all = allPcs.concat(others);
+
   const lines = all.map(t=>{
     const cls = t.cls || '';
     const traits = Array.isArray(t.traits) ? t.traits : [];
@@ -621,10 +641,9 @@ function renderDmPage(){
   const bodyEl = document.getElementById('dm-body');
   if(!tabsEl || !bodyEl) return;
 
-  const pcs = state.tokens.pc||[];
-  const npcs= state.tokens.npc||[];
-  const enemies = state.tokens.enemy||[];
-  const tab= state.ui.dmTab||'party';
+  const npcs   = state.tokens.npc||[];
+  const enemies= state.tokens.enemy||[];
+  const tab    = state.ui.dmTab||'party';
 
   tabsEl.innerHTML = `
     ${dmTabButton('party','Party',tab==='party')}
@@ -636,7 +655,19 @@ function renderDmPage(){
 
   let body = '';
 
-  if(tab==='party'){ body+=`<div class="dm-grid3">${pcs.map(p=>tokenCard('pc',p)).join('')||'<div class="small">No PCs yet.</div>'}</div>`; }
+  if(tab==='party'){
+    const pcs = getPartyTokens();
+    body += `<div class="dm-grid3">${
+      pcs.length
+        ? pcs.map(p=>tokenCard('pc',p)).join('')
+        : `<div class="panel" style="grid-column:1/-1; text-align:center; padding:16px;">
+             <h3 style="margin:0 0 8px;">No party members yet</h3>
+             <div class="small">Open <strong>Character Manager</strong> and tick “In Party” for the characters you want here.</div>
+             <div style="margin-top:10px;"><button class="btn tiny" onclick="nav('characters')">Open Character Manager</button></div>
+           </div>`
+    }</div>`;
+  }
+
   if(tab==='npcs'){ body+=`<div class="dm-grid3">${npcs.map(n=>tokenCard('npc',n)).join('')||'<div class="small">No NPCs yet.</div>'}</div>`; }
   if(tab==='enemies'){ body+=`<div class="dm-grid3">${enemies.map(e=>tokenCard('enemy',e)).join('')||'<div class="small">No Enemies yet.</div>'}</div>`; }
 
@@ -699,7 +730,6 @@ function renderDmPage(){
 
         <div id="dm-dice-output" class="roll-output" style="margin-top:8px">
           <div class="dice-hero" style="color:#d6ed17">
-            <!-- SIMPLIFIED: external SVG as <img>; animation kept via CSS -->
             <img src="assets/icons/d20-lime.svg" alt="d20" />
           </div>
           <div class="roll-card">
@@ -808,7 +838,6 @@ function dmRollAll(){
 
 /* ========= Toast ========= */
 let activeToast = null;
-/* make toasts preserve line breaks and allow longer explanations */
 function showToast(title,msg, opts){
   closeAllToasts();
   const div=document.createElement('div');
