@@ -1,250 +1,190 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>DM Toolkit — DocumentsTabletopPals</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>DM Toolkit</title>
 
-  <!-- Fonts: Arvo (preconnect + stylesheet) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@400;700&display=swap" rel="stylesheet">
+  <!-- Arvo font -->
+  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@400;700&display=swap" rel="stylesheet" />
 
-  <!-- Styles -->
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- Optional: add class="use-aptos" to <html> to prefer Aptos if installed -->
 </head>
 <body>
-  <header class="site-head">
-    <a class="brand" href="#home" data-nav="home" aria-label="Go to Home">
-      <!-- Header brand: SVG→PNG fallback -->
-      <picture class="brand-mark">
-        <source srcset="./assets/logo.svg" type="image/svg+xml">
-        <img src="./assets/img/logo.png" alt="TabletopPals" width="36" height="36" />
-      </picture>
-      <span class="brand-title">DM Toolkit</span>
-    </a>
+  <!-- Top bar -->
+  <div class="top">
+    <div class="inner">
+      <div class="logo">
+        <div class="mark"></div>
+        <strong>DM Toolkit</strong>
+      </div>
+      <div class="nav">
+        <button id="nav-home"      onclick="nav('home')">Home</button>
+        <button id="nav-world"     onclick="nav('world')">World Map</button>
+        <button id="nav-dice"      onclick="nav('dice')">Dice</button>
+        <button id="nav-notes"     onclick="nav('notes')">Notes</button>
+        <button id="nav-dm"        onclick="nav('dm')">DM</button>
+        <button id="nav-encounters" onclick="window.location.href='encounters/'">Encounter Builder</button>
+        <button id="nav-logbook"   onclick="nav('logbook')">Logbook</button>
+        <!-- Characters in the top nav -->
+        <button id="nav-characters" onclick="nav('characters')">Characters</button>
+      </div>
+    </div>
+  </div>
 
-    <!-- Burger -->
-    <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="topnav">
-      <span class="burger-bars" aria-hidden="true"></span>
-    </button>
-
-    <!-- Top Nav -->
-    <nav id="topnav" class="topnav" role="navigation">
-      <button class="btn ghost navbtn" data-nav="home" aria-controls="section-home" aria-current="page">Home</button>
-      <button class="btn ghost navbtn" data-nav="world" aria-controls="section-world">World Map</button>
-      <button class="btn ghost navbtn" data-nav="dice" aria-controls="section-dice">Dice</button>
-      <button class="btn ghost navbtn" data-nav="notes" aria-controls="section-notes">Notes</button>
-      <button class="btn ghost navbtn" data-nav="dm" aria-controls="section-dm">DM</button>
-      <button class="btn ghost navbtn" data-nav="encounters" aria-controls="section-encounters">Encounter Builder</button>
-      <button class="btn ghost navbtn" data-nav="logbook" aria-controls="section-logbook">Logbook</button>
-      <button class="btn ghost navbtn" data-nav="characters" aria-controls="section-characters">Characters</button>
-    </nav>
-  </header>
-
-  <main class="wrap main" id="main">
+  <main>
     <!-- HOME -->
-    <section id="section-home" class="tabpanel" role="tabpanel" aria-labelledby="home" data-tab="home">
-      <!-- NEW: Hero with big logo (SVG→PNG fallback) -->
-      <header class="hero card">
-        <picture class="hero-logo">
-          <source srcset="./assets/logo.svg" type="image/svg+xml">
-          <img src="./assets/img/logo.png" alt="TabletopPals — DM Toolkit" />
-        </picture>
-        <p class="tagline">All your DM tools — one place.</p>
-      </header>
+    <section id="view-home">
+      <!-- Centered brand logo panel -->
+      <div class="panel hero-panel">
+        <img
+          id="brand-logo"
+          class="brand-logo"
+          src="assets/brand/logo.png"
+          alt="TabletopPals logo"
+        />
+      </div>
 
-      <div class="tiles grid cols-2 cols-3@lg">
-        <button class="tile card" data-nav="world">
-          <div class="tile-head">
-            <span class="tile-icon" aria-hidden="true">🗺️</span>
-            <h2>World Map</h2>
-          </div>
-          <p>Browse maps, toggle Fit/Actual, cast/pop-out.</p>
-        </button>
-
-        <button class="tile card" data-nav="dice">
-          <div class="tile-head">
-            <span class="tile-icon" aria-hidden="true">🎲</span>
-            <h2>Dice</h2>
-          </div>
-          <p>Build pools (d4 to d20), roll, animate, and clear.</p>
-        </button>
-
-        <button class="tile card" data-nav="dm">
-          <div class="tile-head">
-            <span class="tile-icon" aria-hidden="true">🧭</span>
-            <h2>DM Tools</h2>
-          </div>
-          <p>Party sync, backups, and utilities for quick prep.</p>
-        </button>
-
-        <button class="tile card" data-nav="encounters">
-          <div class="tile-head">
-            <span class="tile-icon" aria-hidden="true">⚔️</span>
-            <h2>Encounter Builder</h2>
-          </div>
-          <p>Open the encounter calculators & builders.</p>
-        </button>
-
-        <button class="tile card" data-nav="notes">
-          <div class="tile-head">
-            <span class="tile-icon" aria-hidden="true">📝</span>
-            <h2>Notes</h2>
-          </div>
-          <p>Quick notes with autosave to your device.</p>
-        </button>
-
-        <button class="tile card" data-nav="logbook">
-          <div class="tile-head">
-            <span class="tile-icon" aria-hidden="true">📓</span>
-            <h2>Logbook</h2>
-          </div>
-          <p>Standalone logbook, mounted inside the toolkit.</p>
-        </button>
-
-        <button class="tile card" data-nav="characters">
-          <div class="tile-head">
-            <span class="tile-icon" aria-hidden="true">👤</span>
-            <h2>Characters</h2>
-          </div>
-          <p>Create, edit, print, and add members to Party.</p>
-        </button>
+      <div class="home-grid">
+        <div class="panel tile tile-home-world"      tabindex="0" onclick="nav('world')"><h2>World Map</h2></div>
+        <div class="panel tile tile-home-dice"       tabindex="0" onclick="nav('dice')"><h2>Dice</h2></div>
+        <div class="panel tile tile-home-dm"         tabindex="0" onclick="nav('dm')"><h2>DM</h2></div>
+        <div class="panel tile tile-home-encounters" tabindex="0" onclick="window.location.href='encounters/'"><h2>Encounter Builder</h2></div>
+        <div class="panel tile tile-home-notes"      tabindex="0" onclick="nav('notes')"><h2>Notes</h2></div>
+        <div class="panel tile tile-home-logbook"    tabindex="0" onclick="nav('logbook')"><h2>Logbook</h2></div>
+        <!-- Characters tile on landing page -->
+        <div class="panel tile tile-home-characters" tabindex="0" onclick="nav('characters')"><h2>Character Manager</h2></div>
       </div>
     </section>
 
-    <!-- WORLD MAP -->
-    <section id="section-world" class="tabpanel" role="tabpanel" data-tab="world" hidden>
-      <header class="section-head">
-        <h2>World Map</h2>
-        <div class="actions">
-          <button id="btn-world-fit" class="btn ghost" type="button" title="Toggle Fit / Actual">Fit / Actual</button>
-          <button id="btn-world-full" class="btn ghost" type="button">Fullscreen</button>
-          <button id="btn-world-pop" class="btn ghost" type="button">Cast / Pop-out</button>
-        </div>
-      </header>
-
-      <div class="world grid cols-4@lg">
-        <aside class="card world-list">
-          <h3 class="small">Select Map</h3>
-          <ul id="map-list" class="map-list" role="listbox" aria-label="Available maps"></ul>
-        </aside>
-
-        <figure class="card world-viewer">
-          <img id="world-img" alt="Selected map" draggable="false">
-          <figcaption id="world-caption" class="tiny muted"></figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <!-- DICE -->
-    <section id="section-dice" class="tabpanel" role="tabpanel" data-tab="dice" hidden>
-      <header class="section-head">
-        <h2>Dice</h2>
-      </header>
-
-      <div class="dice card">
-        <div class="dicebar">
-          <button class="btn ghost die" data-d="4"  type="button">d4</button>
-          <button class="btn ghost die" data-d="6"  type="button">d6</button>
-          <button class="btn ghost die" data-d="8"  type="button">d8</button>
-          <button class="btn ghost die" data-d="10" type="button">d10</button>
-          <button class="btn ghost die" data-d="12" type="button">d12</button>
-          <button class="btn ghost die" data-d="20" type="button">d20</button>
+    <!-- CHARACTER MANAGER (iframe, same origin so localStorage sync works) -->
+    <section id="view-characters" class="hidden">
+      <div class="panel" style="padding:0">
+        <div class="section-head" style="padding:12px 16px">
+          <h2>Character Manager</h2>
+          <div class="small">Create, edit, print, and add members to the Party.</div>
         </div>
 
-        <div class="dicepool" id="dicepool" aria-live="polite">Add dice to roll…</div>
-
-        <div class="actions">
-          <button id="btn-roll" class="btn" type="button">Roll</button>
-          <button id="btn-clear" class="btn ghost" type="button">Clear</button>
-        </div>
-
-        <output id="dice-result" class="dice-result" aria-live="polite"></output>
-      </div>
-    </section>
-
-    <!-- NOTES -->
-    <section id="section-notes" class="tabpanel" role="tabpanel" data-tab="notes" hidden>
-      <header class="section-head">
-        <h2>Notes</h2>
-      </header>
-      <div class="card">
-        <textarea id="notes" rows="12" placeholder="Type notes…"></textarea>
-      </div>
-    </section>
-
-    <!-- DM -->
-    <section id="section-dm" class="tabpanel" role="tabpanel" data-tab="dm" hidden>
-      <header class="section-head">
-        <h2>DM Tools</h2>
-      </header>
-
-      <div class="grid cols-2">
-        <section class="card">
-          <h3>Party (read-only preview)</h3>
-          <div id="party" class="party">No party members yet.</div>
-          <p class="tiny muted">Party syncs automatically from Characters (shared key: <code>tp_cc_characters</code>).</p>
-        </section>
-
-        <section class="card">
-          <h3>Backup / Restore</h3>
-          <p>Back up or restore your device-local data (settings, notes, and characters).</p>
-          <div class="backup-row">
-            <button id="btn-export" class="btn" type="button">Export data</button>
-            <label class="file btn ghost">
-              <input id="file-import" type="file" accept="application/json" />
-              Import data…
-            </label>
-            <button id="btn-reset" class="btn ghost" type="button">Reset all</button>
-          </div>
-          <p class="tiny muted">Exports include <code>tp_state_v26</code> and <code>tp_cc_characters</code>.</p>
-        </section>
-      </div>
-    </section>
-
-    <!-- ENCOUNTER BUILDER -->
-    <section id="section-encounters" class="tabpanel" role="tabpanel" data-tab="encounters" hidden>
-      <header class="section-head">
-        <h2>Encounter Builder</h2>
-      </header>
-
-      <div class="card">
-        <p>Open the encounter builder in its folder:</p>
-        <p><a class="btn" href="./encounters/" rel="noopener">Open Encounter Builder</a></p>
-        <p class="tiny muted">We’ve updated the path from <code>./encounters/encounters/</code> → <code>./encounters/</code>.</p>
+        <iframe
+          id="characters-frame"
+          title="Character Manager"
+          src="dnd-characters-modules/index.html"
+          style="width:100%; height:80vh; border:0; display:block;"
+        ></iframe>
       </div>
     </section>
 
     <!-- LOGBOOK -->
-    <section id="section-logbook" class="tabpanel" role="tabpanel" data-tab="logbook" hidden>
-      <header class="section-head">
-        <h2>Logbook</h2>
-      </header>
+    <section id="view-logbook" class="hidden">
+      <div class="panel" style="padding:0">
+        <div class="section-head" style="padding:12px 16px">
+          <h2>Logbook</h2>
+          <div class="small">Standalone logbook, mounted inside the toolkit.</div>
+        </div>
 
-      <div class="card">
-        <iframe id="logbook-frame" src="./logbook/index.html" title="Logbook" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-        <p class="tiny muted">If this doesn’t load, make sure <code>/logbook/index.html</code> exists.</p>
+        <iframe
+          id="logbook-frame"
+          title="DM Logbook"
+          src="logbook/index.html"
+          style="width:100%; height:80vh; border:0; display:block;"
+        ></iframe>
       </div>
     </section>
 
-    <!-- CHARACTERS -->
-    <section id="section-characters" class="tabpanel" role="tabpanel" data-tab="characters" hidden>
-      <header class="section-head">
-        <h2>Character Manager</h2>
-      </header>
+    <!-- WORLD MAP -->
+    <section id="view-world" class="hidden">
+      <div class="panel">
+        <div class="section-head"><h2>World Map</h2></div>
+        <div class="control-row">
+          <button class="board-ctrl" onclick="toggleWorldScale()">Fit / Actual</button>
+          <button class="board-ctrl" onclick="toggleWorldFullscreen()">Fullscreen</button>
+          <button class="board-ctrl" onclick="openWorldViewer()">Cast / Pop-out</button>
+        </div>
+        <div id="world" class="world-stage" style="margin-top:10px"></div>
+      </div>
 
-      <div class="card">
-        <iframe id="characters-frame" src="./dnd-characters-modules/index.html" title="Character Manager" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-        <p class="tiny muted">Shares party with DM tab via <code>localStorage</code> key <code>tp_cc_characters</code>.</p>
+      <div class="panel" style="margin-top:10px">
+        <div class="section-head"><h3>Select Map</h3></div>
+        <div id="world-map-list" class="map-list"></div>
+      </div>
+    </section>
+
+    <!-- DICE -->
+    <section id="view-dice" class="hidden">
+      <div class="panel">
+        <div class="section-head"><h2>Dice</h2></div>
+
+        <div class="dice-hero">
+          <img src="assets/icons/d20-lime.svg" alt="d20" />
+        </div>
+
+        <div class="dice-row">
+          <button class="die-btn" onclick="addDie(4)">d4</button>
+          <button class="die-btn" onclick="addDie(6)">d6</button>
+          <button class="die-btn" onclick="addDie(8)">d8</button>
+          <button class="die-btn" onclick="addDie(10)">d10</button>
+          <button class="die-btn" onclick="addDie(12)">d12</button>
+          <button class="die-btn" onclick="addDie(20)">d20</button>
+        </div>
+
+        <div class="dice-ops">
+          <button class="btn" onclick="rollAll()">Roll</button>
+          <button class="btn ghost" onclick="clearDice()">Clear</button>
+        </div>
+
+        <div id="dice-output" class="roll-output">
+          <div class="roll-card">
+            <div class="roll-total">—</div>
+            <div class="roll-breakdown">Add dice to roll…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NOTES -->
+    <section id="view-notes" class="hidden">
+      <div class="panel">
+        <div class="section-head"><h2>Notes</h2></div>
+        <textarea id="app-notes" rows="10" placeholder="Type notes…"></textarea>
+      </div>
+    </section>
+
+    <!-- DM -->
+    <section id="view-dm" class="hidden">
+      <div class="panel dm-page">
+        <div class="dm-head">
+          <div class="left">
+            <h2 style="margin:0">DM Panel</h2>
+          </div>
+          <div class="right">
+            <button class="btn" onclick="renderWorld()">Refresh World</button>
+          </div>
+        </div>
+
+        <div class="dm-tabs">
+          <button class="dm-tab" onclick="setDmTab('party')">Party</button>
+          <button class="dm-tab" onclick="setDmTab('npcs')">NPCs</button>
+          <button class="dm-tab" onclick="setDmTab('enemies')">Enemies</button>
+          <button class="dm-tab" onclick="setDmTab('notes')">Notes</button>
+          <button class="dm-tab" onclick="setDmTab('tools')">Tools</button>
+        </div>
+
+        <div id="dm-body" class="dm-body"></div>
       </div>
     </section>
   </main>
 
-  <footer class="site-foot">
-    <p class="tiny muted">© TabletopPals — DM Toolkit</p>
-  </footer>
+  <!-- Main app logic -->
+  <script src="app.js"></script>
+  <script>
+    if (window.__pendingNav && typeof window.nav === 'function') {
+      window.nav(window.__pendingNav);
+      window.__pendingNav = null;
+    } else {
+      nav('home');
+    }
+  </script>
 
-  <script src="./app.js" type="module"></script>
 </body>
 </html>
