@@ -16,7 +16,11 @@
 <body>
   <header class="site-head">
     <a class="brand" href="#home" data-nav="home" aria-label="Go to Home">
-      <img src="./assets/logo.svg" alt="" class="brand-mark" onerror="this.style.display='none'">
+      <!-- Header brand: SVG→PNG fallback -->
+      <picture class="brand-mark">
+        <source srcset="./assets/logo.svg" type="image/svg+xml">
+        <img src="./assets/img/logo.png" alt="TabletopPals" width="36" height="36" />
+      </picture>
       <span class="brand-title">DM Toolkit</span>
     </a>
 
@@ -41,6 +45,15 @@
   <main class="wrap main" id="main">
     <!-- HOME -->
     <section id="section-home" class="tabpanel" role="tabpanel" aria-labelledby="home" data-tab="home">
+      <!-- NEW: Hero with big logo (SVG→PNG fallback) -->
+      <header class="hero card">
+        <picture class="hero-logo">
+          <source srcset="./assets/logo.svg" type="image/svg+xml">
+          <img src="./assets/img/logo.png" alt="TabletopPals — DM Toolkit" />
+        </picture>
+        <p class="tagline">All your DM tools — one place.</p>
+      </header>
+
       <div class="tiles grid cols-2 cols-3@lg">
         <button class="tile card" data-nav="world">
           <div class="tile-head">
